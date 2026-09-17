@@ -1,0 +1,17 @@
+/* SPA/features/post/comment-highlight.css */
+
+.highlight-comment {
+	background: linear-gradient(90deg, var(--accent-soft) 0%, rgba(13, 148, 136, 0.04) 100%);
+	border-left: 3px solid var(--accent-primary);
+	transition:
+		background-color 1.2s var(--ease-in-out),
+		border-color 1.2s var(--ease-in-out);
+	padding-left: 0.85rem;
+	margin-left: -0.85rem;
+	border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+
+.highlight-comment.fade-out {
+	background-color: transparent;
+	border-left-color: transparent;
+}

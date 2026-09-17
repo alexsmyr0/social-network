@@ -1,0 +1,85 @@
+# --- Build Artifacts ---
+# Go
+bin/
+/backend
+/frontend
+/forum-backend
+/forum-frontend
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+debug
+debug.test
+# Local temp / build cache (e.g. GOCACHE)
+.tmp/
+
+# Node / JS / Bun
+node_modules/
+package-lock.json
+dist/
+build/
+.cache/
+.vitest.cache/
+.biome_cache/
+
+# --- Testing & Coverage ---
+coverage/
+*.lcov
+test-results/
+playwright-report/
+playwright-screenshots/
+playwright-traces/
+.nyc_output/
+
+# --- Logs ---
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+bun-debug.log*
+
+# --- Environment & Secrets ---
+.env
+.env.local
+.env.*.local
+*.env
+cmd/backend/.env
+cmd/frontend/.env
+
+# --- Database (SQLite) ---
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+!data/.gitkeep
+
+# --- OS Specific ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+.classpath
+.factorypath
+
+# --- Project Specific ---
+web/static/uploads/*
+!web/static/uploads/.gitkeep

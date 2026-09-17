@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{.Code}} – {{.Title}}</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+
+    <!-- Common HTTP error styles -->
+    <link rel="stylesheet" href="/errors/common.css" />
+</head>
+
+<body class="error-page">
+<div class="error-container">
+    <div class="error-code">{{.Code}}</div>
+    <div class="error-title">{{.Title}}</div>
+
+    <!-- Custom / server-provided message (optional) -->
+    {{if .Message}}
+    <p class="error-message">{{.Message}}</p>
+    {{end}}
+
+    <a class="error-home" href="{{.HomeURL}}/">Back to Home</a>
+</div>
+</body>
+</html>

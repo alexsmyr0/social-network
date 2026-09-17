@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+          
+      - name: Install dependencies
+        run: make deps
+
+      - name: Quality gate
+        # One target, one run of each check. `make test` chains build → Biome →
+        # gofmt → go vet → Go tests → race → Vitest → Playwright. CI used to
+        # invoke overlapping targets here and ran Biome three times and Vitest
+        # twice; keeping the gate in the Makefile also stops CI drifting from
+        # what contributors run locally.
+        run: make test

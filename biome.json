@@ -1,0 +1,79 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.4.12/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"ignoreUnknown": true,
+		"includes": ["**", "!cmd", "!internal", "!data", "!web/errors", "!bun.lock"]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"indentWidth": 2,
+		"lineWidth": 100
+	},
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"a11y": {
+				"recommended": true,
+				"noSvgWithoutTitle": "off"
+			},
+			"complexity": {
+				"recommended": true,
+				"noExcessiveCognitiveComplexity": "error"
+			},
+			"correctness": {
+				"recommended": true,
+				"noUnusedVariables": "error"
+			},
+			"style": {
+				"recommended": true,
+				"useNamingConvention": "off",
+				"useFilenamingConvention": "off"
+			},
+			"suspicious": {
+				"recommended": true,
+				"noExplicitAny": "warn"
+			},
+			"nursery": {
+				"noDuplicateSelectors": "error"
+			}
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "single",
+			"semicolons": "always",
+			"trailingCommas": "all",
+			"bracketSpacing": true
+		}
+	},
+	"css": {
+		"formatter": {
+			"enabled": true,
+			"quoteStyle": "double"
+		},
+		"linter": {
+			"enabled": true
+		}
+	},
+	"json": {
+		"formatter": {
+			"enabled": true,
+			"indentStyle": "tab"
+		}
+	}
+}

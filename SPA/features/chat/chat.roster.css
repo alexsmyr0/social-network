@@ -1,0 +1,191 @@
+.chat-roster {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.3rem;
+}
+
+/* One roster entry holds two sibling controls: the DM-open row and the
+   profile link. See chat.roster.views.js for why they must not nest. */
+.chat-roster__entry {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+}
+
+.chat-roster__item {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: grid;
+	/* col 1 presence dot, col 2 name + preview, col 3 unread badge */
+	grid-template-columns: auto 1fr auto;
+	grid-template-rows: auto auto;
+	column-gap: 0.75rem;
+	row-gap: 0.15rem;
+	align-items: center;
+	padding: 0.55rem 0.75rem;
+	border-radius: var(--radius-lg);
+	cursor: pointer;
+	transition:
+		background var(--transition-fast),
+		border-color var(--transition-fast),
+		transform var(--transition-fast);
+	outline: none;
+	border: 1px solid transparent;
+}
+
+.chat-roster__item:hover,
+.chat-roster__item:focus-visible {
+	background: var(--bg-secondary);
+	border-color: var(--border-light);
+}
+
+/* Muted by default so the row keeps visual priority; the profile link is
+   always rendered (never hover-only) so it stays reachable on touch and by
+   keyboard. */
+.chat-roster__profile {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.75rem;
+	height: 1.75rem;
+	border-radius: var(--radius-full);
+	color: var(--text-muted);
+	border: 1px solid transparent;
+	transition:
+		color var(--transition-fast),
+		background var(--transition-fast),
+		border-color var(--transition-fast);
+}
+
+.chat-roster__profile:hover,
+.chat-roster__profile:focus-visible {
+	color: var(--text-link);
+	background: var(--accent-soft);
+	border-color: rgba(13, 148, 136, 0.3);
+}
+
+.chat-roster__entry:hover .chat-roster__profile {
+	color: var(--text-secondary);
+}
+
+.chat-roster__item.is-selected {
+	background: var(--accent-soft);
+	border-color: rgba(13, 148, 136, 0.3);
+	box-shadow: inset 3px 0 0 var(--accent-primary);
+}
+
+.chat-roster__presence {
+	width: 0.55rem;
+	height: 0.55rem;
+	border-radius: var(--radius-full);
+	display: inline-block;
+	grid-row: 1 / span 2;
+	transition: box-shadow var(--transition-fast);
+}
+
+.chat-roster__presence--online {
+	background: var(--success);
+	box-shadow:
+		0 0 0 2.5px var(--bg-elevated),
+		0 0 0 4.5px rgba(16, 185, 129, 0.22);
+}
+
+.chat-roster__presence--offline {
+	background: var(--text-muted);
+	box-shadow: 0 0 0 2.5px var(--bg-elevated);
+}
+
+.chat-roster__name {
+	font-family: var(--font-display);
+	font-weight: 600;
+	font-size: 0.92rem;
+	color: var(--text-primary);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	letter-spacing: -0.01em;
+}
+
+.chat-roster__preview {
+	grid-column: 2;
+	font-size: 0.78rem;
+	color: var(--text-secondary);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	opacity: 0.85;
+}
+
+.chat-roster__item--offline .chat-roster__name {
+	color: var(--text-secondary);
+}
+
+.chat-roster__item--offline .chat-roster__preview {
+	opacity: 0.6;
+}
+
+.chat-roster__item.is-selected .chat-roster__name {
+	color: var(--text-link);
+}
+
+/* Unread DM indicator (audit Q16). Before this, an arriving message announced
+   itself only by reordering the roster — invisible in a list of every
+   registered user. The badge sits in its own column so it never competes with
+   the name or the preview for space. */
+.chat-roster__unread {
+	grid-column: 3;
+	grid-row: 1 / span 2;
+	justify-self: end;
+	align-self: center;
+	min-width: 1.25rem;
+	padding: 0 0.35rem;
+	border-radius: var(--radius-full);
+	background: var(--accent-primary);
+	color: #ffffff;
+	font-size: 0.68rem;
+	font-weight: 700;
+	line-height: 1.25rem;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+}
+
+/* An unread row also reads as unread at a glance, not only by its badge. */
+.chat-roster__item--unread {
+	background: var(--accent-softer);
+}
+
+.chat-roster__item--unread .chat-roster__name {
+	color: var(--text-primary);
+	font-weight: 700;
+}
+
+.chat-roster__item--unread .chat-roster__preview {
+	color: var(--text-primary);
+	opacity: 1;
+}
+
+/* Roster-wide tally beside the panel heading, so a thread that went unread
+   while scrolled out of view still announces itself. `.chat-panel__title` in
+   shell.css is already an inline-flex row with a gap, so the slot only has to
+   collapse to nothing when there is no badge to show. */
+.chat-panel__unread-slot:empty {
+	display: none;
+}
+
+.chat-panel__unread {
+	display: inline-block;
+	min-width: 1.25rem;
+	padding: 0 0.35rem;
+	border-radius: var(--radius-full);
+	background: var(--accent-primary);
+	color: #ffffff;
+	font-size: 0.68rem;
+	font-weight: 700;
+	line-height: 1.25rem;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,408 @@
+/* SPA/features/shell/shell.css */
+
+.app-shell {
+	--shell-pad-top: clamp(1rem, 2.5vw, 1.5rem);
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-lg);
+	max-width: var(--shell-max);
+	margin: 0 auto;
+	width: 100%;
+	padding: var(--shell-pad-top) clamp(1rem, 3vw, 1.75rem) 3rem;
+	animation: shell-fade-in var(--transition-normal) both;
+}
+
+/* ------------------------------------------------------------
+ * HEADER
+ * ------------------------------------------------------------ */
+.app-shell__header {
+	position: sticky;
+	top: var(--space-sm);
+	z-index: var(--z-header);
+	display: grid;
+	grid-template-columns: auto 1fr auto;
+	align-items: center;
+	gap: var(--space-lg);
+	padding: 0.65rem 0.75rem 0.65rem 1.25rem;
+	background: rgba(255, 255, 255, 0.85);
+	backdrop-filter: blur(18px) saturate(1.2);
+	-webkit-backdrop-filter: blur(18px) saturate(1.2);
+	border: 1px solid rgba(226, 232, 240, 0.6);
+	border-radius: var(--radius-full);
+	box-shadow:
+		0 1px 0 rgba(255, 255, 255, 0.7) inset,
+		0 18px 30px -22px rgba(6, 78, 75, 0.25);
+}
+
+.app-shell__brand {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.65rem;
+	font-family: var(--font-display);
+	font-weight: 700;
+	font-size: 1.15rem;
+	color: var(--text-primary);
+	letter-spacing: -0.025em;
+}
+
+.app-shell__brand-mark {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.25rem;
+	height: 2.25rem;
+	background: var(--bg-teal-gradient);
+	border-radius: var(--radius-md);
+	color: white;
+	font-size: 1rem;
+	font-weight: 700;
+	box-shadow:
+		0 8px 14px -8px rgba(6, 78, 75, 0.6),
+		inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.app-shell__brand-text {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 0.3rem;
+}
+
+.app-shell__brand-text em {
+	font-style: normal;
+	font-weight: 500;
+	color: var(--text-muted);
+	font-size: 0.7em;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+/* Navigation */
+.app-shell__header nav {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.25rem;
+}
+
+.app-shell__header nav span[aria-hidden="true"] {
+	display: none;
+}
+
+.app-shell__header nav a {
+	position: relative;
+	font-family: var(--font-display);
+	font-size: 0.92rem;
+	font-weight: 600;
+	color: var(--text-secondary);
+	padding: 0.55rem 1rem;
+	border-radius: var(--radius-full);
+	transition:
+		background var(--transition-fast),
+		color var(--transition-fast);
+}
+
+.app-shell__header nav a::before {
+	content: "";
+	position: absolute;
+	inset: auto 1rem -0.1rem 1rem;
+	height: 2px;
+	background: var(--bg-teal-gradient);
+	border-radius: var(--radius-full);
+	transform: scaleX(0);
+	transform-origin: center;
+	transition: transform var(--transition-normal);
+}
+
+.app-shell__header nav a:hover {
+	background: var(--accent-softer);
+	color: var(--accent-hover);
+}
+
+.app-shell__header nav a:hover::before,
+.app-shell__header nav a[aria-current="page"]::before {
+	transform: scaleX(1);
+}
+
+.app-shell__header nav a[aria-current="page"] {
+	color: var(--accent-hover);
+	background: var(--accent-softer);
+}
+
+.app-shell__actions {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+}
+
+.app-shell__logout {
+	padding: 0.55rem 1.1rem;
+	border: 1px solid var(--border-light);
+	background: var(--bg-elevated);
+	border-radius: var(--radius-full);
+	font-family: var(--font-display);
+	font-weight: 600;
+	font-size: 0.85rem;
+	color: var(--text-secondary);
+	cursor: pointer;
+	box-shadow: var(--shadow-xs);
+	transition:
+		background var(--transition-fast),
+		color var(--transition-fast),
+		border-color var(--transition-fast),
+		transform var(--transition-fast);
+}
+
+.app-shell__logout:hover {
+	background: var(--bg-secondary);
+	color: var(--text-primary);
+	border-color: var(--border-medium);
+	transform: translateY(-1px);
+}
+
+/* ------------------------------------------------------------
+ * LAYOUT
+ * ------------------------------------------------------------ */
+.app-shell__layout {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 340px;
+	gap: var(--space-lg);
+	align-items: start;
+}
+
+.app-shell__outlet {
+	background: var(--bg-elevated);
+	border: 1px solid var(--border-soft);
+	border-radius: var(--radius-2xl);
+	padding: clamp(1.25rem, 2.5vw, 2rem);
+	min-height: 30rem;
+	box-shadow: var(--shadow-md);
+	position: relative;
+	overflow: hidden;
+}
+
+.app-shell__outlet::before {
+	content: "";
+	position: absolute;
+	inset: 0 0 auto 0;
+	height: 4px;
+	background: linear-gradient(90deg, var(--bg-teal), var(--bg-sand), var(--bg-teal));
+	opacity: 0.55;
+}
+
+.app-shell__chat {
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-lg);
+	position: sticky;
+	/* Pin at the panel's natural on-screen row (shell padding + header + gap)
+	   so it's stuck from scroll 0 and never drifts before snapping. */
+	top: calc(var(--shell-pad-top) + var(--header-height) + var(--space-lg));
+}
+
+/* ------------------------------------------------------------
+ * CHAT PANELS
+ * ------------------------------------------------------------ */
+.chat-panel {
+	background: var(--bg-elevated);
+	border: 1px solid var(--border-soft);
+	border-radius: var(--radius-2xl);
+	padding: var(--space-lg);
+	box-shadow: var(--shadow-sm);
+	display: flex;
+	flex-direction: column;
+	gap: var(--space-sm);
+	position: relative;
+	overflow: hidden;
+	height: 24rem;
+}
+
+/* The open conversation fills the viewport from the sticky top down to a
+   small gap above the bottom edge, so the whole chat is visible without
+   the page scrolling. */
+.chat-panel--conversation {
+	height: calc(100vh - var(--shell-pad-top) - var(--header-height) - (2 * var(--space-lg)));
+}
+
+/* The roster and conversation share one slot; only one is shown at a time.
+   Needed because `display: flex` above otherwise wins over the native
+   `[hidden]` (display: none). */
+.chat-panel[hidden] {
+	display: none;
+}
+
+/* On wide viewports the roster and conversation are kept side-by-side and
+   BOTH stay visible at all times (docs/requirements.md: "online users must
+   be visible at all times"). The JS still toggles `hidden` for the
+   narrow/mobile single-slot experience; this media query overrides that
+   hide on desktop so neither panel ever disappears. (Issue #51.) */
+@media (min-width: 861px) {
+	.chat-panel[hidden] {
+		display: flex;
+	}
+}
+
+.chat-panel::before {
+	content: "";
+	position: absolute;
+	inset: 0 0 auto 0;
+	height: 3px;
+	background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+	opacity: 0.4;
+}
+
+.chat-panel__head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-sm);
+}
+
+.chat-panel__title {
+	font-family: var(--font-display);
+	font-size: 0.7rem;
+	font-weight: 700;
+	letter-spacing: 0.18em;
+	color: var(--text-link);
+	text-transform: uppercase;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+.chat-panel__title::before {
+	content: "";
+	width: 0.5rem;
+	height: 0.5rem;
+	border-radius: var(--radius-full);
+	background: var(--accent-primary);
+	box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.chat-panel__title--spaced {
+	margin-bottom: 0.65rem;
+}
+
+.chat-panel__hint {
+	font-size: 0.78rem;
+	color: var(--text-muted);
+}
+
+.chat-panel__roster {
+	display: flex;
+	flex-direction: column;
+	gap: 0.3rem;
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	padding: 0.25rem 0.35rem 0.25rem 0.1rem;
+	margin: -0.1rem;
+}
+
+.chat-panel__roster::-webkit-scrollbar {
+	width: 5px;
+}
+
+.chat-panel__roster::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.chat-panel__roster::-webkit-scrollbar-thumb {
+	background: var(--border-light);
+	border-radius: var(--radius-full);
+}
+
+.chat-panel__roster::-webkit-scrollbar-thumb:hover {
+	background: var(--text-muted);
+}
+
+.chat-panel__empty {
+	font-size: 0.85rem;
+	color: var(--text-muted);
+	padding: 0.85rem;
+	text-align: center;
+	background: var(--bg-secondary);
+	border-radius: var(--radius-md);
+	border: 1px dashed var(--border-light);
+}
+
+.chat-panel__active-empty {
+	height: 12rem;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	color: var(--text-muted);
+	font-size: 0.85rem;
+	text-align: center;
+	padding: 1rem;
+}
+
+.chat-panel__active-empty::before {
+	content: "";
+	width: 2.5rem;
+	height: 2.5rem;
+	background: var(--bg-teal-radial);
+	border-radius: var(--radius-full);
+	filter: blur(2px);
+	opacity: 0.7;
+}
+
+/* ------------------------------------------------------------
+ * ANIMATIONS
+ * ------------------------------------------------------------ */
+@keyframes shell-fade-in {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@media (max-width: 1024px) {
+	.app-shell__layout {
+		grid-template-columns: minmax(0, 1fr) 300px;
+	}
+}
+
+@media (max-width: 860px) {
+	.app-shell {
+		padding: 0.75rem;
+	}
+
+	.app-shell__header {
+		grid-template-columns: 1fr auto;
+		grid-template-areas:
+			"brand actions"
+			"nav nav";
+		padding: 0.85rem 1rem;
+		gap: 0.5rem;
+		border-radius: var(--radius-2xl);
+	}
+
+	.app-shell__brand {
+		grid-area: brand;
+	}
+
+	.app-shell__header nav {
+		grid-area: nav;
+		justify-content: flex-start;
+		flex-wrap: wrap;
+	}
+
+	.app-shell__actions {
+		grid-area: actions;
+	}
+
+	.app-shell__layout {
+		grid-template-columns: 1fr;
+	}
+
+	.app-shell__chat {
+		position: static;
+	}
+}

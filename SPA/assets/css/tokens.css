@@ -1,0 +1,138 @@
+/*
+ * Design System — Token Layer
+ * ----------------------------------------------------------------
+ * Single source of truth for color, type, space, motion, elevation.
+ * Pulled from the login page's teal atelier palette and extended
+ * with editorial neutrals + warm accents for visual depth.
+ */
+
+:root {
+	/* Surfaces — light editorial neutrals */
+	--bg-primary: #ffffff;
+	--bg-secondary: #f5f7f4;
+	--bg-tertiary: #eef2ec;
+	--bg-canvas: #f0f4ef;
+	--bg-elevated: #ffffff;
+	--bg-deep: #0f172a;
+
+	/* Brand teal — the signature from the login page */
+	--bg-teal: #064e4b;
+	--bg-teal-soft: #115e59;
+	--bg-teal-gradient: linear-gradient(135deg, #064e4b 0%, #0d9488 100%);
+	--bg-teal-gradient-soft: linear-gradient(135deg, #0d9488 0%, #2dd4bf 100%);
+	--bg-teal-gradient-deep: linear-gradient(135deg, #064e4b 0%, #0d9488 60%, #115e59 100%);
+	--bg-teal-radial: radial-gradient(circle at 30% 20%, rgba(13, 148, 136, 0.25), transparent 60%);
+
+	/* Sand accent — warm secondary for badges / pills */
+	--bg-sand: #c4a484;
+	--bg-sand-soft: #e8d5b7;
+	--bg-sand-radial: radial-gradient(circle, rgba(196, 164, 132, 0.18), transparent 60%);
+	--text-on-sand: #8a6d3b;
+
+	/* Type scale */
+	--text-primary: #0f172a;
+	--text-secondary: #475569;
+	--text-tertiary: #64748b;
+	--text-muted: #94a3b8;
+	--text-on-dark: #f8fafc;
+	--text-on-dark-muted: rgba(248, 250, 252, 0.72);
+	--text-accent: #0d9488;
+	--text-link: #0f766e;
+
+	/* Borders */
+	--border-light: #e2e8f0;
+	--border-medium: #cbd5e1;
+	--border-soft: #eaedf0;
+	--border-focus: #0d9488;
+	--border-glow: rgba(13, 148, 136, 0.32);
+
+	/* Accent ramps */
+	--accent-primary: #0d9488;
+	--accent-hover: #0f766e;
+	--accent-soft: rgba(13, 148, 136, 0.1);
+	--accent-softer: rgba(13, 148, 136, 0.06);
+	--accent-glow: rgba(13, 148, 136, 0.18);
+
+	/* Status */
+	--success: #10b981;
+	--success-soft: rgba(16, 185, 129, 0.1);
+	--success-strong: #047857;
+	--error: #ef4444;
+	--error-soft: rgba(239, 68, 68, 0.08);
+	--error-strong: #b91c1c;
+	--warning: #f59e0b;
+	--info: #3b82f6;
+	--accent-cyan: #5eead4;
+
+	/* Spacing — 4pt grid */
+	--space-2xs: 0.125rem;
+	--space-xs: 0.25rem;
+	--space-sm: 0.5rem;
+	--space-md: 1rem;
+	--space-lg: 1.5rem;
+	--space-xl: 2rem;
+	--space-2xl: 3rem;
+	--space-3xl: 4.5rem;
+
+	/* Radii */
+	--radius-sm: 0.375rem;
+	--radius-md: 0.5rem;
+	--radius-lg: 0.75rem;
+	--radius-xl: 1rem;
+	--radius-2xl: 1.5rem;
+	--radius-3xl: 2rem;
+	--radius-full: 9999px;
+
+	/* Elevation — layered, with subtle teal tint at the highest tier */
+	--shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+	--shadow-sm: 0 1px 3px 0 rgb(15 23 42 / 0.08), 0 1px 2px -1px rgb(15 23 42 / 0.06);
+	--shadow-md: 0 4px 8px -2px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.04);
+	--shadow-lg: 0 14px 24px -8px rgb(15 23 42 / 0.12), 0 4px 8px -4px rgb(15 23 42 / 0.06);
+	--shadow-xl: 0 24px 48px -16px rgb(15 23 42 / 0.18), 0 8px 16px -8px rgb(15 23 42 / 0.08);
+	--shadow-auth: 0 30px 60px -20px rgb(15 23 42 / 0.25), 0 12px 20px -10px rgb(15 23 42 / 0.12);
+	--shadow-glow: 0 0 0 1px rgba(13, 148, 136, 0.18), 0 12px 28px -8px rgba(13, 148, 136, 0.28);
+	--shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+	/* Type stacks */
+	--font-display: "Outfit", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	--font-serif: "Fraunces", "Cormorant Garamond", Georgia, "Times New Roman", serif;
+	--font-body:
+		"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+	--font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Fira Code", monospace;
+
+	/* Motion */
+	--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+	--ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+	--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+	--transition-fast: 150ms var(--ease-in-out);
+	--transition-normal: 280ms var(--ease-out);
+	--transition-slow: 480ms var(--ease-out);
+
+	/* Z-layers */
+	--z-dropdown: 50;
+	--z-header: 60;
+	--z-overlay: 100;
+	--z-modal: 200;
+	--z-toast: 300;
+
+	/* Layout */
+	--shell-max: 1400px;
+	--content-max: 1200px;
+	--header-height: 4rem;
+
+	/* Decorative textures */
+	--texture-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.06  0 0 0 0 0.09  0 0 0 0 0.16  0 0 0 0.045 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+	--texture-grid:
+		linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.001ms;
+		animation-iteration-count: 1;
+		transition-duration: 0.001ms;
+	}
+}

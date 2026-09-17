@@ -1,0 +1,581 @@
+/*
+ * Design System — Primitives
+ * ----------------------------------------------------------------
+ * Reusable component classes (.ds-card, .ds-button, .ds-field, .ds-pill)
+ * that every feature file composes from. Keeps the visual language
+ * consistent across the SPA without forcing structural rewrites.
+ */
+
+/* ------------------------------------------------------------
+ * CARD
+ * ------------------------------------------------------------ */
+.ds-card {
+	background: var(--bg-elevated);
+	border: 1px solid var(--border-soft);
+	border-radius: var(--radius-2xl);
+	box-shadow: var(--shadow-sm);
+	padding: var(--space-xl);
+	position: relative;
+	overflow: hidden;
+	transition:
+		box-shadow var(--transition-normal),
+		transform var(--transition-normal),
+		border-color var(--transition-normal);
+}
+
+.ds-card--padded {
+	padding: var(--space-2xl);
+}
+
+.ds-card--ghost {
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(245, 247, 244, 0.72));
+	backdrop-filter: blur(6px);
+}
+
+.ds-card--sunken {
+	background: var(--bg-secondary);
+	box-shadow: var(--shadow-xs);
+}
+
+/* Generic card padding — used by feature views that wrap content in `.card card-pad` */
+.card-pad {
+	padding: clamp(1.25rem, 2.5vw, 1.75rem);
+}
+
+.ds-card--interactive {
+	cursor: pointer;
+}
+
+.ds-card--interactive:hover {
+	transform: translateY(-2px);
+	box-shadow: var(--shadow-md);
+	border-color: var(--border-glow);
+}
+
+.ds-card--accent {
+	border-color: rgba(13, 148, 136, 0.22);
+	box-shadow: var(--shadow-glow);
+}
+
+.ds-card--accent::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: var(--bg-teal-radial);
+	opacity: 0.6;
+	pointer-events: none;
+}
+
+/* ------------------------------------------------------------
+ * BUTTON
+ * ------------------------------------------------------------ */
+.ds-button {
+	--btn-bg: var(--bg-elevated);
+	--btn-fg: var(--text-primary);
+	--btn-border: var(--border-light);
+	--btn-shadow: var(--shadow-xs);
+
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	min-height: 2.75rem;
+	padding: 0.65rem 1.15rem;
+	border: 1px solid var(--btn-border);
+	border-radius: var(--radius-full);
+	background: var(--btn-bg);
+	color: var(--btn-fg);
+	font-family: var(--font-display);
+	font-size: 0.95rem;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	cursor: pointer;
+	text-decoration: none;
+	box-shadow: var(--btn-shadow);
+	transition:
+		transform var(--transition-fast),
+		box-shadow var(--transition-fast),
+		background var(--transition-fast),
+		border-color var(--transition-fast),
+		color var(--transition-fast);
+	user-select: none;
+}
+
+.ds-button:hover {
+	transform: translateY(-1px);
+	box-shadow: var(--shadow-sm);
+}
+
+.ds-button:active {
+	transform: translateY(0);
+}
+
+.ds-button:focus-visible {
+	outline: 2px solid var(--border-focus);
+	outline-offset: 3px;
+}
+
+.ds-button:disabled {
+	cursor: wait;
+	opacity: 0.65;
+	transform: none;
+}
+
+.ds-button--primary {
+	--btn-bg: var(--bg-teal-gradient);
+	--btn-fg: var(--text-on-dark);
+	--btn-border: transparent;
+	--btn-shadow: 0 18px 28px -22px rgba(6, 78, 75, 0.85);
+	font-weight: 700;
+}
+
+.ds-button--primary:hover {
+	--btn-shadow: 0 22px 32px -22px rgba(6, 78, 75, 0.95);
+}
+
+.ds-button--secondary {
+	--btn-bg: var(--bg-secondary);
+	--btn-fg: var(--text-primary);
+	--btn-border: var(--border-light);
+}
+
+.ds-button--ghost {
+	--btn-bg: transparent;
+	--btn-fg: var(--text-secondary);
+	--btn-border: transparent;
+	--btn-shadow: none;
+}
+
+.ds-button--ghost:hover {
+	--btn-bg: var(--bg-secondary);
+	--btn-fg: var(--text-primary);
+}
+
+.ds-button--danger {
+	--btn-bg: var(--error-soft);
+	--btn-fg: var(--error-strong);
+	--btn-border: rgba(239, 68, 68, 0.18);
+}
+
+.ds-button--danger:hover {
+	--btn-bg: rgba(239, 68, 68, 0.14);
+}
+
+.ds-button--sm {
+	min-height: 2.25rem;
+	padding: 0.4rem 0.9rem;
+	font-size: 0.85rem;
+}
+
+.ds-button--lg {
+	min-height: 3.25rem;
+	padding: 0.95rem 1.5rem;
+	font-size: 1rem;
+}
+
+.ds-button--block {
+	width: 100%;
+}
+
+/* ------------------------------------------------------------
+ * FIELD
+ * ------------------------------------------------------------ */
+.ds-field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+
+.ds-field__label {
+	font-family: var(--font-display);
+	font-size: 0.7rem;
+	font-weight: 700;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: var(--text-secondary);
+}
+
+.ds-field__hint {
+	font-size: 0.78rem;
+	color: var(--text-muted);
+}
+
+.ds-field__error {
+	font-size: 0.8rem;
+	color: var(--error-strong);
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+.ds-field__input,
+.ds-field__textarea,
+.ds-field__select {
+	width: 100%;
+	padding: 0.7rem 0.95rem;
+	border: 1px solid var(--border-light);
+	border-radius: var(--radius-lg);
+	background: var(--bg-elevated);
+	color: var(--text-primary);
+	font-family: var(--font-body);
+	font-size: 0.95rem;
+	line-height: 1.45;
+	transition:
+		border-color var(--transition-fast),
+		box-shadow var(--transition-fast),
+		background var(--transition-fast);
+	appearance: none;
+}
+
+.ds-field__textarea {
+	min-height: 9rem;
+	resize: vertical;
+	line-height: 1.6;
+}
+
+.ds-field__select {
+	background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+	background-repeat: no-repeat;
+	background-position: right 0.85rem center;
+	background-size: 14px;
+	padding-right: 2.5rem;
+	cursor: pointer;
+}
+
+.ds-field__input::placeholder,
+.ds-field__textarea::placeholder {
+	color: var(--text-muted);
+}
+
+.ds-field__input:hover,
+.ds-field__textarea:hover,
+.ds-field__select:hover {
+	border-color: var(--border-medium);
+}
+
+.ds-field__input:focus,
+.ds-field__textarea:focus,
+.ds-field__select:focus {
+	outline: none;
+	border-color: var(--border-focus);
+	box-shadow: 0 0 0 4px var(--accent-soft);
+	background: var(--bg-elevated);
+}
+
+.ds-field--with-icon {
+	position: relative;
+}
+
+.ds-field--with-icon .ds-field__input,
+.ds-field--with-icon .ds-field__select {
+	padding-left: 2.75rem;
+}
+
+.ds-field__icon {
+	position: absolute;
+	left: 0.95rem;
+	top: 50%;
+	transform: translateY(-50%);
+	color: var(--text-muted);
+	display: inline-flex;
+	pointer-events: none;
+}
+
+.ds-field--with-icon .ds-field__label,
+.ds-field--with-icon .ds-field__hint,
+.ds-field--with-icon .ds-field__error {
+	padding-left: 0;
+}
+
+.ds-field--with-icon.ds-field--icon-top .ds-field__icon {
+	top: 2.6rem;
+	transform: none;
+}
+
+/* ------------------------------------------------------------
+ * PILL / BADGE
+ * ------------------------------------------------------------ */
+.ds-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.3rem 0.75rem;
+	border-radius: var(--radius-full);
+	background: var(--bg-secondary);
+	border: 1px solid var(--border-light);
+	color: var(--text-secondary);
+	font-family: var(--font-display);
+	font-size: 0.75rem;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	white-space: nowrap;
+}
+
+.ds-pill--accent {
+	background: var(--accent-soft);
+	border-color: rgba(13, 148, 136, 0.22);
+	color: var(--text-link);
+}
+
+.ds-pill--sand {
+	background: var(--bg-sand-soft);
+	border-color: rgba(196, 164, 132, 0.4);
+	color: var(--text-on-sand);
+}
+
+.ds-pill--success {
+	background: var(--success-soft);
+	border-color: rgba(16, 185, 129, 0.28);
+	color: var(--success-strong);
+}
+
+.ds-pill--danger {
+	background: var(--error-soft);
+	border-color: rgba(239, 68, 68, 0.24);
+	color: var(--error-strong);
+}
+
+.ds-pill--ink {
+	background: var(--bg-deep);
+	border-color: var(--bg-deep);
+	color: var(--text-on-dark);
+}
+
+.ds-pill__dot {
+	width: 0.4rem;
+	height: 0.4rem;
+	border-radius: var(--radius-full);
+	background: currentColor;
+}
+
+/* ------------------------------------------------------------
+ * DIVIDER
+ * ------------------------------------------------------------ */
+.ds-divider {
+	display: flex;
+	align-items: center;
+	gap: var(--space-sm);
+	color: var(--text-muted);
+	font-family: var(--font-display);
+	font-size: 0.7rem;
+	font-weight: 700;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+}
+
+.ds-divider::before,
+.ds-divider::after {
+	content: "";
+	flex: 1;
+	height: 1px;
+	background: linear-gradient(90deg, transparent, var(--border-light), transparent);
+}
+
+/* ------------------------------------------------------------
+ * EYEBROW (kicker label)
+ * ------------------------------------------------------------ */
+.ds-eyebrow {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.35rem 0.85rem;
+	border-radius: var(--radius-full);
+	background: var(--accent-soft);
+	color: var(--text-link);
+	font-family: var(--font-display);
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+}
+
+.ds-eyebrow--sand {
+	background: var(--bg-sand-soft);
+	color: var(--text-on-sand);
+}
+
+.ds-eyebrow--ink {
+	background: rgba(15, 23, 42, 0.06);
+	color: var(--text-primary);
+}
+
+/* ------------------------------------------------------------
+ * DISPLAY TYPE
+ * ------------------------------------------------------------ */
+.ds-display {
+	font-family: var(--font-display);
+	font-weight: 700;
+	letter-spacing: -0.035em;
+	line-height: 1.05;
+	color: var(--text-primary);
+}
+
+.ds-display--xl {
+	font-family: var(--font-serif);
+	font-size: clamp(2.5rem, 5vw, 3.5rem);
+	font-style: italic;
+}
+
+.ds-display--lg {
+	font-size: clamp(1.85rem, 3.5vw, 2.5rem);
+}
+
+.ds-display--md {
+	font-size: 1.5rem;
+	letter-spacing: -0.025em;
+}
+
+.ds-display--sm {
+	font-size: 1.15rem;
+	letter-spacing: -0.02em;
+}
+
+.ds-eyebrow-line {
+	display: block;
+	width: 2.5rem;
+	height: 3px;
+	background: var(--bg-teal-gradient);
+	border-radius: var(--radius-full);
+	margin-bottom: var(--space-sm);
+}
+
+/* ------------------------------------------------------------
+ * LINK
+ * ------------------------------------------------------------ */
+.ds-link {
+	color: var(--text-link);
+	font-weight: 600;
+	text-decoration: none;
+	background-image: linear-gradient(transparent calc(100% - 1px), var(--text-link) 1px);
+	background-size: 0 100%;
+	background-repeat: no-repeat;
+	transition: background-size var(--transition-normal);
+}
+
+.ds-link:hover {
+	color: var(--accent-hover);
+	background-size: 100% 100%;
+}
+
+/* ------------------------------------------------------------
+ * STATUS DOT
+ * ------------------------------------------------------------ */
+.ds-status-dot {
+	width: 0.55rem;
+	height: 0.55rem;
+	border-radius: var(--radius-full);
+	display: inline-block;
+	box-shadow: 0 0 0 2.5px var(--bg-elevated);
+}
+
+.ds-status-dot--online {
+	background: var(--success);
+	box-shadow:
+		0 0 0 2.5px var(--bg-elevated),
+		0 0 0 4.5px rgba(16, 185, 129, 0.22);
+}
+
+.ds-status-dot--offline {
+	background: var(--text-muted);
+}
+
+/* ------------------------------------------------------------
+ * EMPTY STATE
+ * ------------------------------------------------------------ */
+.ds-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--space-sm);
+	padding: var(--space-2xl);
+	text-align: center;
+	border: 1px dashed var(--border-light);
+	border-radius: var(--radius-2xl);
+	background: var(--bg-secondary);
+	color: var(--text-secondary);
+}
+
+.ds-empty__title {
+	font-family: var(--font-display);
+	font-size: 1.15rem;
+	font-weight: 700;
+	color: var(--text-primary);
+}
+
+.ds-empty__copy {
+	font-size: 0.92rem;
+	max-width: 32ch;
+}
+
+/* ------------------------------------------------------------
+ * SKELETON
+ * ------------------------------------------------------------ */
+.ds-skeleton {
+	background: linear-gradient(
+		90deg,
+		var(--border-soft) 0%,
+		var(--border-light) 40%,
+		var(--border-soft) 80%
+	);
+	background-size: 200% 100%;
+	animation: ds-shimmer 1.6s linear infinite;
+	border-radius: var(--radius-md);
+}
+
+@keyframes ds-shimmer {
+	from {
+		background-position: 200% 0;
+	}
+	to {
+		background-position: -200% 0;
+	}
+}
+
+/* ------------------------------------------------------------
+ * FADE / REVEAL
+ * ------------------------------------------------------------ */
+@keyframes ds-fade-up {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.ds-fade-up {
+	animation: ds-fade-up 320ms var(--ease-out) both;
+}
+
+@keyframes ds-fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.ds-fade-in {
+	animation: ds-fade-in 220ms var(--ease-in-out) both;
+}
+
+/* ------------------------------------------------------------
+ * GLASS PANEL (legacy aliases still resolve)
+ * ------------------------------------------------------------ */
+.glass-panel {
+	background: var(--bg-elevated);
+	border: 1px solid var(--border-soft);
+	border-radius: var(--radius-2xl);
+	box-shadow: var(--shadow-md);
+}
+
+.glass-panel-subtle {
+	background: var(--bg-secondary);
+	border: 1px solid var(--border-soft);
+	border-radius: var(--radius-xl);
+}

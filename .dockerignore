@@ -1,0 +1,38 @@
+# .dockerignore
+# Go build artifacts
+bin/
+*.exe
+*.out
+*.log
+
+# IDE / editor files
+.vscode/
+.idea/
+.DS_Store
+
+# Git metadata
+.git/
+.gitignore
+
+# Local SQLite data (must NOT be baked into the image)
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# Frontend (if backend-only docker build)
+web/
+
+# Build outputs
+forum-backend
+forum-frontend
+
+# Environment files (never copy to Docker images)
+.env
+*.env
+cmd/backend/.env
+cmd/frontend/.env
+
+# Optional future-proof ignores
+node_modules/
+tmp/
+dist/
