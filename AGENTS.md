@@ -2,6 +2,8 @@
 
 Start with [docs/social-network/CONTEXT.md](docs/social-network/CONTEXT.md).
 The [Zone01 social-network requirements](docs/social-network/requirements.md) define the current target.
+Use the [social-network ticket tracker](docs/social-network/ticket-tracker.md) for active work and its track A/B definitions for scope, dependencies and verification gates. The old tracker and A/B/C/D tickets below are historical only.
+Follow [ticket-writing rules](docs/social-network/ticket-rules.md) when creating or reviewing tickets.
 Use the caveman skill by default for coding tasks, as requested by the project owner.
 
 The guide below was imported from real-time-forum as historical context. Its old

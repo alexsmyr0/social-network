@@ -2,6 +2,8 @@
 
 The [Zone01 assignment](requirements.md) is authoritative. The [inherited baseline](inherited-context.md) describes a previous project, not completed social-network requirements. This document records gaps and questions; it does not approve architecture choices or removal work.
 
+The [delivery roadmap](roadmap.md) now breaks the full assignment into six phases. The [active tracker](ticket-tracker.md) and [track A](track-a.md) / [track B](track-b.md) define Phase 1 only. Use those files for execution order and status; the questions below remain decision context.
+
 ## Adaptation areas
 
 | Area | Required change or verification |
@@ -36,10 +38,10 @@ Resolve these when their implementation phase begins; none blocks documentation 
 ## Next steps
 
 1. **Done:** import all 302 tracked real-time-forum files, preserve the social-network context, add root context pointers, and switch baseline links to imported local files.
-2. Compare relevant code with the documented baseline. Record confirmed behavior and actual gaps separately from legacy completion claims.
-3. Inventory inherited documentation and supporting files as keep, rewrite, archive, or remove. Preserve useful context here before cleanup and repair all affected references.
-4. Perform the agreed cleanup, including old project identity, requirements authority, and conflicting frontend instructions.
-5. Choose the frontend direction and other blocking structural decisions with the owner, then create a social-network implementation plan and progress file linked from [CONTEXT.md](CONTEXT.md).
+2. **Planning complete:** a six-phase roadmap and 17 Phase 1 tickets now exist; none is marked implemented by this planning work.
+3. Start SN-A01 and SN-B01 to verify the frontend/backend baseline and inventory documentation for cleanup.
+4. Use SN-A02 → SN-B02 → SN-B08 for approved frontend, auth and storage decisions; SN-A08 owns approved documentation cleanup. Follow [ticket rules](ticket-rules.md) when changing the backlog.
+5. Execute the remaining Phase 1 dependencies and verification gates, then scope Phase 2 tickets after integrated acceptance.
 
 No deletion list or implementation architecture has been approved by this documentation pass. The separate social-network audit checklist has not been supplied; do not substitute the forum audit for it.
 
