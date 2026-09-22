@@ -83,7 +83,7 @@ Outbound goes the other way: the composer dispatches `SEND_MESSAGE_EVENT`, the s
 
 ## 2. Reuse candidates
 
-Classified by how much of each module survives a framework port. "DOM-free" was measured by counting `innerHTML`/`querySelector`/`addEventListener`/`createElement`/`classList`/`dataset`/`documentRef` occurrences per file. **Observed** — the count is reproducible with the command in [§5.6](#56-supporting-commands).
+Classified by how much of each module survives a framework port. "DOM-free" was measured by counting lines matching `innerHTML`/`querySelector`/`addEventListener`/`createElement`/`classList`/`dataset`/`documentRef` per file. **Observed** — the count is reproducible with the command in [§5.6](#56-supporting-commands).
 
 ### 2.1 Portable as-is (zero DOM references)
 
@@ -103,17 +103,17 @@ These import no DOM API and are pure logic or pure string-building. A framework 
 
 ### 2.2 Portable logic, disposable markup (`*.views.js`)
 
-**Observed.** Every `*.views.js` file has a DOM count of 0 — they are template-literal string builders, not DOM manipulators. Their markup is throwaway in a framework port, but the *structure* they encode (field names, data attributes, ARIA roles, empty/error states) is a specification worth translating rather than rediscovering.
+**Observed.** The files below have zero matches for the DOM APIs in §2. They build markup strings rather than manipulating DOM nodes. Their markup is throwaway in a framework port, but the *structure* they encode (field names, data attributes, ARIA roles, empty/error states) is a specification worth translating rather than rediscovering.
 
-Files: [auth.views.js](../../SPA/features/auth/auth.views.js), [shell.views.js](../../SPA/features/shell/shell.views.js), [feed.views.js](../../SPA/features/feed/feed.views.js), [post.views.js](../../SPA/features/post/post.views.js), [post-card.views.js](../../SPA/features/post/post-card.views.js), [post-detail.views.js](../../SPA/features/post/post-detail.views.js), [profile.views.js](../../SPA/features/profile/profile.views.js), [activity.views.js](../../SPA/features/activity/activity.views.js), [notification.views.js](../../SPA/features/notification/notification.views.js), [chat.roster.views.js](../../SPA/features/chat/chat.roster.views.js), [chat.conversation.views.js](../../SPA/features/chat/chat.conversation.views.js).
+Files: [auth.views.js](../../SPA/features/auth/auth.views.js), [shell.views.js](../../SPA/features/shell/shell.views.js), [feed.views.js](../../SPA/features/feed/feed.views.js), [post.views.js](../../SPA/features/post/post.views.js), [post-detail.views.js](../../SPA/features/post/post-detail.views.js), [profile.views.js](../../SPA/features/profile/profile.views.js), [activity.views.js](../../SPA/features/activity/activity.views.js), [notification.views.js](../../SPA/features/notification/notification.views.js), [chat.roster.views.js](../../SPA/features/chat/chat.roster.views.js), [chat.conversation.views.js](../../SPA/features/chat/chat.conversation.views.js).
 
-One exception: [post-card.views.js](../../SPA/features/post/post-card.views.js#L102-L116) contains an upload-URL allowlist check (see [§3.4](#34-uploads)) that is security logic, not markup, and must be carried over deliberately.
+Unlike these string builders, [post-card.views.js](../../SPA/features/post/post-card.views.js#L170-L177) creates and mutates DOM nodes; it belongs in §2.3. Its [upload-URL allowlist](../../SPA/features/post/post-card.views.js#L102-L116) is security logic worth carrying over deliberately (see [§3.4](#34-uploads)).
 
-### 2.3 Rewrite required (DOM-imperative page controllers)
+### 2.3 Rewrite required (DOM-dependent modules)
 
-These are `init*Page` functions that query, mutate and bind directly against rendered markup. They are the actual porting cost. Ordered by DOM-reference count:
+These are mostly `init*Page` functions that query, mutate and bind directly against rendered markup; `post-card.views.js` constructs DOM nodes. They are the actual porting cost. Ordered by matching-line count:
 
-| Module | DOM refs | Lines | Notes |
+| Module | Matching lines | Lines | Notes |
 |---|---|---|---|
 | [features/post/post.page.js](../../SPA/features/post/post.page.js) | 66 | 766 | Largest single file; owns detail + create/edit forms |
 | [features/activity/activity.page.js](../../SPA/features/activity/activity.page.js) | 61 | 488 | |
@@ -127,6 +127,7 @@ These are `init*Page` functions that query, mutate and bind directly against ren
 | [features/post/post.reactions.bindings.js](../../SPA/features/post/post.reactions.bindings.js) | 14 | — | |
 | [core/shared/image-picker.js](../../SPA/core/shared/image-picker.js) | 10 | — | Preview/`URL.createObjectURL` lifecycle |
 | [features/auth/auth.handlers.js](../../SPA/features/auth/auth.handlers.js) | 9 | — | DOM refs are inline error rendering + submit-button busy state |
+| [features/post/post-card.views.js](../../SPA/features/post/post-card.views.js) | 6 | — | Builds a DOM article and attaches a click listener; preserve its upload-URL allowlist |
 
 **Unverified:** that `create-app.js` has no framework-agnostic core worth extracting. Its access-control rules and the outlet-preservation logic ([create-app.js:75-88](../../SPA/core/app/create-app.js#L73-L91), [create-app.js:229-257](../../SPA/core/app/create-app.js#L229-L257)) may be reusable as pure functions, but this was not tested.
 
@@ -156,9 +157,10 @@ Every assumption the frontend makes about the backend. **All Observed** unless m
 | POST | `/users/logout` | [create-app.js:363](../../SPA/core/app/create-app.js#L363) |
 | GET | `/users/:id/profile` | [profile.page.js](../../SPA/features/profile/profile.page.js) |
 | GET | `/users/activity` | [activity.api.js](../../SPA/features/activity/activity.api.js) |
-| GET/POST | `/posts`, `/posts/:id` | [post.api.js](../../SPA/features/post/post.api.js), [feed.page.js](../../SPA/features/feed/feed.page.js) |
+| GET/POST | `/posts` | [post.api.js](../../SPA/features/post/post.api.js), [feed.page.js](../../SPA/features/feed/feed.page.js) |
+| GET/PATCH/DELETE | `/posts/:id` | [post.api.js](../../SPA/features/post/post.api.js), [activity.api.js](../../SPA/features/activity/activity.api.js) |
 | GET/POST | `/posts/:id/comments` | [post.api.js](../../SPA/features/post/post.api.js) |
-| PUT/DELETE | `/comments/:id` | [post.api.js](../../SPA/features/post/post.api.js) |
+| PATCH/DELETE | `/comments/:id` | [activity.api.js](../../SPA/features/activity/activity.api.js) |
 | POST | `/posts/:id/:type`, `/comments/:id/:type` (reactions) | [post.reactions.api.js](../../SPA/features/post/post.reactions.api.js) |
 | GET | `/categories` | [post.api.js](../../SPA/features/post/post.api.js) |
 | GET | `/notifications` | [notification.api.js](../../SPA/features/notification/notification.api.js) |
@@ -181,7 +183,7 @@ Every assumption the frontend makes about the backend. **All Observed** unless m
 
 ### 3.4 Uploads
 
-1. **Two distinct upload paths.** Posts use `POST /posts` and `POST /posts/:id` with multipart built by [`buildPostMultipartFormData`](../../SPA/core/shared/utils.js#L33-L50); DMs use `POST /chats/:userId/images` with a single `image` field, returning a URL the client then attaches to a `dm.send` frame ([chat.conversation.api.js:43-60](../../SPA/features/chat/chat.conversation.api.js#L43-L60), [create-app.js:164-183](../../SPA/core/app/create-app.js#L164-L183)).
+1. **Four image-capable post/comment operations plus DM upload.** `POST /posts` and `PATCH /posts/:id` use multipart built by [`buildPostMultipartFormData`](../../SPA/core/shared/utils.js#L33-L50) when an image is selected ([post.api.js:125-190](../../SPA/features/post/post.api.js#L125-L190)). `POST /posts/:id/comments` and `PATCH /comments/:id` also accept a multipart `image` field ([post.api.js:198-214](../../SPA/features/post/post.api.js#L198-L214), [activity.api.js:142-162](../../SPA/features/activity/activity.api.js#L142-L162)). These operations send JSON when no new image is selected. DMs use `POST /chats/:userId/images` with an `image` field, returning a URL the client then attaches to a `dm.send` frame ([chat.conversation.api.js:43-69](../../SPA/features/chat/chat.conversation.api.js#L43-L69), [create-app.js:164-183](../../SPA/core/app/create-app.js#L164-L183)).
 2. **Client-side size cap is 20 MiB** — `MAX_IMAGE_BYTES = 20 * 1024 * 1024` ([utils.js:1](../../SPA/core/shared/utils.js#L1)). **Unverified** whether the backend enforces the same limit; a client-only cap is not a control.
 3. **Multipart requests must not set `Content-Type`.** [`buildImageRequestOptions`](../../SPA/core/shared/utils.js#L5-L20) passes only `Accept: application/json` so the browser writes its own boundary.
 4. **Served upload URLs must start with `/static/uploads/`.** [post-card.views.js:102-116](../../SPA/features/post/post-card.views.js#L102-L116) rejects anything else, including absolute URLs whose pathname fails the prefix. DM images are documented as landing under `/static/uploads/dm/` ([chat.conversation.views.js:18](../../SPA/features/chat/chat.conversation.views.js#L18)).
@@ -211,12 +213,13 @@ Disposition is a **recommendation requiring owner approval** (SN-A02) — nothin
 
 ### 4.1 Broken references
 
-**Observed**, from a repo-wide link scan ([§5.6](#56-supporting-commands)) run against this revision. 33 broken links remain, and every one of them points into `docs/pr-message/` — a directory that was **never imported** (absent from the baseline `b295348`; excluded alongside Git history, uploads and secrets).
+**Observed**, from a reference scan ([§5.6](#56-supporting-commands)) and target checks against this revision. There are 33 unresolved relative Markdown links: 29 PR links in the forum tracker, two links to the missing `docs/pr-message/` directory, and two links to sibling-repository paths outside this repo. `docs/pr-message/` was never imported (absent from the baseline `b295348`). Plain-text references to that directory and an old absolute `file://` link also need disposition; they are listed below but are not included in the count of 33 links.
 
-| File | Broken references | Disposition |
+| File | Affected references | Disposition |
 |---|---|---|
 | [docs/ticket-tracker.md](../ticket-tracker.md) | 29 links to `pr-message/<TICKET>-pr.md` — the forum's per-ticket PR write-ups | **keep the file, rewrite the links** (SN-A08). The tracker is the historical delivery record; only its PR column is dead. |
 | [.github/prompts/fix-gitea-issue.prompt.md](../../.github/prompts/fix-gitea-issue.prompt.md), [.agents/workflows/fix-gitea-issue.prompt.md](../../.agents/workflows/fix-gitea-issue.prompt.md) | `../../docs/pr-message` | **archive or rewrite** — a Gitea PR workflow inherited from the forum; verify whether the flow is still used before either. |
+| [.github/prompts/Implement-ticket.prompt.md](../../.github/prompts/Implement-ticket.prompt.md), [.agents/workflows/impl-ticket.md](../../.agents/workflows/impl-ticket.md), [.github/pull_request_template.md](../../.github/pull_request_template.md) | Plain-text `docs/pr-message/` or `pr-template.md` references; `impl-ticket.md` also links to an old absolute `file://` template path | **rewrite or archive** — active-looking PR instructions point to missing or machine-specific locations. |
 | [docs/audit.md](../audit.md) | `../../good-practices/README.md` | **keep, rewrite the link** — points outside the repo to the 01-edu shared folder. |
 | [docs/requirements.md](../requirements.md) | `../forum/README.md#Communication` | **keep, rewrite the link** — same class: a sibling-repo path from the original exercise layout. |
 
@@ -237,7 +240,7 @@ All in [docs/social-network/](.) and internally consistent as far as inspected: 
 
 | Path | Content | Disposition |
 |---|---|---|
-| [.agents/scratch/](../../.agents/scratch/) | Per-ticket forum plans (`PLAN-A06.md`, `PLAN-D01.md`, `PLAN.md`, `PLAN-audit-fixes-*.md`) citing `docs/SDS.md` line numbers, which resolve at this revision | **archive** — historical planning records, superseded by the SN tickets but still the clearest account of some forum contract decisions (e.g. roster sort order, [PLAN-D01.md:13](../../.agents/scratch/PLAN-D01.md#L13)). |
+| [.agents/scratch/](../../.agents/scratch/) | Per-ticket forum plans (`PLAN-A06.md`, `PLAN-C08.md`, `PLAN-D01.md`, `PLAN.md`, `PLAN-audit-fixes-*.md`) citing `docs/SDS.md` line numbers, which resolve at this revision; `PLAN-A06.md`, `PLAN-C08.md` and `PLAN-audit-fixes-*.md` also mention the missing `docs/pr-message/` directory | **archive** — historical planning records, superseded by the SN tickets but still the clearest account of some forum contract decisions (e.g. roster sort order, [PLAN-D01.md:13](../../.agents/scratch/PLAN-D01.md#L13)). |
 | [.github/prompts/](../../.github/prompts/) | Orchestration prompts driving forum audit workflows off `docs/audit.md`, `docs/PRD.md`, `docs/SDS.md` — all present at this revision | **rewrite or archive** (SN-A08) — they target the forum's acceptance criteria, not the social-network assignment. |
 
 ### 4.5 Legacy code trees referenced by docs
@@ -329,11 +332,11 @@ for f in $(find SPA/core SPA/features SPA/main.js -name '*.js' | sort); do
 done | sort -rn
 ```
 
-Dangling-reference scan (§4.1):
+Reference scan (§4.1; inspect matches and verify each target before counting broken Markdown links):
 
 ```bash
-grep -rn "docs/SDS.md\|docs/PRD.md\|docs/audit.md\|docs/track-c\|docs/track-d\|docs/social-network" \
-  --include=*.md --include=*.js --include=*.go --include=*.yml . | grep -v node_modules
+rg -n 'pr-message|good-practices/README\.md|forum/README\.md#Communication' \
+  docs .github .agents --glob '*.md'
 ```
 
 ### 5.7 The removed `6262f7b` commit
@@ -356,7 +359,7 @@ The single baseline failure in §5.3 was not a code defect and not a test defect
 
 An earlier attempt on this branch retargeted the failing assertion at `architecture.md` and repaired ~30 dangling links by hand. **That work was discarded**: it treated the symptom, and every one of those edits was SN-A08 scope. Restoring the baseline fixed all of it with no documentation or test edit at all — confirmed by §5.3 running green against the unmodified test file.
 
-**Verified at this revision:** `docs/SDS.md` is present (20,843 bytes), `bun run test` reports 473/473, and the repo-wide link scan shows 33 broken links, all pointing at the never-imported `docs/pr-message/` directory (§4.1).
+**Verified at this revision:** `docs/SDS.md` is present (20,843 bytes), `bun run test` reports 473/473, and the reference scan identifies the 33 unresolved relative Markdown links classified in §4.1.
 
 ### 5.8 `make test` — the full CI gate
 
@@ -401,7 +404,7 @@ For SN-A02/SN-A03: these are the assertions that encode a contract rather than a
 | [core/app/create-app.test.js](../../SPA/tests/unit/core/app/create-app.test.js) | Access control, redirects, 401 handling, logout finalization | **Assertions yes, harness no.** The rules are the spec; the DOM mock is disposable. |
 | [e2e/tickets.test.js](../../SPA/tests/e2e/tickets.test.js) (A02–A10) | Deep links, refresh, back/forward, shell persistence, logout, proxy | **Yes — highest value.** Framework-agnostic browser-level assertions; they are the natural regression gate for SN-A03's route smoke tests. |
 | [e2e/chat.test.js](../../SPA/tests/e2e/chat.test.js) | Two-context live DM delivery | Yes |
-| [unit/docs-consistency.test.js](../../SPA/tests/unit/docs-consistency.test.js) | Docs match code | **Rewrite.** Currently failing (§5.3) and asserts against forum docs. |
+| [unit/docs-consistency.test.js](../../SPA/tests/unit/docs-consistency.test.js) | Docs match code | **Rewrite during the port.** Passing at this revision (§5.3), but asserts against forum docs. |
 | `features/*/​*.views.test.js`, `*.page.test.js` | Rendered markup and DOM wiring | **No.** Tied to the current markup; expect to rewrite wholesale. |
 
 ---
