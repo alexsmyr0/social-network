@@ -23,12 +23,12 @@ Follow the [ticket-writing rules](ticket-rules.md). The [audit record](ticket-au
 
 ## Summary
 
-17 tickets: 8 in A, 9 in B. Done: 1. In progress: 0. Blocked: 0. Not started: 16. Ready: SN-B01. SN-A01 is complete. SN-A02 is not started and awaits both SN-A01 (satisfied) and SN-B01 (not started).
+17 tickets: 8 in A, 9 in B. Done: 2. In progress: 0. Blocked: 0. Not started: 15. Ready: SN-A02. SN-A01 and SN-B01 are complete; both SN-A02 prerequisites are satisfied. SN-A02 still requires owner approval for its direction decision.
 
 | Status | Ticket | Description | Depends on | Blocks | Evidence / external gate |
 |---|---|---|---|---|---|
 | [x] | [SN-A01](track-a.md#sn-a01--frontend-baseline-and-documentation-inventory) | Frontend baseline and documentation inventory | None | SN-A02 | [frontend-baseline.md](frontend-baseline.md). `make test` **exit 0**: Biome, gofmt, vet, Go suite, `-race`, Vitest 473/473, Playwright 29/29. The `docs/SDS.md` failure seen while `6262f7b` was in the tree was fixed by removing that commit from `main`, not by editing a test |
-| [ ] | [SN-B01](track-b.md#sn-b01--backend-and-data-baseline) | Backend and data baseline | None | SN-A02 | — |
+| [x] | [SN-B01](track-b.md#sn-b01--backend-and-data-baseline) | Backend and data baseline | None | SN-A02 | [backend-baseline.md](backend-baseline.md). On `8fdccf5`, `go test ./...`, `go vet ./...`, scoped `go test -race`, and `gofmt -l` pass. Report records legacy gaps, transport/media constraints, and SN-A02/B02/B08 decisions. |
 | [ ] | [SN-A02](track-a.md#sn-a02--approve-frontend-direction) | Approve frontend direction | SN-A01, SN-B01 | SN-B02, SN-A03 | Owner approval required |
 | [ ] | [SN-B02](track-b.md#sn-b02--approve-auth-contracts) | Approve auth contracts | SN-A02 | SN-B08, SN-A04, SN-A05, SN-A08 | Owner approval required |
 | [ ] | [SN-A03](track-a.md#sn-a03--framework-shell-and-api-connection) | Framework shell and API connection | SN-A02 | SN-A04, SN-A05 | — |
