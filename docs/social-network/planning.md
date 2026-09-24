@@ -8,7 +8,7 @@ The [delivery roadmap](roadmap.md) now breaks the full assignment into six phase
 
 | Area | Required change or verification |
 |---|---|
-| Frontend | A JavaScript framework is required. The inherited vanilla-JS application cannot satisfy that requirement unchanged. Framework and migration approach remain undecided. |
+| Frontend | [SN-A02 approved](frontend-decision.md) Vue 3 with Vite and Vue Router, a vertical migration from the inherited vanilla-JS application, and same-origin delivery through the Go frontend proxy. |
 | Registration | Require email, password, first name, last name, and date of birth. Show optional avatar, nickname, and about-me inputs. The legacy age/gender/required-username model needs review. |
 | Sessions | Sessions and cookies remain mandatory. Reconcile inherited 12-hour expiry with the stated login persistence until explicit logout. |
 | Followers | Add follow/unfollow, private-profile requests with accept/decline, and immediate following for public profiles. |
@@ -28,7 +28,7 @@ The [delivery roadmap](roadmap.md) now breaks the full assignment into six phase
 
 Resolve these when their implementation phase begins; none blocks documentation capture:
 
-1. **Framework and migration scope:** choose the framework with the owner before replacing the frontend or deciding which parts to port.
+1. **Resolved — framework and migration scope:** [SN-A02](frontend-decision.md) records the owner-approved Vue stack, vertical port, route transition and runtime boundary.
 2. **Data model and migration policy:** agree follower requests, post audiences, group membership/events/chat models, migration tooling, and whether existing user data must survive the transition. Do not infer date of birth from age.
 3. **Chat authorization:** the source first requires a follow relationship in either direction, then describes instant delivery when the recipient follows the sender or has a public profile. Clarify treatment when only the sender follows a private recipient, and how offline delivery should work; do not silently broaden permissions or inherit the forum's online-only rule.
 4. **Profile/post visibility interaction:** clarify how a public post behaves when its author has a private profile. The assignment states both rules without explaining their precedence.
@@ -39,11 +39,11 @@ Resolve these when their implementation phase begins; none blocks documentation 
 
 1. **Done:** import all 302 tracked real-time-forum files, preserve the social-network context, add root context pointers, and switch baseline links to imported local files.
 2. **Planning complete:** a six-phase roadmap and 17 Phase 1 tickets now exist; none is marked implemented by this planning work.
-3. Start SN-A01 and SN-B01 to verify the frontend/backend baseline and inventory documentation for cleanup.
-4. Use SN-A02 → SN-B02 → SN-B08 for approved frontend, auth and storage decisions; SN-A08 owns approved documentation cleanup. Follow [ticket rules](ticket-rules.md) when changing the backlog.
+3. **Done:** SN-A01 and SN-B01 verified the frontend/backend baseline and inventoried documentation for cleanup.
+4. **Done:** SN-A02 approved the frontend direction. Continue with SN-B02 → SN-B08 for auth and storage decisions; SN-A08 owns the approved documentation cleanup.
 5. Execute the remaining Phase 1 dependencies and verification gates, then scope Phase 2 tickets after integrated acceptance.
 
-No deletion list or implementation architecture has been approved by this documentation pass. The separate social-network audit checklist has not been supplied; do not substitute the forum audit for it.
+The planning pass itself approved no deletion list. SN-A02 now supplies the approved frontend architecture and documentation dispositions. The separate social-network audit checklist has not been supplied; do not substitute the forum audit for it.
 
 ## Import verification — 2026-09-17
 

@@ -22,9 +22,9 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 - Documentation setup and code import are complete; social-network features have not been implemented.
 - Imported all 302 tracked files from the clean sibling real-time-forum checkout at commit `c7be375`, preserving the social-network docs and this repository's Git identity.
 - Root README and AGENTS now point here; inherited docs remain available locally. See [inherited context](inherited-context.md) for provenance and [planning](planning.md) for import verification.
-- No legacy files were deleted and no framework or replacement architecture was selected. Local runtime data, secrets, generated files, and source Git history were excluded.
-- Planning covers six delivery phases. Only Phase 1 (foundations and account access) is ticketed: 17 tickets (8 A, 9 B); SN-A01 and SN-B01 discovery are complete. Their [frontend](frontend-baseline.md) and [backend](backend-baseline.md) reports supply evidence for SN-A02. Decision order remains SN-A02 → SN-B02 → SN-B08; no architecture choice has been approved.
-- Remote `main` includes the clean import and completed SN-A01 (`8fdccf5`). SN-B01 work starts from that revision on `asmyrogl/B01`; local `main` still points to the earlier ticket-plan commit. Earlier push rejection concerned legacy history on the old branch. Keep new work on the clean history; hosted CI evidence remains a future ticket gate.
+- No legacy files were deleted. Local runtime data, secrets, generated files, and source Git history were excluded.
+- Phase 1 has 17 tickets (8 A, 9 B). SN-A01 and SN-B01 supplied the baseline evidence, and SN-A02 approved [Vue 3, the migration boundary, same-origin proxy topology and backend-owned media](frontend-decision.md). SN-A03 and SN-B02 are now ready; decision order continues with SN-B02 → SN-B08.
+- Remote `main` includes the clean import plus completed SN-A01 and SN-B01 at `fcacf50`. SN-A02 is complete on `chbaikas/A02`; hosted CI evidence remains a future SN-B07 gate.
 
 ## Maintenance rules
 
