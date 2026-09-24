@@ -50,7 +50,7 @@ Phases are delivery order, not permission to defer quality: each feature needs t
 
 | Decision | When / owner | Required record |
 |---|---|---|
-| JS framework, frontend migration boundary and runtime/proxy arrangement | Phase 1, SN-A02 | Owner-approved choice with alternatives and tradeoffs; no framework selected by this roadmap |
+| JS framework, frontend migration boundary and runtime/proxy arrangement | Phase 1, SN-A02 | [Approved frontend decision](frontend-decision.md): Vue 3, vertical migration, same-origin proxy and backend-owned media boundary |
 | Auth request/response fields, optional nickname semantics, avatar upload/access behavior, session persistence and concurrent-session behavior | Phase 1, SN-B02, reviewed by A | Owner-approved contract; do not silently inherit 12-hour expiry or single-session behavior |
 | Migration library/layout, user/session model, avatar storage and treatment of old databases | Phase 1, SN-B08 | Owner-approved data policy; no inferred birthdays or automatic destructive resets |
 | Profile defaults, public-post/private-profile interaction and follow-state behavior | Before Phase 2/3 implementation | Visibility and state-transition rules before endpoint/schema work |
