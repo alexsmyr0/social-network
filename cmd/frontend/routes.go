@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
+	"path/filepath"
 )
 
 // cspHeaderPolicy is the frontend's Content-Security-Policy (issue #57).
@@ -25,7 +27,17 @@ const (
 	cspHeaderPolicy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';"
 )
 
-var backendBaseURL = "http://localhost:8080"
+const defaultBackendBaseURL = "http://localhost:8080"
+
+var backendBaseURL = configuredBackendBaseURL()
+
+func configuredBackendBaseURL() string {
+	if value := os.Getenv("BACKEND_URL"); value != "" {
+		return value
+	}
+
+	return defaultBackendBaseURL
+}
 
 // SecurityHeaders injects standard browser security headers into all frontend responses.
 func SecurityHeaders(next http.Handler) http.Handler {
@@ -92,10 +104,9 @@ func NewMux() http.Handler {
 	/*-----------------------------
 	  SPA Catch-all
 	-----------------------------*/
-	// This handler serves files from /SPA/ if they exist,
-	// otherwise it serves /SPA/index.html.
-	// This enables SPA client-side routing.
-	spaFileServer := NewCustomFileServer(http.Dir("./SPA"), "./SPA/index.html")
+	// Serve immutable Vite output and fall back to its shell for client routes.
+	const spaRoot = "./SPA/dist"
+	spaFileServer := NewCustomFileServer(http.Dir(spaRoot), filepath.Join(spaRoot, "index.html"))
 
 	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		setNoStoreHeaders(w)

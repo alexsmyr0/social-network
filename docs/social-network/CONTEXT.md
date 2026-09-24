@@ -20,12 +20,12 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 
 ## Current checkpoint — 2026-09-24
 
-- Documentation setup and code import are complete; social-network features have not been implemented.
+- Documentation setup and code import are complete. SN-A03 now provides the Vue framework shell and backend-health transport; account and social features are not yet implemented.
 - Imported all 302 tracked files from the clean sibling real-time-forum checkout at commit `c7be375`, preserving the social-network docs and this repository's Git identity.
 - Root README and AGENTS now point here; inherited docs remain available locally. See [inherited context](inherited-context.md) for provenance and [planning](planning.md) for import verification.
 - No legacy files were deleted. Local runtime data, secrets, generated files, and source Git history were excluded.
-- Phase 1 has 17 tickets (8 A, 9 B). SN-A01 and SN-B01 supplied the baseline evidence, and SN-A02 approved [Vue 3, the migration boundary, same-origin proxy topology and backend-owned media](frontend-decision.md). SN-A03 is ready; SN-B02's [owner-approved auth contract](auth-contract.md) awaits Dev 1 fixture review on `asmyrogl/B02`. Decision order continues with SN-B02 → SN-B08; B02's consumers remain gated on frontend fixture review.
-- Remote `main` includes merged SN-A02 at `525b19e`. Hosted two-image CI evidence remains a future SN-B07 gate; the inherited application's passing CI does not establish that gate.
+- Phase 1 has 17 tickets (8 A, 9 B). SN-A03 implements the approved [Vue 3 direction](frontend-decision.md) with documented [frontend commands](frontend-setup.md), retained Phase 1 routes, explicit legacy-route states and same-origin health transport. Its full local gate passes. SN-B02's [owner-approved auth contract](auth-contract.md) remains marked in progress pending its track-owned fixture-review evidence.
+- Remote `main` includes merged SN-A02 and SN-B02 at `24bcf4a`; SN-A03 is complete on `chbaikas/A03`. Hosted two-image CI evidence remains a future SN-B07 gate.
 
 ## Maintenance rules
 
