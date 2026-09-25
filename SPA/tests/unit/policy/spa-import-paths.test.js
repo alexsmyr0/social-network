@@ -5,6 +5,7 @@ import { describe, expect, test } from 'vitest';
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const spaRoot = path.resolve(testDir, '../../../');
+const distDir = path.join(spaRoot, 'dist');
 const forbiddenImportFragments = ['../../../web/static/', '/static/js/'];
 
 async function collectJavaScriptFiles(rootDir) {
@@ -12,6 +13,9 @@ async function collectJavaScriptFiles(rootDir) {
 	const nested = await Promise.all(
 		entries.map(async (entry) => {
 			const absolutePath = path.join(rootDir, entry.name);
+			if (absolutePath === distDir) {
+				return [];
+			}
 			if (entry.isDirectory()) {
 				return collectJavaScriptFiles(absolutePath);
 			}

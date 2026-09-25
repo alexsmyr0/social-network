@@ -19,17 +19,18 @@ func TestSPARouting(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	spaDir := filepath.Join(tmpDir, "SPA")
+	spaDir := filepath.Join(tmpDir, "SPA/dist")
 	staticDir := filepath.Join(tmpDir, "web/static")
 	errorDir := filepath.Join(tmpDir, "web/errors")
 	os.MkdirAll(spaDir, 0755)
+	os.MkdirAll(filepath.Join(spaDir, "assets"), 0755)
 	os.MkdirAll(staticDir, 0755)
 	os.MkdirAll(errorDir, 0755)
 
 	indexContent := "<html>SPA Shell</html>"
 	os.WriteFile(filepath.Join(spaDir, "index.html"), []byte(indexContent), 0644)
 	jsContent := "console.log('hi');"
-	os.WriteFile(filepath.Join(spaDir, "main.js"), []byte(jsContent), 0644)
+	os.WriteFile(filepath.Join(spaDir, "assets/app.js"), []byte(jsContent), 0644)
 	faviconContent := "fake-favicon"
 	os.WriteFile(filepath.Join(staticDir, "favicon.ico"), []byte(faviconContent), 0644)
 
@@ -45,7 +46,7 @@ func TestSPARouting(t *testing.T) {
 	backendBaseURL = backend.URL
 	defer func() { backendBaseURL = oldBackendURL }()
 
-	// Change working directory so NewMux can find ./web/... and ./SPA
+	// Change working directory so NewMux can find ./web/... and ./SPA/dist.
 	oldWD, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -75,7 +76,7 @@ func TestSPARouting(t *testing.T) {
 		},
 		{
 			name:                "Existing JS",
-			path:                "/main.js",
+			path:                "/assets/app.js",
 			expectedStatus:      http.StatusOK,
 			expectedContentType: "text/javascript; charset=utf-8",
 			expectedBody:        jsContent,
@@ -145,15 +146,16 @@ func TestSecurityHeaders(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	spaDir := filepath.Join(tmpDir, "SPA")
+	spaDir := filepath.Join(tmpDir, "SPA/dist")
 	staticDir := filepath.Join(tmpDir, "web/static")
 	errorDir := filepath.Join(tmpDir, "web/errors")
 	os.MkdirAll(spaDir, 0755)
+	os.MkdirAll(filepath.Join(spaDir, "assets"), 0755)
 	os.MkdirAll(staticDir, 0755)
 	os.MkdirAll(errorDir, 0755)
 
 	os.WriteFile(filepath.Join(spaDir, "index.html"), []byte("<html>SPA Shell</html>"), 0644)
-	os.WriteFile(filepath.Join(spaDir, "main.js"), []byte("console.log('hi');"), 0644)
+	os.WriteFile(filepath.Join(spaDir, "assets/app.js"), []byte("console.log('hi');"), 0644)
 	os.WriteFile(filepath.Join(staticDir, "test.css"), []byte("body {}"), 0644)
 	os.WriteFile(filepath.Join(staticDir, "favicon.ico"), []byte("fake-favicon"), 0644)
 	os.WriteFile(filepath.Join(errorDir, "404.html"), []byte("404 Not Found"), 0644)
@@ -187,7 +189,7 @@ func TestSecurityHeaders(t *testing.T) {
 	paths := []string{
 		"/",
 		"/login",
-		"/main.js",
+		"/assets/app.js",
 		"/static/test.css",
 		"/favicon.ico",
 		"/errors/404.html",

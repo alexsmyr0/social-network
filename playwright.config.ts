@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
 	testDir: './SPA/tests/e2e',
+	testMatch: 'a03-shell.test.js',
 	fullyParallel: true,
 	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 2 : 0,
@@ -27,7 +28,7 @@ export default defineConfig({
 			reuseExistingServer: false,
 		},
 		{
-			command: 'make run-frontend',
+			command: 'bun run serve',
 			url: 'http://localhost:3000',
 			// Never attach to a pre-existing process: a leaked/stale server would
 			// otherwise be reused and the suite would run against the wrong app.

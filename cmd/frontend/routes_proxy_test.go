@@ -14,6 +14,22 @@ import (
 	"time"
 )
 
+func TestConfiguredBackendBaseURL(t *testing.T) {
+	t.Setenv("BACKEND_URL", "http://backend:9090")
+	if got := configuredBackendBaseURL(); got != "http://backend:9090" {
+		t.Fatalf("configuredBackendBaseURL() = %q, want container target", got)
+	}
+
+	t.Setenv("BACKEND_URL", "")
+	if got := configuredBackendBaseURL(); got != defaultBackendBaseURL {
+		t.Fatalf(
+			"configuredBackendBaseURL() = %q, want default %q",
+			got,
+			defaultBackendBaseURL,
+		)
+	}
+}
+
 // TestAPIProxyPreservesPathAndCookie verifies that the REST proxy still forwards
 // the original request path and session cookie to the backend unchanged.
 func TestAPIProxyPreservesPathAndCookie(t *testing.T) {

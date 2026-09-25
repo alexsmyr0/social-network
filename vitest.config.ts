@@ -1,11 +1,13 @@
+import vue from '@vitejs/plugin-vue';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+	plugins: [vue()],
 	test: {
 		globals: true,
 		environment: 'node',
 		include: ['**/*.test.{js,mjs,ts}'],
-		exclude: ['SPA/tests/e2e/**'],
+		exclude: ['node_modules/**', 'SPA/dist/**', 'SPA/tests/e2e/**'],
 		coverage: {
 			provider: 'v8',
 			reporter: ['text-summary', 'lcov'],
@@ -17,6 +19,8 @@ export default defineConfig({
 				'SPA/features/**/*.js',
 				'SPA/components/**/*.js',
 				'SPA/main.js',
+				'SPA/src/**/*.js',
+				'SPA/src/**/*.vue',
 			],
 			// Thresholds are a ratchet, not an aspiration: they sit a couple of
 			// points under the suite's actual numbers so ordinary churn does not

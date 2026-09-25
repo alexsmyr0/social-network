@@ -19,6 +19,7 @@ import { describe, expect, test } from 'vitest';
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const spaRoot = path.resolve(testDir, '../../../');
 const testsDir = path.join(spaRoot, 'tests');
+const distDir = path.join(spaRoot, 'dist');
 
 const SCANNED_EXTENSIONS = ['.js', '.css', '.html'];
 
@@ -46,7 +47,11 @@ async function collectSourceFiles(rootDir) {
 			if (entry.isDirectory()) {
 				// The test tree legitimately references throwaway origins
 				// (https://example.test, http://localhost:3000) as fetch stubs.
-				if (absolutePath === testsDir || entry.name === 'node_modules') {
+				if (
+					absolutePath === testsDir ||
+					absolutePath === distDir ||
+					entry.name === 'node_modules'
+				) {
 					return [];
 				}
 				return collectSourceFiles(absolutePath);

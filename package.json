@@ -1,22 +1,35 @@
 {
-	"name": "real-time-forum",
+	"name": "social-network",
 	"version": "1.0.0",
-	"description": "Real-Time Forum - A Go-based SPA with WebSockets",
+	"description": "Commonplace social network frontend",
 	"type": "module",
 	"scripts": {
-		"dev": "make run",
+		"dev": "vite",
+		"build": "vite build",
+		"serve": "bun run build && go run ./cmd/frontend",
+		"preview": "vite preview",
 		"test": "vitest run --coverage",
+		"test:a03": "vitest run SPA/tests/unit/src",
+		"test:e2e": "playwright test",
 		"test:watch": "vitest",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write --unsafe .",
 		"format": "biome format --write .",
-		"policy": "bun run lint && bun run test"
+		"policy": "bun run build && bun run lint && bun run test"
 	},
 	"devDependencies": {
-		"bun": "^1.3.12",
 		"@biomejs/biome": "^2.4.12",
 		"@playwright/test": "^1.59.1",
+		"@vitejs/plugin-vue": "^6.0.9",
 		"@vitest/coverage-v8": "3.2.4",
+		"@vue/test-utils": "^2.5.1",
+		"bun": "^1.3.12",
+		"jsdom": "^30.1.1",
+		"vite": "^8.3.1",
 		"vitest": "^3.0.7"
+	},
+	"dependencies": {
+		"vue": "^3.5.43",
+		"vue-router": "^5.3.1"
 	}
 }
