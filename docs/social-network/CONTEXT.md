@@ -21,7 +21,7 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 
 ## Current checkpoint — 2026-09-26
 
-- Documentation setup and code import are complete. SN-A03 now provides the Vue framework shell and backend-health transport; account and social features are not yet implemented.
+- Documentation setup and code import are complete. SN-A03 provides the Vue framework shell and backend-health transport; SN-A04 adds the contract-driven registration UI against test-only fixtures. Real account/media integration remains SN-A07.
 - Imported all 302 tracked files from the clean sibling real-time-forum checkout at commit `c7be375`, preserving the social-network docs and this repository's Git identity.
 - Root README and AGENTS now point here; inherited docs remain available locally. See [inherited context](inherited-context.md) for provenance and [planning](planning.md) for import verification.
 - No legacy files were deleted. Local runtime data, secrets, generated files, and source Git history were excluded.
