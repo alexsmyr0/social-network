@@ -26,7 +26,7 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 - Imported all 302 tracked files from the clean sibling real-time-forum checkout at commit `c7be375`, preserving the social-network docs and this repository's Git identity.
 - Root README and AGENTS now point here; inherited docs remain available locally. See [inherited context](inherited-context.md) for provenance and [planning](planning.md) for import verification.
 - No legacy files were deleted. Local runtime data, secrets, generated files, and source Git history were excluded.
-- Phase 1 has 17 tickets (8 A, 9 B). SN-A03 provides the approved [Vue 3 shell](frontend-setup.md) and passed its local gate. SN-B02's [auth contract](auth-contract.md) is complete after the owner confirmed Dev 1's fixture review on 2026-09-26. The owner approved SN-B08's [storage decision](data-decision.md) on 2026-09-26; SN-B03 is ready to implement.
+- Phase 1 has 17 tickets (8 A, 9 B). SN-A03 provides the approved [Vue 3 shell](frontend-setup.md). SN-B02's [auth contract](auth-contract.md) is complete after the owner confirmed Dev 1's fixture review on 2026-09-26. The owner approved SN-B08's [storage decision](data-decision.md) on 2026-09-26. SN-B03 now applies numbered [backend migrations](backend-migrations.md) before serving and rejects unversioned forum databases without deletion; its full local gate passes on `77c0ebd`. SN-B04 is next on Track B.
 - Remote `main` includes merged SN-A03 at `fa7ca4d`. Hosted two-image CI evidence remains a future SN-B07 gate.
 
 ## Maintenance rules
