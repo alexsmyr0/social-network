@@ -1,0 +1,327 @@
+.registration-view {
+	margin-block: clamp(1rem, 4vw, 4rem);
+	display: grid;
+	grid-template-columns: minmax(18rem, 0.72fr) minmax(0, 1.28fr);
+	background: var(--paper-bright);
+	box-shadow: var(--shadow);
+}
+.registration-view__story {
+	position: relative;
+	min-height: 48rem;
+	display: flex;
+	flex-direction: column;
+	justify-content: space-between;
+	padding: clamp(2rem, 5vw, 5rem);
+	overflow: hidden;
+	background:
+		radial-gradient(circle at 110% 55%, rgba(255, 255, 255, 0.09) 0 18%, transparent 18.5%),
+		linear-gradient(150deg, #225448, var(--forest));
+	color: var(--paper-bright);
+}
+.registration-view__story::after {
+	position: absolute;
+	right: -8rem;
+	bottom: -7rem;
+	width: 20rem;
+	height: 20rem;
+	border: 2.5rem solid rgba(239, 106, 76, 0.45);
+	border-radius: 50%;
+	content: "";
+}
+.registration-view__story > * {
+	position: relative;
+	z-index: 1;
+}
+.registration-view__story h1 {
+	max-width: 11ch;
+	font-size: clamp(3rem, 5vw, 5.8rem);
+	line-height: 0.94;
+}
+.registration-view__story p:not(.eyebrow) {
+	max-width: 32rem;
+	color: rgba(255, 253, 247, 0.76);
+	font-size: 1.05rem;
+	line-height: 1.65;
+}
+.registration-path {
+	margin: 3rem 0;
+	padding: 0;
+	border-top: 1px solid rgba(255, 255, 255, 0.18);
+	list-style: none;
+}
+.registration-path li {
+	display: flex;
+	gap: 1rem;
+	padding: 1rem 0;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+	color: rgba(255, 255, 255, 0.48);
+}
+.registration-path span {
+	font-family: var(--serif);
+}
+.registration-path__active {
+	color: #ffc1af;
+}
+.registration-view__form-wrap {
+	padding: clamp(2rem, 5vw, 5rem);
+}
+.registration-form {
+	max-width: 48rem;
+	margin-inline: auto;
+}
+.registration-form__header {
+	display: flex;
+	align-items: start;
+	justify-content: space-between;
+	gap: 2rem;
+	margin-bottom: 2.5rem;
+}
+.registration-form__header h2,
+.registration-success h2 {
+	margin: 0;
+	font-size: clamp(2.5rem, 4vw, 4.5rem);
+	line-height: 0.95;
+}
+.registration-form__header > p {
+	color: var(--ink-soft);
+	font-size: 0.78rem;
+}
+.registration-form__header span,
+.registration-form label span {
+	color: var(--coral-dark);
+}
+.registration-form fieldset {
+	margin: 0 0 2.75rem;
+	padding: 0;
+	border: 0;
+}
+.registration-form legend {
+	width: 100%;
+	margin-bottom: 1.4rem;
+	padding-bottom: 0.7rem;
+	border-bottom: 1px solid var(--line);
+	font-family: var(--serif);
+	font-size: 1.45rem;
+}
+.registration-form legend span {
+	float: right;
+	color: var(--forest-light);
+	font-family: var(--sans);
+	font-size: 0.7rem;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+.fieldset-copy {
+	margin-top: -0.8rem;
+	color: var(--ink-soft);
+	font-size: 0.9rem;
+}
+.form-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 1.25rem;
+}
+.form-field {
+	min-width: 0;
+}
+.form-field--wide {
+	grid-column: 1 / -1;
+}
+.form-field label {
+	display: block;
+	margin-bottom: 0.45rem;
+	font-size: 0.82rem;
+	font-weight: 700;
+}
+.form-field input,
+.form-field textarea {
+	width: 100%;
+	min-height: 3.25rem;
+	padding: 0.75rem 0.9rem;
+	border: 1px solid rgba(23, 33, 29, 0.28);
+	border-radius: 0;
+	background: #fff;
+	color: var(--ink);
+	font: inherit;
+}
+.form-field textarea {
+	resize: vertical;
+}
+.form-field input:focus,
+.form-field textarea:focus {
+	border-color: var(--forest);
+	outline: 2px solid var(--forest);
+	outline-offset: 1px;
+}
+.form-field input[readonly] {
+	background: #eeebe2;
+	color: var(--ink-soft);
+}
+.form-field--error input,
+.form-field--error textarea {
+	border-color: var(--coral-dark);
+}
+.field-hint,
+.field-error {
+	margin: 0.38rem 0 0;
+	font-size: 0.76rem;
+	line-height: 1.35;
+}
+.field-hint {
+	color: var(--ink-soft);
+}
+.field-error {
+	color: #a63225;
+	font-weight: 700;
+}
+.form-alert {
+	margin-bottom: 2rem;
+	display: grid;
+	gap: 0.25rem;
+	padding: 1rem 1.1rem;
+	border-left: 0.35rem solid var(--coral-dark);
+	background: #fff0eb;
+	color: #76291f;
+}
+.recovery-panel {
+	border-left-color: var(--forest);
+	background: #e9eee8;
+	color: var(--ink);
+}
+.recovery-panel[data-recovery-state="unknown"] {
+	border-left-color: var(--coral-dark);
+	background: #fff0eb;
+	color: #76291f;
+}
+.recovery-panel__action {
+	justify-self: start;
+	margin-top: 0.75rem;
+}
+.avatar-field {
+	display: grid;
+	grid-template-columns: 5rem 1fr;
+	gap: 1.2rem;
+	align-items: center;
+	margin: 1.5rem 0;
+}
+.avatar-preview {
+	width: 5rem;
+	height: 5rem;
+	display: grid;
+	place-items: center;
+	overflow: hidden;
+	border: 1px dashed var(--forest-light);
+	border-radius: 50%;
+	background: #e9eee8;
+	color: var(--forest);
+	font-family: var(--serif);
+	font-size: 2rem;
+}
+.avatar-preview img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+.file-button,
+.text-button {
+	color: var(--forest);
+	cursor: pointer;
+	font-weight: 700;
+	text-decoration: underline;
+	text-decoration-color: var(--coral);
+	text-underline-offset: 0.28rem;
+}
+/* The real file input is visually hidden; mirror its keyboard focus onto the
+   visible label. :focus-visible keeps mouse/label clicks free of the ring. */
+.file-input:focus-visible + .file-button {
+	outline: 3px solid var(--coral);
+	outline-offset: 4px;
+	border-radius: 2px;
+}
+.form-field--error .file-button {
+	color: #a63225;
+}
+.text-button {
+	min-height: 2.75rem;
+	padding: 0;
+	border: 0;
+	background: transparent;
+}
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+}
+.registration-form__actions {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 2rem;
+	padding-top: 1.5rem;
+	border-top: 1px solid var(--line);
+}
+.registration-form__actions p {
+	max-width: 26rem;
+	margin: 0;
+	color: var(--ink-soft);
+	font-size: 0.82rem;
+}
+.registration-form button:disabled {
+	cursor: wait;
+	opacity: 0.65;
+}
+.registration-success {
+	min-height: 40rem;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	justify-content: center;
+}
+.registration-success p:not(.eyebrow) {
+	max-width: 32rem;
+	margin-block: 1.5rem 2rem;
+	color: var(--ink-soft);
+	font-size: 1.05rem;
+	line-height: 1.6;
+}
+@media (max-width: 920px) {
+	.registration-view {
+		grid-template-columns: 1fr;
+	}
+	.registration-view__story {
+		min-height: 32rem;
+	}
+}
+@media (max-width: 560px) {
+	.registration-view {
+		margin-block: 1rem;
+	}
+	.registration-view__story,
+	.registration-view__form-wrap {
+		padding: 2rem 1.25rem;
+	}
+	.registration-view__story {
+		min-height: 29rem;
+	}
+	.registration-path {
+		margin-block: 2rem;
+	}
+	.form-grid {
+		grid-template-columns: 1fr;
+	}
+	.form-field--wide {
+		grid-column: auto;
+	}
+	.registration-form__header,
+	.registration-form__actions {
+		align-items: stretch;
+		flex-direction: column;
+	}
+	.registration-form__actions .button {
+		width: 100%;
+	}
+}
