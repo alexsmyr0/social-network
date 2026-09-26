@@ -1,12 +1,16 @@
 const REGISTER_PATH = '/api/v1/users/register';
+const UNCONFIRMED_MESSAGE = 'We could not confirm whether your account was created.';
 
 export class RegistrationError extends Error {
-	constructor({ code, message, fields = {}, status = 0 }) {
+	constructor({ code, message, fields = {}, status = 0, ambiguous = false }) {
 		super(message);
 		this.name = 'RegistrationError';
 		this.code = code;
 		this.fields = fields;
 		this.status = status;
+		// True when no contract response arrived, so the server may have
+		// committed the account. Callers must recover, not resubmit.
+		this.ambiguous = ambiguous;
 	}
 }
 
@@ -57,19 +61,27 @@ export async function registerAccount(values, fetchRef = globalThis.fetch) {
 	} catch {
 		throw new RegistrationError({
 			code: 'NETWORK_ERROR',
-			message:
-				'We could not confirm whether your account was created. Keep this page open and try again when the connection returns.',
+			message: UNCONFIRMED_MESSAGE,
+			ambiguous: true,
 		});
 	}
 
 	const responsePayload = await response.json().catch(() => null);
-	if (!response.ok || !responsePayload?.data) {
+	if (response.ok ? !responsePayload?.data : !responsePayload?.error?.code) {
 		throw new RegistrationError({
-			code: responsePayload?.error?.code || 'SERVICE_UNAVAILABLE',
+			code: 'NETWORK_ERROR',
+			message: UNCONFIRMED_MESSAGE,
+			status: response.status,
+			ambiguous: true,
+		});
+	}
+	if (!response.ok) {
+		throw new RegistrationError({
+			code: responsePayload.error.code,
 			message:
-				responsePayload?.error?.message ||
+				responsePayload.error.message ||
 				'The service is unavailable right now. Your details are still here so you can try again.',
-			fields: responsePayload?.error?.fields || {},
+			fields: responsePayload.error.fields || {},
 			status: response.status,
 		});
 	}

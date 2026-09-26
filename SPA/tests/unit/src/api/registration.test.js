@@ -100,4 +100,34 @@ describe('registration contract adapter', () => {
 		).rejects.toBeInstanceOf(RegistrationError);
 		expect(consoleSpy).not.toHaveBeenCalled();
 	});
+
+	test('flags only responses without a contract envelope as ambiguous', async () => {
+		const reply = (status, body) =>
+			vi.fn(async () => ({
+				ok: status >= 200 && status < 300,
+				status,
+				json: async () => (body === undefined ? Promise.reject(new SyntaxError()) : body),
+			}));
+
+		await expect(
+			registerAccount(
+				values,
+				vi.fn(async () => Promise.reject(new TypeError())),
+			),
+		).rejects.toMatchObject({ ambiguous: true, status: 0 });
+		await expect(registerAccount(values, reply(201))).rejects.toMatchObject({
+			ambiguous: true,
+			status: 201,
+		});
+		await expect(registerAccount(values, reply(502, null))).rejects.toMatchObject({
+			ambiguous: true,
+			status: 502,
+		});
+		await expect(
+			registerAccount(values, reply(503, { error: { code: 'SERVICE_UNAVAILABLE' } })),
+		).rejects.toMatchObject({ ambiguous: false, code: 'SERVICE_UNAVAILABLE', status: 503 });
+		await expect(
+			registerAccount(values, reply(409, { error: { code: 'EMAIL_TAKEN' } })),
+		).rejects.toMatchObject({ ambiguous: false, code: 'EMAIL_TAKEN' });
+	});
 });

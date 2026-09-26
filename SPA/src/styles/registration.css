@@ -180,6 +180,20 @@
 	background: #fff0eb;
 	color: #76291f;
 }
+.recovery-panel {
+	border-left-color: var(--forest);
+	background: #e9eee8;
+	color: var(--ink);
+}
+.recovery-panel[data-recovery-state="unknown"] {
+	border-left-color: var(--coral-dark);
+	background: #fff0eb;
+	color: #76291f;
+}
+.recovery-panel__action {
+	justify-self: start;
+	margin-top: 0.75rem;
+}
 .avatar-field {
 	display: grid;
 	grid-template-columns: 5rem 1fr;
@@ -213,6 +227,16 @@
 	text-decoration: underline;
 	text-decoration-color: var(--coral);
 	text-underline-offset: 0.28rem;
+}
+/* The real file input is visually hidden; mirror its keyboard focus onto the
+   visible label. :focus-visible keeps mouse/label clicks free of the ring. */
+.file-input:focus-visible + .file-button {
+	outline: 3px solid var(--coral);
+	outline-offset: 4px;
+	border-radius: 2px;
+}
+.form-field--error .file-button {
+	color: #a63225;
 }
 .text-button {
 	min-height: 2.75rem;

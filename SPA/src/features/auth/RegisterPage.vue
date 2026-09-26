@@ -1,7 +1,8 @@
 <script setup>
-import { computed, onBeforeUnmount, reactive, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, reactive, ref } from 'vue';
 
 import { RegistrationError, registerAccount } from '../../api/registration.js';
+import { fetchCurrentAccount, loginAccount } from '../../api/session.js';
 
 const avatarTypes = new Set(['image/jpeg', 'image/png', 'image/gif']);
 const form = reactive({
@@ -20,6 +21,20 @@ const pending = ref(false);
 const account = ref(null);
 const avatarPreview = ref('');
 const avatarInput = ref(null);
+// A client-side rejection of the latest avatar choice. Kept apart from
+// `errors` so validate() cannot clear it and let the form submit anyway.
+const avatarProblem = ref('');
+// Registration with an unknown outcome is resolved in the contract's order:
+// checking (/users/me) → login-available → signing-in → retry-available.
+// `unknown` means recovery itself could not reach the service; it only ever
+// restarts at /users/me. `recovered` ends with the returned account.
+const recovery = ref('idle');
+const recoveredBy = ref('');
+const recoveryPanel = ref(null);
+// In-memory copy of the credentials whose registration outcome is unknown;
+// never persisted or logged, dropped once recovery settles.
+let submittedCredentials = null;
+const registrationAllowed = computed(() => ['idle', 'retry-available'].includes(recovery.value));
 const today = new Date().toISOString().slice(0, 10);
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 const passwordHint = computed(() => `${[...form.password].length}/8 minimum characters`);
@@ -51,6 +66,17 @@ function clearErrors() {
 	formError.value = '';
 }
 
+function isValidDate(value) {
+	const parsed = new Date(`${value}T00:00:00Z`);
+	return (
+		/^\d{4}-\d{2}-\d{2}$/u.test(value) &&
+		!Number.isNaN(parsed.valueOf()) &&
+		parsed.toISOString().slice(0, 10) === value &&
+		value >= '0001-01-01' &&
+		value <= today
+	);
+}
+
 function validate() {
 	clearErrors();
 	for (const field of ['email', 'password', 'firstName', 'lastName', 'dateOfBirth']) {
@@ -65,16 +91,10 @@ function validate() {
 	if (form.password && ([...form.password].length < 8 || passwordBytes > 72)) {
 		errors.password = messages.INVALID_PASSWORD;
 	}
-	if (form.dateOfBirth) {
-		const parsed = new Date(`${form.dateOfBirth}T00:00:00Z`);
-		const valid =
-			/^\d{4}-\d{2}-\d{2}$/u.test(form.dateOfBirth) &&
-			!Number.isNaN(parsed.valueOf()) &&
-			parsed.toISOString().slice(0, 10) === form.dateOfBirth &&
-			form.dateOfBirth >= '0001-01-01' &&
-			form.dateOfBirth <= today;
-		if (!valid) errors.dateOfBirth = messages.INVALID_DATE;
+	if (form.dateOfBirth && !isValidDate(form.dateOfBirth)) {
+		errors.dateOfBirth = messages.INVALID_DATE;
 	}
+	if (avatarProblem.value) errors.avatar = avatarProblem.value;
 	return Object.keys(errors).length === 0;
 }
 
@@ -92,6 +112,7 @@ function revokePreview() {
 function removeAvatar() {
 	revokePreview();
 	form.avatar = null;
+	avatarProblem.value = '';
 	delete errors.avatar;
 	if (avatarInput.value) avatarInput.value.value = '';
 }
@@ -100,14 +121,19 @@ function removeAvatar() {
 function chooseAvatar(event) {
 	const [file] = event.target.files;
 	if (!file) return;
+	// Any new choice replaces the previous one, valid or not, so an earlier
+	// file can never be uploaded after a rejected replacement.
+	revokePreview();
+	form.avatar = null;
 	delete errors.avatar;
+	avatarProblem.value = '';
 	if (!avatarTypes.has(file.type) || file.size > 5 * 1024 * 1024) {
-		errors.avatar =
+		avatarProblem.value =
 			file.size > 5 * 1024 * 1024 ? messages.PAYLOAD_TOO_LARGE : messages.INVALID_AVATAR;
+		errors.avatar = avatarProblem.value;
 		event.target.value = '';
 		return;
 	}
-	revokePreview();
 	form.avatar = file;
 	avatarPreview.value = URL.createObjectURL(file);
 }
@@ -126,16 +152,52 @@ function applyServerError(error) {
 	formError.value = error.message;
 }
 
-// biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
-async function submit() {
-	if (pending.value || !validate()) {
-		focusFirstError();
+// Every network action shares one pending flag, so no click can start a
+// second register, /users/me or login request while another is in flight.
+async function runExclusive(task) {
+	if (pending.value) return;
+	pending.value = true;
+	try {
+		await task();
+	} finally {
+		pending.value = false;
+	}
+}
+
+async function focusRecoveryPanel() {
+	await nextTick();
+	recoveryPanel.value?.focus();
+}
+
+function recover(recoveredAccount, source) {
+	submittedCredentials = null;
+	recoveredBy.value = source;
+	recovery.value = 'recovered';
+	account.value = recoveredAccount;
+}
+
+async function confirmRegistration() {
+	recovery.value = 'checking';
+	const result = await fetchCurrentAccount();
+	if (result.status === 'authenticated') {
+		recover(result.account, 'session');
 		return;
 	}
-	pending.value = true;
+	recovery.value = result.status === 'unauthenticated' ? 'login-available' : 'unknown';
+	focusRecoveryPanel();
+}
+
+async function register() {
+	recovery.value = 'idle';
+	submittedCredentials = null;
 	try {
 		account.value = await registerAccount(form);
 	} catch (error) {
+		if (error instanceof RegistrationError && error.ambiguous) {
+			submittedCredentials = { email: form.email, password: form.password };
+			await confirmRegistration();
+			return;
+		}
 		applyServerError(
 			error instanceof RegistrationError
 				? error
@@ -145,10 +207,50 @@ async function submit() {
 					}),
 		);
 		focusFirstError();
-	} finally {
-		pending.value = false;
 	}
 }
+
+// biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
+async function submit() {
+	if (pending.value) return;
+	if (!registrationAllowed.value) {
+		focusRecoveryPanel();
+		return;
+	}
+	if (!validate()) {
+		focusFirstError();
+		return;
+	}
+	await runExclusive(register);
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
+function checkAgain() {
+	return runExclusive(async () => {
+		if (recovery.value === 'unknown') await confirmRegistration();
+	});
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
+function signInWithSubmittedDetails() {
+	return runExclusive(async () => {
+		if (recovery.value !== 'login-available') return;
+		recovery.value = 'signing-in';
+		const result = await loginAccount(submittedCredentials);
+		if (result.status === 'authenticated') {
+			recover(result.account, 'login');
+			return;
+		}
+		recovery.value = result.status === 'invalid-credentials' ? 'retry-available' : 'unknown';
+		focusRecoveryPanel();
+	});
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
+const submitLabel = computed(() => {
+	if (pending.value && registrationAllowed.value) return 'Creating your place…';
+	return recovery.value === 'retry-available' ? 'Retry creating my account' : 'Create my account';
+});
 
 onBeforeUnmount(revokePreview);
 </script>
@@ -172,10 +274,12 @@ onBeforeUnmount(revokePreview);
 		</aside>
 
 		<div class="registration-view__form-wrap">
-			<div v-if="account" class="registration-success" role="status">
-				<p class="eyebrow">You’re in</p>
+			<div v-if="account" class="registration-success" role="status" :data-recovered-by="recoveredBy || undefined">
+				<p class="eyebrow">{{ recoveredBy ? 'Account confirmed' : 'You’re in' }}</p>
 				<h2>Welcome, {{ account.display_name }}.</h2>
-				<p>Your account is ready. Your corner of Commonplace is waiting.</p>
+				<p v-if="recoveredBy === 'session'">The connection dropped, but your account was created and you’re signed in. Nothing else to do.</p>
+				<p v-else-if="recoveredBy === 'login'">We found the account you just created and signed you in with those details.</p>
+				<p v-else>Your account is ready. Your corner of Commonplace is waiting.</p>
 				<RouterLink class="button button--primary" to="/">Continue home</RouterLink>
 			</div>
 
@@ -190,6 +294,31 @@ onBeforeUnmount(revokePreview);
 
 				<div v-if="formError" class="form-alert" role="alert">
 					<strong>We couldn’t finish that.</strong><span>{{ formError }}</span>
+				</div>
+
+				<div v-if="recovery !== 'idle'" ref="recoveryPanel" class="form-alert recovery-panel" role="status" tabindex="-1" :data-recovery-state="recovery" :aria-busy="recovery === 'checking' || recovery === 'signing-in'">
+					<template v-if="recovery === 'checking'">
+						<strong>Checking whether your account was created…</strong>
+						<span>The connection dropped before we heard back. We’re asking the service before doing anything else.</span>
+					</template>
+					<template v-else-if="recovery === 'login-available'">
+						<strong>We couldn’t confirm your account yet.</strong>
+						<span>It may have been created before the connection dropped. Sign in with the details you entered to find out. Creating another account is paused until then.</span>
+						<button class="button button--primary recovery-panel__action" type="button" :disabled="pending" @click="signInWithSubmittedDetails">Sign in with these details</button>
+					</template>
+					<template v-else-if="recovery === 'signing-in'">
+						<strong>Signing in with the details you entered…</strong>
+						<span>If your account exists, you’ll be taken straight in.</span>
+					</template>
+					<template v-else-if="recovery === 'unknown'">
+						<strong>We still can’t tell whether your account exists.</strong>
+						<span>The service isn’t answering right now. Your details are still here; check again once the connection returns.</span>
+						<button class="button button--primary recovery-panel__action" type="button" :disabled="pending" @click="checkAgain">Check again</button>
+					</template>
+					<template v-else-if="recovery === 'retry-available'">
+						<strong>Your account wasn’t created.</strong>
+						<span>Those details didn’t sign in, so it’s safe to try creating the account again.</span>
+					</template>
 				</div>
 
 				<fieldset>
@@ -223,11 +352,11 @@ onBeforeUnmount(revokePreview);
 							<span v-else>+</span>
 						</div>
 						<div>
+							<input id="register-avatar" ref="avatarInput" class="visually-hidden file-input" name="avatar" type="file" accept="image/jpeg,image/png,image/gif" :aria-describedby="errors.avatar ? 'avatar-hint avatar-error' : 'avatar-hint'" :aria-invalid="Boolean(errors.avatar)" @change="chooseAvatar" />
 							<label class="file-button" for="register-avatar">{{ form.avatar ? 'Choose another image' : 'Choose an avatar' }}</label>
-							<input id="register-avatar" ref="avatarInput" class="visually-hidden" name="avatar" type="file" accept="image/jpeg,image/png,image/gif" :aria-invalid="Boolean(errors.avatar)" @change="chooseAvatar" />
-							<p class="field-hint">JPEG, PNG or GIF · up to 5 MiB</p>
-							<button v-if="form.avatar" class="text-button" type="button" @click="removeAvatar">Remove selected image</button>
-							<p v-if="errors.avatar" class="field-error">{{ errors.avatar }}</p>
+							<p id="avatar-hint" class="field-hint">JPEG, PNG or GIF · up to 5 MiB</p>
+							<button v-if="form.avatar || avatarProblem" class="text-button" type="button" @click="removeAvatar">{{ form.avatar ? 'Remove selected image' : 'Clear image selection' }}</button>
+							<p v-if="errors.avatar" id="avatar-error" class="field-error" role="alert">{{ errors.avatar }}</p>
 						</div>
 					</div>
 					<div class="form-grid">
@@ -246,8 +375,8 @@ onBeforeUnmount(revokePreview);
 
 				<div class="registration-form__actions">
 					<p>By joining, you’re making room for genuine connection.</p>
-					<button class="button button--primary" type="submit" :disabled="pending" :aria-busy="pending">
-						{{ pending ? 'Creating your place…' : 'Create my account' }}
+					<button class="button button--primary" type="submit" :disabled="pending || !registrationAllowed" :aria-busy="pending">
+						{{ submitLabel }}
 					</button>
 				</div>
 			</form>

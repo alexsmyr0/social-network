@@ -10,7 +10,7 @@
 		"preview": "vite preview",
 		"test": "vitest run --coverage",
 		"test:a03": "vitest run SPA/tests/unit/src",
-		"test:a04": "vitest run SPA/tests/unit/src/api/registration.test.js SPA/tests/unit/src/features/auth/register-page.test.js",
+		"test:a04": "vitest run SPA/tests/unit/src/api/registration.test.js SPA/tests/unit/src/api/session.test.js SPA/tests/unit/src/features/auth/register-page.test.js",
 		"test:e2e": "playwright test",
 		"test:watch": "vitest",
 		"lint": "biome check .",

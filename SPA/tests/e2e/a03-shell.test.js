@@ -115,4 +115,49 @@ test.describe('SN-A03 framework shell', () => {
 		expect(width.scroll).toBeLessThanOrEqual(width.client);
 		await expect(page.getByRole('button', { name: 'Create my account' })).toBeVisible();
 	});
+
+	test('recovers a lost registration response from /users/me without resubmitting', async ({
+		page,
+	}) => {
+		let registrations = 0;
+		await page.route('**/api/v1/users/register', async (route) => {
+			registrations += 1;
+			await route.abort('connectionreset');
+		});
+		await page.route('**/api/v1/users/me', (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ data: { id: 42, display_name: 'Alex Example' } }),
+			}),
+		);
+		await page.goto('/register');
+		await page.getByLabel('Email *').fill('alex@example.com');
+		await page.getByLabel('Password *').fill('correct horse battery');
+		await page.getByLabel('First name *').fill('Alex');
+		await page.getByLabel('Last name *').fill('Example');
+		await page.getByLabel('Date of birth *').fill('1998-03-14');
+		await page.getByRole('button', { name: 'Create my account' }).click();
+
+		const success = page.locator('.registration-success');
+		await expect(success).toContainText('Welcome, Alex Example');
+		await expect(success).toHaveAttribute('data-recovered-by', 'session');
+		expect(registrations).toBe(1);
+	});
+
+	test('shows a visible keyboard focus ring on the avatar control', async ({ page }) => {
+		await page.goto('/register');
+		const label = page.locator('label.file-button');
+		const outline = () => label.evaluate((node) => getComputedStyle(node).outlineStyle);
+
+		const chooser = page.waitForEvent('filechooser');
+		await label.click();
+		await chooser;
+		expect(await outline()).toBe('none');
+
+		await page.getByLabel('Nickname').focus();
+		await page.keyboard.press('Shift+Tab');
+		await expect(page.locator('#register-avatar')).toBeFocused();
+		expect(await outline()).toBe('solid');
+	});
 });
