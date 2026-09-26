@@ -1,8 +1,9 @@
 // internal/tests/migrate_test.go
 //
-// Migration tests for C07 - Database Migration Strategy.
+// Historical C07 procedural-migration tests. Production SN-B03 startup uses
+// numbered SQL migrations and rejects unversioned forum databases.
 //
-// The current production schema (forum_schema.sql) is the destination state;
+// The historical forum schema (forum_schema.sql) is the destination state;
 // these tests construct a "legacy" database that matches the schema *before*
 // C10 added profile fields to users, run Migrate, and assert:
 //
@@ -15,6 +16,7 @@ package tests
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -418,76 +420,40 @@ func TestMigrate_SkipsMissingTables(t *testing.T) {
   INITDB BOOT-PATH INTEGRATION
 ------------------------*/
 
-// TestInitDB_AppliesSchemaAndMigratesLegacyFile proves the production boot
-// path: a real on-disk file containing a pre-C10 users table is opened via
-// InitDB, which must (a) apply forum_schema.sql (no-op on the existing
-// users table) and then (b) call Migrate to add the C10 columns. After
-// that the database must be usable end-to-end.
-//
-// This is the only test that exercises db.go's wiring change in C07;
-// every other test calls db.Migrate directly.
-func TestInitDB_AppliesSchemaAndMigratesLegacyFile(t *testing.T) {
-	dir := t.TempDir()
-	dbPath := filepath.Join(dir, "legacy.sqlite")
-
-	// Create a file with only the pre-C10 users table — same shape the
-	// legacy-DB tests use, but persisted to disk so InitDB can reopen it.
+// TestInitDBRejectsLegacyFile covers the approved social-network fresh-start
+// policy. The old procedural Migrate tests above remain historical fixtures;
+// production startup must leave this unversioned database untouched.
+func TestInitDBRejectsLegacyFile(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "legacy.sqlite")
 	bootstrap, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		t.Fatalf("open bootstrap: %v", err)
+		t.Fatal(err)
 	}
-	if _, err := bootstrap.Exec(legacyUsersSchema); err != nil {
-		bootstrap.Close()
-		t.Fatalf("apply legacy schema: %v", err)
-	}
-	if _, err := bootstrap.Exec(`
+	if _, err := bootstrap.Exec(legacyUsersSchema + `
 		INSERT INTO users (id, username, email, password_hash)
-		VALUES (1, 'legacy_carol', 'carol@old.example', 'fake-hash')
+		VALUES (1, 'legacy_carol', 'carol@old.example', 'fake-hash');
 	`); err != nil {
-		bootstrap.Close()
-		t.Fatalf("seed legacy user: %v", err)
+		t.Fatal(err)
 	}
 	bootstrap.Close()
 
-	// Boot via the production path.
 	conn, err := db.InitDB(context.Background(), dbPath)
+	if conn != nil || !errors.Is(err, db.ErrLegacyDatabase) {
+		t.Fatalf("InitDB = (%v, %v), want legacy rejection", conn, err)
+	}
+
+	bootstrap, err = sql.Open("sqlite3", dbPath)
 	if err != nil {
-		t.Fatalf("InitDB on legacy file: %v", err)
+		t.Fatal(err)
 	}
-	defer conn.Close()
-
-	// C10 columns must now be present on the legacy table.
-	for _, col := range []string{"age", "gender", "first_name", "last_name"} {
-		if !columnSet(t, conn, "users")[col] {
-			t.Errorf("expected users.%s after InitDB, missing", col)
-		}
+	defer bootstrap.Close()
+	var username string
+	if err := bootstrap.QueryRow(`SELECT username FROM users WHERE id = 1`).Scan(&username); err != nil {
+		t.Fatalf("read legacy user after rejection: %v", err)
 	}
-
-	// Legacy row survived AND its new columns hold defaults.
-	var (
-		username string
-		age      int
-		gender   string
-	)
-	if err := conn.QueryRow(`SELECT username, age, gender FROM users WHERE id = 1`).
-		Scan(&username, &age, &gender); err != nil {
-		t.Fatalf("read legacy user post-InitDB: %v", err)
+	if username != "legacy_carol" || columnSet(t, bootstrap, "users")["date_of_birth"] {
+		t.Fatalf("legacy database changed after rejection: username=%q", username)
 	}
-	if username != "legacy_carol" {
-		t.Errorf("legacy username corrupted: %q", username)
-	}
-	if age != 0 || gender != "" {
-		t.Errorf("legacy row defaults wrong: age=%d gender=%q", age, gender)
-	}
-
-	// Booting again against the same file is idempotent — Migrate must
-	// observe the columns it added and do nothing this time around.
-	conn.Close()
-	conn2, err := db.InitDB(context.Background(), dbPath)
-	if err != nil {
-		t.Fatalf("InitDB second call (idempotency): %v", err)
-	}
-	defer conn2.Close()
 }
 
 /*-----------------------

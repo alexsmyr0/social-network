@@ -137,8 +137,9 @@ test-frontend:
 
 test-e2e: free-ports
 	@if node ./scripts/check-local-listener.mjs; then \
-		trap 'node ./scripts/free-ports.mjs 3000 8080' EXIT INT TERM; \
-		bun x playwright test; \
+		test_db_dir=$$(mktemp -d); \
+		trap 'rm -rf "$$test_db_dir"; node ./scripts/free-ports.mjs 3000 8080' EXIT INT TERM; \
+		DB_PATH="$$test_db_dir/social.db" bun x playwright test; \
 	else \
 		echo "Skipping Playwright E2E: local TCP listeners are unavailable in this environment."; \
 	fi

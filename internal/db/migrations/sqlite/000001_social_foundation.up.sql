@@ -1,5 +1,6 @@
--- Historical forum schema retained for inherited tests. Production startup
--- uses numbered SQL files in migrations/sqlite instead.
+-- SN-B03: initial social-network schema. This numbered migration is the
+-- production schema authority. Existing unversioned forum databases are
+-- rejected before this file runs; they are never upgraded in place.
 
 -- ===============================================================
 -- Forum Database Schema (SQLite)
@@ -28,12 +29,19 @@
 CREATE TABLE IF NOT EXISTS users (
   id               INTEGER PRIMARY KEY AUTOINCREMENT,
   username         TEXT NOT NULL UNIQUE CHECK (length(username) BETWEEN 3 AND 30),
-  email            TEXT NOT NULL UNIQUE CHECK (instr(email, '@') > 1),
-  password_hash    TEXT NOT NULL,
+  email            TEXT NOT NULL COLLATE NOCASE UNIQUE
+                   CHECK (instr(email, '@') > 1 AND email COLLATE BINARY = lower(email)),
+  password_hash    TEXT NOT NULL CHECK (length(password_hash) > 0),
   age              INTEGER NOT NULL DEFAULT 0,
   gender           TEXT NOT NULL DEFAULT '',
-  first_name       TEXT NOT NULL DEFAULT '',
-  last_name        TEXT NOT NULL DEFAULT '',
+  first_name       TEXT NOT NULL CHECK (length(trim(first_name)) BETWEEN 1 AND 100),
+  last_name        TEXT NOT NULL CHECK (length(trim(last_name)) BETWEEN 1 AND 100),
+  date_of_birth    TEXT NOT NULL CHECK (
+                     date_of_birth GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+                   ),
+  nickname         TEXT DEFAULT NULL CHECK (nickname IS NULL OR length(nickname) <= 30),
+  about_me         TEXT DEFAULT NULL CHECK (about_me IS NULL OR length(about_me) <= 1000),
+  avatar_key       TEXT DEFAULT NULL UNIQUE,
   is_active        INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
   session_version  INTEGER NOT NULL DEFAULT 0,
   created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
@@ -104,7 +112,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   user_id     INTEGER NOT NULL,
   token       TEXT NOT NULL UNIQUE,
   created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
-  expires_at TEXT NOT NULL,
+  expires_at TEXT DEFAULT NULL,
+  revoked_at TEXT DEFAULT NULL,
   ip          TEXT,
   user_agent  TEXT CHECK (length(user_agent) <= 512),
   is_valid    INTEGER NOT NULL DEFAULT 1 CHECK (is_valid IN (0, 1)),
@@ -135,7 +144,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   recipient_id  INTEGER NOT NULL,
   actor_id      INTEGER NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('post_like','post_dislike','comment','comment_like','comment_dislike')),  
+  type TEXT NOT NULL CHECK (type IN ('post_like','post_dislike','comment','comment_like','comment_dislike')),
   post_id       INTEGER,
   comment_id    INTEGER,
   created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ','now')),
@@ -205,18 +214,9 @@ CREATE INDEX IF NOT EXISTS idx_reactions_comment
 CREATE INDEX IF NOT EXISTS idx_notifications_recipient
   ON notifications(recipient_id);
 
--- Users
--- NOTE: the case-insensitive email guard (ux_users_email_nocase) is created by
--- Migrate, not here. Emails are stored folded to lower case, but a database
--- written by an older revision may still hold two rows for one address, and a
--- CREATE UNIQUE INDEX that fails here would abort startup. Migrate folds what
--- it safely can and reports the rest instead.
+-- Users: email's column-level NOCASE uniqueness guards case variants.
 
 -- Sessions
-CREATE UNIQUE INDEX IF NOT EXISTS ux_session_single_active
-  ON sessions(user_id)
-  WHERE is_valid = 1;
-
 CREATE INDEX IF NOT EXISTS idx_sessions_user
   ON sessions(user_id);
 
