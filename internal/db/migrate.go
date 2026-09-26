@@ -53,7 +53,9 @@ var requiredColumns = []columnSpec{
 	{"private_messages", "image_path", "TEXT DEFAULT NULL"},
 }
 
-// Migrate brings an existing database up to the current schema by adding any
+// Migrate is retained for inherited forum fixtures and tests. Production
+// InitDB uses numbered SQL migrations and rejects unversioned forum databases.
+// It brings an old forum database up to the historical forum schema by adding any
 // columns missing from tables that pre-date the current code. Idempotent:
 // safe to call on fresh databases (no-op), on already-migrated databases
 // (no-op), and on partial-schema fixtures (tables not present are skipped).

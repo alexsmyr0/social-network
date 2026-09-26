@@ -27,7 +27,7 @@ func Start() {
 	-------------------------------------*/
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
-		dbPath = "./data/forum.db"
+		dbPath = "./data/social-network.db"
 	}
 
 	/* ----------------------------

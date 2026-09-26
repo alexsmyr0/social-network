@@ -23,7 +23,7 @@ func main() {
 		dbPath = strings.TrimSpace(os.Getenv("DB_PATH"))
 	}
 	if dbPath == "" {
-		dbPath = "./data/forum.db"
+		dbPath = "./data/social-network.db"
 	}
 
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
