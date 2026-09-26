@@ -154,6 +154,10 @@
 	outline: 2px solid var(--forest);
 	outline-offset: 1px;
 }
+.form-field input[readonly] {
+	background: #eeebe2;
+	color: var(--ink-soft);
+}
 .form-field--error input,
 .form-field--error textarea {
 	border-color: var(--coral-dark);

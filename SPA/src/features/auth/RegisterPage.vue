@@ -35,7 +35,12 @@ const recoveryPanel = ref(null);
 // never persisted or logged, dropped once recovery settles.
 let submittedCredentials = null;
 const registrationAllowed = computed(() => ['idle', 'retry-available'].includes(recovery.value));
-const today = new Date().toISOString().slice(0, 10);
+// While recovery is unresolved the email/password on screen must stay the
+// submitted ones, because recovery signs in with exactly those.
+// biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
+const credentialsLocked = computed(() => !registrationAllowed.value);
+// Evaluated on use so a page left open past UTC midnight accepts the new date.
+const todayUtc = () => new Date().toISOString().slice(0, 10);
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 const passwordHint = computed(() => `${[...form.password].length}/8 minimum characters`);
 
@@ -73,8 +78,19 @@ function isValidDate(value) {
 		!Number.isNaN(parsed.valueOf()) &&
 		parsed.toISOString().slice(0, 10) === value &&
 		value >= '0001-01-01' &&
-		value <= today
+		value <= todayUtc()
 	);
+}
+
+// The contract counts Unicode code points after trimming, which the HTML
+// maxlength (UTF-16 units, untrimmed) cannot express.
+function validateOptionalLengths() {
+	for (const [field, limit] of [
+		['nickname', 30],
+		['aboutMe', 1000],
+	]) {
+		if ([...form[field].trim()].length > limit) errors[field] = messages.TOO_LONG;
+	}
 }
 
 function validate() {
@@ -94,6 +110,7 @@ function validate() {
 	if (form.dateOfBirth && !isValidDate(form.dateOfBirth)) {
 		errors.dateOfBirth = messages.INVALID_DATE;
 	}
+	validateOptionalLengths();
 	if (avatarProblem.value) errors.avatar = avatarProblem.value;
 	return Object.keys(errors).length === 0;
 }
@@ -143,13 +160,21 @@ function applyServerError(error) {
 		const field = serverNames[name];
 		if (field) errors[field] = messages[code] || 'Check this field and try again.';
 	}
-	if (
-		messages[error.code] &&
-		['EMAIL_TAKEN', 'INVALID_AVATAR', 'PAYLOAD_TOO_LARGE'].includes(error.code)
-	) {
-		errors[error.code === 'EMAIL_TAKEN' ? 'email' : 'avatar'] = messages[error.code];
+	if (error.code === 'EMAIL_TAKEN') errors.email = messages.EMAIL_TAKEN;
+	// Without an image the size/format codes describe the request, not the
+	// avatar control, so they stay in the form-level alert only.
+	if (form.avatar && ['INVALID_AVATAR', 'PAYLOAD_TOO_LARGE'].includes(error.code)) {
+		errors.avatar = messages[error.code];
 	}
 	formError.value = error.message;
+	// A server-rejected image must not ride along on the next attempt: drop it
+	// and hold the error until the user clears it or picks another image.
+	if (errors.avatar && form.avatar) {
+		revokePreview();
+		form.avatar = null;
+		avatarProblem.value = errors.avatar;
+		if (avatarInput.value) avatarInput.value.value = '';
+	}
 }
 
 // Every network action shares one pending flag, so no click can start a
@@ -171,6 +196,7 @@ async function focusRecoveryPanel() {
 
 function recover(recoveredAccount, source) {
 	submittedCredentials = null;
+	form.password = '';
 	recoveredBy.value = source;
 	recovery.value = 'recovered';
 	account.value = recoveredAccount;
@@ -192,6 +218,7 @@ async function register() {
 	submittedCredentials = null;
 	try {
 		account.value = await registerAccount(form);
+		form.password = '';
 	} catch (error) {
 		if (error instanceof RegistrationError && error.ambiguous) {
 			submittedCredentials = { email: form.email, password: form.password };
@@ -241,7 +268,12 @@ function signInWithSubmittedDetails() {
 			recover(result.account, 'login');
 			return;
 		}
-		recovery.value = result.status === 'invalid-credentials' ? 'retry-available' : 'unknown';
+		if (result.status === 'invalid-credentials') {
+			submittedCredentials = null;
+			recovery.value = 'retry-available';
+		} else {
+			recovery.value = 'unknown';
+		}
 		focusRecoveryPanel();
 	});
 }
@@ -303,7 +335,7 @@ onBeforeUnmount(revokePreview);
 					</template>
 					<template v-else-if="recovery === 'login-available'">
 						<strong>We couldn’t confirm your account yet.</strong>
-						<span>It may have been created before the connection dropped. Sign in with the details you entered to find out. Creating another account is paused until then.</span>
+						<span>It may have been created before the connection dropped. Sign in as {{ form.email.trim() }} with the password you entered to find out. Your email and password are locked and creating another account is paused until then.</span>
 						<button class="button button--primary recovery-panel__action" type="button" :disabled="pending" @click="signInWithSubmittedDetails">Sign in with these details</button>
 					</template>
 					<template v-else-if="recovery === 'signing-in'">
@@ -312,12 +344,12 @@ onBeforeUnmount(revokePreview);
 					</template>
 					<template v-else-if="recovery === 'unknown'">
 						<strong>We still can’t tell whether your account exists.</strong>
-						<span>The service isn’t answering right now. Your details are still here; check again once the connection returns.</span>
+						<span>The service isn’t answering right now. Your details are still here, with email and password locked until we know; check again once the connection returns.</span>
 						<button class="button button--primary recovery-panel__action" type="button" :disabled="pending" @click="checkAgain">Check again</button>
 					</template>
 					<template v-else-if="recovery === 'retry-available'">
 						<strong>Your account wasn’t created.</strong>
-						<span>Those details didn’t sign in, so it’s safe to try creating the account again.</span>
+						<span>Those details didn’t sign in, so it’s safe to try creating the account again. You can edit any field first.</span>
 					</template>
 				</div>
 
@@ -331,13 +363,13 @@ onBeforeUnmount(revokePreview);
 							{ name: 'lastName', label: 'Last name', autocomplete: 'family-name' },
 						]" :key="field.name" class="form-field" :class="{ 'form-field--error': errors[field.name] }">
 							<label :for="`register-${field.name}`">{{ field.label }} <span aria-hidden="true">*</span></label>
-							<input :id="`register-${field.name}`" v-model="form[field.name]" :name="field.name" :type="field.type || 'text'" :autocomplete="field.autocomplete" :aria-describedby="errors[field.name] ? `${field.name}-error` : undefined" :aria-invalid="Boolean(errors[field.name])" />
+							<input :id="`register-${field.name}`" v-model="form[field.name]" :name="field.name" :type="field.type || 'text'" :autocomplete="field.autocomplete" :aria-describedby="errors[field.name] ? `${field.name}-error` : undefined" :aria-invalid="Boolean(errors[field.name])" :readonly="credentialsLocked && ['email', 'password'].includes(field.name)" />
 							<p v-if="field.name === 'password'" class="field-hint">{{ passwordHint }} · Never saved in this browser</p>
 							<p v-if="errors[field.name]" :id="`${field.name}-error`" class="field-error">{{ errors[field.name] }}</p>
 						</div>
 						<div class="form-field form-field--wide" :class="{ 'form-field--error': errors.dateOfBirth }">
 							<label for="register-date">Date of birth <span aria-hidden="true">*</span></label>
-							<input id="register-date" v-model="form.dateOfBirth" name="dateOfBirth" type="date" autocomplete="bday" min="0001-01-01" :max="today" :aria-describedby="errors.dateOfBirth ? 'dateOfBirth-error' : undefined" :aria-invalid="Boolean(errors.dateOfBirth)" />
+							<input id="register-date" v-model="form.dateOfBirth" name="dateOfBirth" type="date" autocomplete="bday" min="0001-01-01" :max="todayUtc()" :aria-describedby="errors.dateOfBirth ? 'dateOfBirth-error' : undefined" :aria-invalid="Boolean(errors.dateOfBirth)" />
 							<p v-if="errors.dateOfBirth" id="dateOfBirth-error" class="field-error">{{ errors.dateOfBirth }}</p>
 						</div>
 					</div>
@@ -360,15 +392,17 @@ onBeforeUnmount(revokePreview);
 						</div>
 					</div>
 					<div class="form-grid">
-						<div class="form-field">
+						<div class="form-field" :class="{ 'form-field--error': errors.nickname }">
 							<label for="register-nickname">Nickname</label>
-							<input id="register-nickname" v-model="form.nickname" name="nickname" maxlength="30" />
-							<p class="field-hint">A familiar name, up to 30 characters</p>
+							<input id="register-nickname" v-model="form.nickname" name="nickname" :aria-describedby="errors.nickname ? 'nickname-hint nickname-error' : 'nickname-hint'" :aria-invalid="Boolean(errors.nickname)" />
+							<p id="nickname-hint" class="field-hint">A familiar name, up to 30 characters</p>
+							<p v-if="errors.nickname" id="nickname-error" class="field-error">{{ errors.nickname }}</p>
 						</div>
-						<div class="form-field">
+						<div class="form-field" :class="{ 'form-field--error': errors.aboutMe }">
 							<label for="register-about">About me</label>
-							<textarea id="register-about" v-model="form.aboutMe" name="aboutMe" rows="4" maxlength="1000"></textarea>
-							<p class="field-hint">Plain text, up to 1,000 characters</p>
+							<textarea id="register-about" v-model="form.aboutMe" name="aboutMe" rows="4" :aria-describedby="errors.aboutMe ? 'aboutMe-hint aboutMe-error' : 'aboutMe-hint'" :aria-invalid="Boolean(errors.aboutMe)"></textarea>
+							<p id="aboutMe-hint" class="field-hint">Plain text, up to 1,000 characters</p>
+							<p v-if="errors.aboutMe" id="aboutMe-error" class="field-error">{{ errors.aboutMe }}</p>
 						</div>
 					</div>
 				</fieldset>

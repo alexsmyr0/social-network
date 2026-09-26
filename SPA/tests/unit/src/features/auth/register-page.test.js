@@ -130,6 +130,70 @@ describe('SN-A04 registration UI', () => {
 		expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:avatar');
 	});
 
+	test('limits nickname and about me by trimmed code points, as the contract does', async () => {
+		const fetchRef = contractFetch({
+			'/api/v1/users/register': [async () => response({ data: account })],
+		});
+		const wrapper = mountPage(fetchRef);
+		await fillRequired(wrapper);
+		await wrapper.get('[name="nickname"]').setValue(`  ${'🌿'.repeat(31)}  `);
+		await wrapper.get('form').trigger('submit');
+		await flushPromises();
+
+		expect(fetchRef).not.toHaveBeenCalled();
+		expect(wrapper.get('#nickname-error').text()).toBe('This entry is too long.');
+		expect(wrapper.get('[name="nickname"]').attributes('aria-describedby')).toBe(
+			'nickname-hint nickname-error',
+		);
+		expect(document.activeElement).toBe(wrapper.get('[name="nickname"]').element);
+
+		await wrapper.get('[name="nickname"]').setValue(`  ${'🌿'.repeat(30)}  `);
+		await wrapper.get('[name="aboutMe"]').setValue('é'.repeat(1000));
+		await wrapper.get('form').trigger('submit');
+		await flushPromises();
+		expect(JSON.parse(fetchRef.mock.calls[0][1].body).nickname).toBe('🌿'.repeat(30));
+	});
+
+	test('accepts the current UTC date after the page stays open past midnight', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			vi.setSystemTime(new Date('2026-09-26T23:59:00Z'));
+			const wrapper = mountPage(
+				contractFetch({ '/api/v1/users/register': [async () => response({ data: account })] }),
+			);
+			await fillRequired(wrapper);
+			vi.setSystemTime(new Date('2026-09-27T00:01:00Z'));
+			await wrapper.get('[name="dateOfBirth"]').setValue('2026-09-27');
+			await wrapper.get('form').trigger('submit');
+			await flushPromises();
+
+			expect(wrapper.find('#dateOfBirth-error').exists()).toBe(false);
+			expect(fetch).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	test('keeps a size error off the avatar field when no image was sent', async () => {
+		const wrapper = mountPage(
+			contractFetch({
+				'/api/v1/users/register': [
+					async () =>
+						response(
+							{ error: { code: 'PAYLOAD_TOO_LARGE', message: 'Request is too large' } },
+							413,
+						),
+				],
+			}),
+		);
+		await fillRequired(wrapper);
+		await wrapper.get('form').trigger('submit');
+		await flushPromises();
+
+		expect(wrapper.find('#avatar-error').exists()).toBe(false);
+		expect(wrapper.get('[role="alert"]').text()).toContain('Request is too large');
+	});
+
 	test('maps duplicate email and avatar upload failures while preserving values', async () => {
 		const fetchRef = vi
 			.fn()
@@ -262,6 +326,41 @@ describe('SN-A04 registration UI', () => {
 			expect(typeof request.body).toBe('string');
 		});
 
+		test.each([
+			['INVALID_AVATAR', 422, 'valid JPEG, PNG or GIF'],
+			['PAYLOAD_TOO_LARGE', 413, 'under 5 MiB'],
+		])('drops a server-rejected avatar (%s) so it is never resent', async (code, status, text) => {
+			const fetchRef = contractFetch({
+				'/api/v1/users/register': [
+					async () =>
+						response(
+							{ error: { code, message: 'Avatar rejected', fields: { avatar: code } } },
+							status,
+						),
+					async () => response({ data: account }),
+				],
+			});
+			const wrapper = mountPage(fetchRef);
+			await fillRequired(wrapper);
+			await selectAvatar(wrapper, new File(['jpg'], 'rejected.jpg', { type: 'image/jpeg' }));
+			await wrapper.get('form').trigger('submit');
+			await flushPromises();
+
+			expect(wrapper.get('#avatar-error').text()).toContain(text);
+			expect(wrapper.find('.avatar-preview img').exists()).toBe(false);
+			expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:avatar');
+
+			await wrapper.get('form').trigger('submit');
+			await flushPromises();
+			expect(callsTo(fetchRef, '/api/v1/users/register')).toHaveLength(1);
+
+			await wrapper.get('.text-button').trigger('click');
+			await wrapper.get('form').trigger('submit');
+			await flushPromises();
+			const [, retry] = callsTo(fetchRef, '/api/v1/users/register')[1];
+			expect(typeof retry.body).toBe('string');
+		});
+
 		test('associates the avatar hint and error with the file input', async () => {
 			const wrapper = mountPage();
 			const input = wrapper.get('[name="avatar"]');
@@ -366,6 +465,12 @@ describe('SN-A04 registration UI', () => {
 			expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined();
 			expect(wrapper.text()).not.toContain('Retry creating my account');
 
+			// The credentials recovery will use are the ones on screen and locked.
+			expect(wrapper.get('[name="email"]').attributes('readonly')).toBeDefined();
+			expect(wrapper.get('[name="password"]').attributes('readonly')).toBeDefined();
+			expect(wrapper.get('[name="firstName"]').attributes('readonly')).toBeUndefined();
+			expect(panel().text()).toContain('Sign in as alex@example.com');
+
 			// Enter/submit cannot bypass the login step.
 			await wrapper.get('form').trigger('submit');
 			await flushPromises();
@@ -383,6 +488,8 @@ describe('SN-A04 registration UI', () => {
 			expect(panel().attributes('data-recovery-state')).toBe('retry-available');
 			expect(callsTo(fetchRef, REGISTER)).toHaveLength(1);
 
+			expect(wrapper.get('[name="email"]').attributes('readonly')).toBeUndefined();
+			expect(wrapper.get('[name="password"]').attributes('readonly')).toBeUndefined();
 			const retry = wrapper.get('button[type="submit"]');
 			expect(retry.text()).toBe('Retry creating my account');
 			expect(retry.attributes('disabled')).toBeUndefined();
@@ -482,6 +589,7 @@ describe('SN-A04 registration UI', () => {
 			const state = () => wrapper.get('[data-recovery-state]').attributes('data-recovery-state');
 			expect(state()).toBe('unknown');
 			expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined();
+			expect(wrapper.get('[name="email"]').attributes('readonly')).toBeDefined();
 
 			await wrapper.get('.recovery-panel__action').trigger('click');
 			await flushPromises();
