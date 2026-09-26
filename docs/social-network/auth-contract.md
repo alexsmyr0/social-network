@@ -2,7 +2,7 @@
 
 Owner-approved decision for [SN-B02](track-b.md#sn-b02--approve-auth-contracts), based on the [assignment](requirements.md#authentication), [approved frontend boundary](frontend-decision.md) and [backend baseline](backend-baseline.md). Prepared on 2026-09-24 against merged SN-A02 at `525b19e`.
 
-The project owner approved this contract in chat on 2026-09-24 with “Approve proposed contract”. Approval covers the interfaces, validation, avatar flow/access, independent sessions, current-session logout, and the renewable 400-day cookie with its browser-retention limitation. Dev 1's confirmation that the examples support independent UI fixtures remains pending. This decision does not claim implemented endpoints. Ticket status lives in the [tracker](ticket-tracker.md).
+The project owner approved this contract in chat on 2026-09-24 with “Approve proposed contract”. Approval covers the interfaces, validation, avatar flow/access, independent sessions, current-session logout, and the renewable 400-day cookie with its browser-retention limitation. On 2026-09-26, the owner confirmed in chat that Dev 1 had reviewed the examples and found them usable for independent A04/A05 UI fixtures. This records the remaining review gate; it does not claim implemented endpoints. Ticket status lives in the [tracker](ticket-tracker.md).
 
 ## Owner-approved decisions
 
@@ -184,6 +184,6 @@ These are required future checks, not results from B02. Dev 1 reviews the exampl
 
 SN-B02 owns this interface and its review. SN-B08 chooses schema, migrations, token storage, media storage and crash cleanup; SN-B04/B05/B09 implement; SN-A04/A05 consume approved fixtures. No SQL, application code, dependencies, images, shared tooling or inherited-document cleanup is part of this change.
 
-Owner approval is recorded above. Before marking B02 complete, record Dev 1's confirmation that the valid/invalid examples can drive independent UI fixtures. That review can happen in the B02 PR; it is not inferred from the owner's approval or old baseline tests. No future implementation/test result is required to complete this decision ticket.
+Owner approval and the owner's 2026-09-26 report of Dev 1's fixture confirmation are recorded above. The review is based on that explicit report, not inferred from the B02 merge or old baseline tests. No future implementation/test result is required to complete this decision ticket.
 
 Document checks on 2026-09-24, working tree based on `525b19e`: `git diff --check` and `git diff --no-index --check /dev/null docs/social-network/auth-contract.md` passed. An inline Python check parsed all four JSON examples, resolved all 46 local Markdown links/anchors across the three changed documents, and verified tracker totals (3 done, 1 in progress, 13 not started). Application tests were not run: this decision-only change introduces no runtime behavior. The fixture matrix above remains planned verification.
