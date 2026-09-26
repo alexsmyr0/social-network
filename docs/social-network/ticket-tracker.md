@@ -23,7 +23,7 @@ Follow the [ticket-writing rules](ticket-rules.md). The [audit record](ticket-au
 
 ## Summary
 
-17 tickets: 8 in A, 9 in B. Done: 6. In progress: 0. Blocked: 0. Not started: 11. Ready to start: SN-B03, SN-A04, SN-A05 and SN-A08.
+17 tickets: 8 in A, 9 in B. Done: 6. In progress: 1. Blocked: 0. Not started: 10. Ready to start: SN-A04, SN-A05 and SN-A08. SN-B03 is in progress on a branch stacked on SN-B08.
 
 | Status | Ticket | Description | Depends on | Blocks | Evidence / external gate |
 |---|---|---|---|---|---|
@@ -33,7 +33,7 @@ Follow the [ticket-writing rules](ticket-rules.md). The [audit record](ticket-au
 | [x] | [SN-B02](track-b.md#sn-b02--approve-auth-contracts) | Approve auth contracts | SN-A02 | SN-B08, SN-A04, SN-A05, SN-A08 | [Owner-approved auth contract](auth-contract.md), merged in PR #4. Owner approved on 2026-09-24; owner explicitly confirmed Dev 1's A04/A05 fixture review in chat on 2026-09-26. No runtime implementation or passing API tests claimed. |
 | [x] | [SN-A03](track-a.md#sn-a03--framework-shell-and-api-connection) | Framework shell and API connection | SN-A02 | SN-A04, SN-A05 | [Vue shell and frontend commands](frontend-setup.md). `make test` **exit 0**: builds, Biome, gofmt/vet, Go suite and race checks, Vitest 488/488 with coverage, Playwright 5/5; desktop and 360px visual QA completed. |
 | [x] | [SN-B08](track-b.md#sn-b08--approve-account-storage-and-migration-design) | Approve account storage and migration design | SN-B02 | SN-B03 | [Approved storage decision](data-decision.md) in PR #6. Owner approved fresh DB, `golang-migrate` and private avatar storage in chat on 2026-09-26; no client-facing contract change. Documentation checks passed; no runtime behavior claimed. |
-| [ ] | [SN-B03](track-b.md#sn-b03--startup-migrations-and-account-schema) | Startup migrations and account schema | SN-B08 | SN-B04 | — |
+| [-] | [SN-B03](track-b.md#sn-b03--startup-migrations-and-account-schema) | Startup migrations and account schema | SN-B08 | SN-B04 | [Startup and recovery notes](backend-migrations.md); migration/constraint tests and repository gate in progress. |
 | [ ] | [SN-A04](track-a.md#sn-a04--registration-ui) | Registration UI | SN-A03, SN-B02 | SN-A06 | — |
 | [ ] | [SN-B04](track-b.md#sn-b04--registration-and-account-api) | Registration and account API | SN-B03 | SN-B05 | — |
 | [ ] | [SN-A05](track-a.md#sn-a05--login-session-restoration-and-global-logout-ui) | Login, session restoration and global logout UI | SN-A03, SN-B02 | SN-A06 | — |
