@@ -23,16 +23,16 @@ Follow the [ticket-writing rules](ticket-rules.md). The [audit record](ticket-au
 
 ## Summary
 
-17 tickets: 8 in A, 9 in B. Done: 4. In progress: 1. Blocked: 0. Not started: 12. Ready to start: none. SN-A03 is complete; SN-B02's merged contract still records its Dev 1 fixture review as pending, so its consumers remain gated until track B closes that evidence.
+17 tickets: 8 in A, 9 in B. Done: 6. In progress: 0. Blocked: 0. Not started: 11. Ready to start: SN-B03, SN-A04, SN-A05 and SN-A08.
 
 | Status | Ticket | Description | Depends on | Blocks | Evidence / external gate |
 |---|---|---|---|---|---|
 | [x] | [SN-A01](track-a.md#sn-a01--frontend-baseline-and-documentation-inventory) | Frontend baseline and documentation inventory | None | SN-A02 | [frontend-baseline.md](frontend-baseline.md). `make test` **exit 0**: Biome, gofmt, vet, Go suite, `-race`, Vitest 473/473, Playwright 29/29. The `docs/SDS.md` failure seen while `6262f7b` was in the tree was fixed by removing that commit from `main`, not by editing a test |
 | [x] | [SN-B01](track-b.md#sn-b01--backend-and-data-baseline) | Backend and data baseline | None | SN-A02 | [backend-baseline.md](backend-baseline.md). On `8fdccf5`, `go test ./...`, `go vet ./...`, scoped `go test -race`, and `gofmt -l` pass. Report records legacy gaps, transport/media constraints, and SN-A02/B02/B08 decisions. |
 | [x] | [SN-A02](track-a.md#sn-a02--approve-frontend-direction) | Approve frontend direction | SN-A01, SN-B01 | SN-B02, SN-A03 | [Approved frontend decision](frontend-decision.md). Owner approval recorded 2026-09-24; Dev 2 transport review recorded from SN-B01; links/anchors and `git diff --check` pass. |
-| [-] | [SN-B02](track-b.md#sn-b02--approve-auth-contracts) | Approve auth contracts | SN-A02 | SN-B08, SN-A04, SN-A05, SN-A08 | [Owner-approved auth contract](auth-contract.md) on `asmyrogl/B02`, based on merged A02 at `525b19e`. Owner approved in chat on 2026-09-24; Dev 1 fixture review pending; no runtime implementation or passing API tests claimed. |
+| [x] | [SN-B02](track-b.md#sn-b02--approve-auth-contracts) | Approve auth contracts | SN-A02 | SN-B08, SN-A04, SN-A05, SN-A08 | [Owner-approved auth contract](auth-contract.md), merged in PR #4. Owner approved on 2026-09-24; owner explicitly confirmed Dev 1's A04/A05 fixture review in chat on 2026-09-26. No runtime implementation or passing API tests claimed. |
 | [x] | [SN-A03](track-a.md#sn-a03--framework-shell-and-api-connection) | Framework shell and API connection | SN-A02 | SN-A04, SN-A05 | [Vue shell and frontend commands](frontend-setup.md). `make test` **exit 0**: builds, Biome, gofmt/vet, Go suite and race checks, Vitest 488/488 with coverage, Playwright 5/5; desktop and 360px visual QA completed. |
-| [ ] | [SN-B08](track-b.md#sn-b08--approve-account-storage-and-migration-design) | Approve account storage and migration design | SN-B02 | SN-B03 | Owner approval required |
+| [x] | [SN-B08](track-b.md#sn-b08--approve-account-storage-and-migration-design) | Approve account storage and migration design | SN-B02 | SN-B03 | [Approved storage decision](data-decision.md) in PR #6. Owner approved fresh DB, `golang-migrate` and private avatar storage in chat on 2026-09-26; no client-facing contract change. Documentation checks passed; no runtime behavior claimed. |
 | [ ] | [SN-B03](track-b.md#sn-b03--startup-migrations-and-account-schema) | Startup migrations and account schema | SN-B08 | SN-B04 | — |
 | [ ] | [SN-A04](track-a.md#sn-a04--registration-ui) | Registration UI | SN-A03, SN-B02 | SN-A06 | — |
 | [ ] | [SN-B04](track-b.md#sn-b04--registration-and-account-api) | Registration and account API | SN-B03 | SN-B05 | — |
