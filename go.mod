@@ -12,3 +12,5 @@ require (
 )
 
 require github.com/gorilla/websocket v1.5.3
+
+require github.com/golang-migrate/migrate/v4 v4.19.1

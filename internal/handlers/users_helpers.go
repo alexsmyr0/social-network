@@ -8,7 +8,8 @@ import (
 )
 
 type UsersHandler struct {
-	conn *sql.DB
+	conn         *sql.DB
+	socialSchema bool
 }
 
 const sessionCookieName = "session_token"
@@ -49,7 +50,9 @@ func clearedSessionCookie() *http.Cookie {
 }
 
 func NewUsersHandler(database *sql.DB) *UsersHandler {
-	return &UsersHandler{conn: database}
+	var versioned int
+	_ = database.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_migrations'`).Scan(&versioned)
+	return &UsersHandler{conn: database, socialSchema: versioned == 1}
 }
 
 func resolveUserID(w http.ResponseWriter, r *http.Request) (int64, bool) {

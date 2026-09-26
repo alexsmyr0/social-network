@@ -16,16 +16,18 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 | Understanding the complete delivery scope | [Roadmap](roadmap.md) | Six phases, requirement coverage, open decisions and phase boundaries |
 | Reviewing account/session interfaces | [Auth contract](auth-contract.md) | SN-B02 requests, responses, avatar flow, session policy and approved fixture handoff |
 | Reviewing storage and migration choices | [Data decision](data-decision.md) | Owner-approved SN-B08 schema, startup and legacy-data policy |
+| Running or recovering backend migrations | [Backend migrations](backend-migrations.md) | SN-B03 startup behavior, legacy refusal, failure recovery and verification |
+| Reviewing real account registration | [Backend accounts](backend-accounts.md) | SN-B04 registration validation, account reads and provisional avatar/session behavior |
 | Selecting or updating implementation work | [Ticket tracker](ticket-tracker.md) | Phase 1 status and dependencies for two developers; links to tracks A and B |
 | Creating or reviewing tickets | [Ticket rules](ticket-rules.md) | Compact format, scope, dependencies and verification; [latest audit](ticket-audit.md) |
 
-## Current checkpoint — 2026-09-26
+## Current checkpoint — 2026-09-27
 
 - Documentation setup and code import are complete. SN-A03 provides the Vue framework shell and backend-health transport; SN-A04 adds the contract-driven registration UI against test-only fixtures. Real account/media integration remains SN-A07.
 - Imported all 302 tracked files from the clean sibling real-time-forum checkout at commit `c7be375`, preserving the social-network docs and this repository's Git identity.
 - Root README and AGENTS now point here; inherited docs remain available locally. See [inherited context](inherited-context.md) for provenance and [planning](planning.md) for import verification.
 - No legacy files were deleted. Local runtime data, secrets, generated files, and source Git history were excluded.
-- Phase 1 has 17 tickets (8 A, 9 B). SN-A03 provides the approved [Vue 3 shell](frontend-setup.md) and passed its local gate. SN-B02's [auth contract](auth-contract.md) is complete after the owner confirmed Dev 1's fixture review on 2026-09-26. The owner approved SN-B08's [storage decision](data-decision.md) on 2026-09-26; SN-B03 is ready to implement.
+- Phase 1 has 17 tickets (8 A, 9 B). SN-A03 provides the approved [Vue 3 shell](frontend-setup.md) and passed its local gate. SN-B02's [auth contract](auth-contract.md) is complete after the owner confirmed Dev 1's fixture review on 2026-09-26. The owner approved SN-B08's [storage decision](data-decision.md) on 2026-09-26. SN-B03 [startup migrations](backend-migrations.md) and SN-B04 [account registration](backend-accounts.md) passed local gates on 2026-09-27; SN-B05 is the next backend ticket.
 - Remote `main` includes merged SN-A03 at `fa7ca4d`. Hosted two-image CI evidence remains a future SN-B07 gate.
 
 ## Maintenance rules

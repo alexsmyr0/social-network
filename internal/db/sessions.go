@@ -215,7 +215,7 @@ func fetchValidSession(
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return Session{}, fmt.Errorf("session not found")
+			return Session{}, fmt.Errorf("session not found: %w", ErrNotFound)
 		}
 		return Session{}, fmt.Errorf("get session: %w", err)
 	}

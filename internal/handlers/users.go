@@ -32,6 +32,20 @@ func (u *UsersHandler) HandleUser(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, NewError("BAD_REQUEST", "invalid user ID", http.StatusBadRequest))
 		return
 	}
+	if u.socialSchema {
+		ownerID, authErr := middleware.GetUserID(r.Context())
+		if authErr != nil || ownerID != userID || len(parts) != 1 {
+			notFound(w, r)
+			return
+		}
+		account, err := repository.GetAccount(r.Context(), u.conn, userID)
+		if err != nil {
+			writeHandlerError(w, r, err, "failed to load account")
+			return
+		}
+		WriteOK(w, account, nil)
+		return
+	}
 
 	user, err := repository.GetUser(r.Context(), u.conn, userID)
 	if err != nil {
@@ -77,6 +91,15 @@ func (u *UsersHandler) Me(w http.ResponseWriter, r *http.Request) {
 		))
 		return
 	}
+	if u.socialSchema {
+		account, err := repository.GetAccount(r.Context(), u.conn, userID)
+		if err != nil {
+			writeHandlerError(w, r, err, "failed to load account")
+			return
+		}
+		WriteOK(w, account, nil)
+		return
+	}
 
 	user, err := repository.GetUser(r.Context(), u.conn, userID)
 	if err != nil {
@@ -95,6 +118,10 @@ func (u *UsersHandler) Me(w http.ResponseWriter, r *http.Request) {
 func (u *UsersHandler) Register(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		MethodNotAllowed(w, r)
+		return
+	}
+	if u.socialSchema {
+		u.registerAccount(w, r)
 		return
 	}
 
