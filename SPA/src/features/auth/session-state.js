@@ -8,6 +8,7 @@ export function createSessionState({
 	fetchCurrent = fetchCurrentAccount,
 	login = loginAccount,
 	logout = logoutAccount,
+	onLogout = () => {},
 } = {}) {
 	const state = reactive({
 		status: 'checking',
@@ -17,6 +18,7 @@ export function createSessionState({
 	});
 	const retainedResources = new Set();
 	let restoration = null;
+	let revision = 0;
 
 	function closeRetainedResources() {
 		for (const release of retainedResources) {
@@ -30,12 +32,14 @@ export function createSessionState({
 	}
 
 	function clearAuthenticatedState() {
+		revision += 1;
 		state.account = null;
 		state.status = 'unauthenticated';
 		closeRetainedResources();
 	}
 
 	function acceptAccount(account) {
+		revision += 1;
 		state.account = account;
 		state.status = 'authenticated';
 		state.logoutError = '';
@@ -46,8 +50,10 @@ export function createSessionState({
 			return state.status;
 		if (restoration) return restoration;
 		state.status = 'checking';
+		const startedAt = revision;
 		restoration = fetchCurrent()
 			.then((result) => {
+				if (revision !== startedAt) return state.status;
 				if (result.status === 'authenticated') acceptAccount(result.account);
 				else if (result.status === 'unauthenticated') clearAuthenticatedState();
 				else state.status = 'unavailable';
@@ -74,8 +80,10 @@ export function createSessionState({
 		state.logoutError = '';
 		try {
 			const result = await logout();
-			if (result.status === 'logged-out') clearAuthenticatedState();
-			else
+			if (result.status === 'logged-out') {
+				clearAuthenticatedState();
+				onLogout();
+			} else
 				state.logoutError =
 					'We couldn’t confirm sign out. You are still shown as signed in; try again.';
 			return result;

@@ -38,11 +38,12 @@ describe('SN-A05 session state', () => {
 
 	test('keeps account and resources on failed logout, then clears both on success', async () => {
 		const releaseSocket = vi.fn();
+		const onLogout = vi.fn();
 		const logout = vi
 			.fn()
 			.mockResolvedValueOnce({ status: 'unavailable' })
 			.mockResolvedValueOnce({ status: 'logged-out' });
-		const session = createSessionState({ logout });
+		const session = createSessionState({ logout, onLogout });
 		session.acceptAccount(account);
 		session.retainResource(releaseSocket);
 
@@ -51,12 +52,31 @@ describe('SN-A05 session state', () => {
 		expect(session.state.account).toEqual(account);
 		expect(session.state.logoutError).toContain('still shown as signed in');
 		expect(releaseSocket).not.toHaveBeenCalled();
+		expect(onLogout).not.toHaveBeenCalled();
 
 		await expect(session.signOut()).resolves.toEqual({ status: 'logged-out' });
 		expect(session.state.status).toBe('unauthenticated');
 		expect(session.state.account).toBeNull();
 		expect(session.state.logoutError).toBe('');
 		expect(releaseSocket).toHaveBeenCalledTimes(1);
+		expect(onLogout).toHaveBeenCalledTimes(1);
+	});
+
+	test('ignores an in-flight lookup after another tab clears the session', async () => {
+		let finish;
+		const session = createSessionState({
+			fetchCurrent: () =>
+				new Promise((resolve) => {
+					finish = resolve;
+				}),
+		});
+		const restore = session.restore();
+		session.clearAuthenticatedState();
+		finish({ status: 'authenticated', account });
+		await restore;
+
+		expect(session.state.status).toBe('unauthenticated');
+		expect(session.state.account).toBeNull();
 	});
 
 	test('prevents duplicate logout requests while one is pending', async () => {

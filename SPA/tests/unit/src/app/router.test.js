@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { createMemoryHistory } from 'vue-router';
 
 import { createAppRouter } from '../../../../src/app/router.js';
@@ -60,6 +60,24 @@ describe('Vue route contract', () => {
 		await router.push('/login');
 
 		expect(router.currentRoute.value.name).toBe('home');
+	});
+
+	test('rechecks a cached account when another tab revokes its cookie', async () => {
+		let valid = true;
+		const fetchCurrent = vi.fn(async () =>
+			valid
+				? { status: 'authenticated', account: { id: 42, display_name: 'Alex Example' } }
+				: { status: 'unauthenticated' },
+		);
+		const session = createSessionState({ fetchCurrent });
+		const router = createAppRouter(createMemoryHistory(), session);
+		await router.push('/');
+		valid = false;
+		await router.push('/login');
+
+		expect(fetchCurrent).toHaveBeenCalledTimes(2);
+		expect(router.currentRoute.value.name).toBe('login');
+		expect(session.state.account).toBeNull();
 	});
 
 	test('keeps a protected route pending when the session service is unavailable', async () => {

@@ -20,8 +20,11 @@ test.describe('SN-A05 fixture-backed session UI', () => {
 	test('gates a deep link, signs in, reports logout failure, then prevents protected replay', async ({
 		page,
 	}) => {
+		let authenticated = false;
 		await page.route('**/api/v1/users/me', (route) =>
-			json(route, 401, { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }),
+			authenticated
+				? json(route, 200, { data: account })
+				: json(route, 401, { error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }),
 		);
 		let loginAttempts = 0;
 		await page.route('**/api/v1/users/login', async (route) => {
@@ -37,6 +40,7 @@ test.describe('SN-A05 fixture-backed session UI', () => {
 				});
 				return;
 			}
+			authenticated = true;
 			await json(route, 200, { data: account });
 		});
 		let logoutAttempts = 0;
@@ -48,6 +52,7 @@ test.describe('SN-A05 fixture-backed session UI', () => {
 				});
 				return;
 			}
+			authenticated = false;
 			await json(route, 200, { data: { message: 'Logged out' } });
 		});
 
@@ -92,6 +97,27 @@ test.describe('SN-A05 fixture-backed session UI', () => {
 			scroll: document.documentElement.scrollWidth,
 		}));
 		expect(width.scroll).toBeLessThanOrEqual(width.client);
+	});
+
+	test('clears protected content in another tab after logout', async ({ page, context }) => {
+		let authenticated = true;
+		await context.route('**/api/v1/users/me', (route) =>
+			authenticated
+				? json(route, 200, { data: account })
+				: json(route, 401, { error: { code: 'UNAUTHORIZED' } }),
+		);
+		await context.route('**/api/v1/users/logout', (route) => {
+			authenticated = false;
+			return json(route, 200, { data: { message: 'Logged out' } });
+		});
+		await page.goto('/');
+		const otherTab = await context.newPage();
+		await otherTab.goto('/');
+		await expect(otherTab.locator('[data-screen="home"]')).toBeVisible();
+
+		await page.getByRole('button', { name: 'Sign out' }).click();
+		await expect(otherTab).toHaveURL(/\/login$/);
+		await expect(otherTab.locator('[data-screen="home"]')).toHaveCount(0);
 	});
 
 	test('keeps protected content hidden during outage and recovers without calling it logout', async ({
