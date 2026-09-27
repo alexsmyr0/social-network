@@ -39,7 +39,7 @@ func Start() {
 	}
 	defer database.Close()
 
-	log.Println("Database initialized at", dbPath)
+	log.Println("Database initialized")
 
 	/* ----------------------------
 	   Background session cleanup

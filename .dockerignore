@@ -15,9 +15,7 @@ bin/
 .gitignore
 
 # Local SQLite data (must NOT be baked into the image)
-data/*.db
-data/*.db-wal
-data/*.db-shm
+data/
 
 # Frontend (if backend-only docker build)
 web/
@@ -36,3 +34,6 @@ cmd/frontend/.env
 node_modules/
 tmp/
 dist/
+SPA/
+docs/
+.github/

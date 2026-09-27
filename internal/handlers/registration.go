@@ -3,7 +3,10 @@ package handlers
 import (
 	"errors"
 	"mime"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 	"unicode"
@@ -33,12 +36,11 @@ func (u *UsersHandler) registerAccount(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	input, avatar, apiErr := parseRegistration(w, r)
+	if r.MultipartForm != nil {
+		defer r.MultipartForm.RemoveAll()
+	}
 	if apiErr != nil {
 		WriteError(w, r, apiErr)
-		return
-	}
-	if avatar {
-		WriteError(w, r, NewError("SERVICE_UNAVAILABLE", "avatar registration is not available yet", http.StatusServiceUnavailable))
 		return
 	}
 	accountInput, fields := validateRegistration(input, time.Now().UTC())
@@ -48,7 +50,30 @@ func (u *UsersHandler) registerAccount(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, err)
 		return
 	}
-	account, err := db.CreateAccount(r.Context(), u.conn, accountInput)
+	avatarKey := ""
+	root := ""
+	if avatar != nil {
+		data, mimeType, validationError := readAvatar(avatar)
+		if validationError != nil {
+			WriteError(w, r, validationError)
+			return
+		}
+		var err error
+		root, err = db.AvatarRoot(u.conn)
+		if err == nil {
+			avatarKey, err = storeAvatar(root, data, mimeType)
+		}
+		if err != nil {
+			WriteError(w, r, NewError("SERVICE_UNAVAILABLE", "avatar storage is unavailable", http.StatusServiceUnavailable))
+			return
+		}
+		defer func() {
+			if avatarKey != "" {
+				_ = os.Remove(filepath.Join(root, "objects", avatarKey))
+			}
+		}()
+	}
+	account, session, err := db.CreateRegisteredAccount(r.Context(), u.conn, accountInput, avatarKey, r.RemoteAddr, r.UserAgent())
 	if errors.Is(err, db.ErrEmailTaken) {
 		apiErr := NewError("EMAIL_TAKEN", "Email is already registered", http.StatusConflict)
 		apiErr.Fields = map[string]string{"email": "EMAIL_TAKEN"}
@@ -59,37 +84,30 @@ func (u *UsersHandler) registerAccount(w http.ResponseWriter, r *http.Request) {
 		writeHandlerError(w, r, err, "failed to register account")
 		return
 	}
-	session, err := db.CreateSession(r.Context(), u.conn, account.ID, r.RemoteAddr, r.UserAgent())
-	if err != nil {
-		// B09 will make account, session and avatar one durable unit.
-		_, _ = u.conn.ExecContext(r.Context(), `DELETE FROM users WHERE id = ?`, account.ID)
-		writeHandlerError(w, r, err, "failed to create session")
-		return
-	}
+	// Committed media now belongs to this account. The deferred cleanup must not run.
+	avatarKey = ""
 	http.SetCookie(w, socialSessionCookie(session.Token))
 	WriteCreated(w, account)
 }
 
-func parseRegistration(w http.ResponseWriter, r *http.Request) (registrationInput, bool, *APIError) {
+func parseRegistration(w http.ResponseWriter, r *http.Request) (registrationInput, *multipart.FileHeader, *APIError) {
 	var input registrationInput
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || (mediaType != "application/json" && mediaType != "multipart/form-data") {
-		return input, false, NewError("UNSUPPORTED_MEDIA_TYPE", "unsupported content type", http.StatusUnsupportedMediaType)
+		return input, nil, NewError("UNSUPPORTED_MEDIA_TYPE", "unsupported content type", http.StatusUnsupportedMediaType)
 	}
 	if mediaType == "application/json" {
 		if apiErr := decodeStrictAuthObject(w, r, &input,
 			"email", "password", "first_name", "last_name", "date_of_birth", "nickname", "about_me"); apiErr != nil {
-			return input, false, apiErr
+			return input, nil, apiErr
 		}
-		return input, false, nil
+		return input, nil, nil
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 6<<20)
 	if err := r.ParseMultipartForm(1 << 20); err != nil {
-		return input, false, registrationParseError(err)
+		return input, nil, registrationParseError(err)
 	}
-	if r.MultipartForm != nil {
-		defer r.MultipartForm.RemoveAll()
-	}
+	// Caller removes any temporary multipart files after reading the avatar.
 	var textBytes int
 	values := map[string]*string{
 		"email": &input.Email, "password": &input.Password,
@@ -98,11 +116,11 @@ func parseRegistration(w http.ResponseWriter, r *http.Request) (registrationInpu
 	}
 	for name, parts := range r.MultipartForm.Value {
 		if len(parts) != 1 {
-			return input, false, NewError("BAD_REQUEST", "repeated form field", http.StatusBadRequest)
+			return input, nil, NewError("BAD_REQUEST", "repeated form field", http.StatusBadRequest)
 		}
 		textBytes += len(parts[0])
 		if textBytes > 16<<10 {
-			return input, false, NewError("PAYLOAD_TOO_LARGE", "form text is too large", http.StatusRequestEntityTooLarge)
+			return input, nil, NewError("PAYLOAD_TOO_LARGE", "form text is too large", http.StatusRequestEntityTooLarge)
 		}
 		if target, ok := values[name]; ok {
 			*target = parts[0]
@@ -114,15 +132,18 @@ func parseRegistration(w http.ResponseWriter, r *http.Request) (registrationInpu
 		case "about_me":
 			input.AboutMe = &parts[0]
 		default:
-			return input, false, NewError("BAD_REQUEST", "unknown form field", http.StatusBadRequest)
+			return input, nil, NewError("BAD_REQUEST", "unknown form field", http.StatusBadRequest)
 		}
 	}
 	for name, files := range r.MultipartForm.File {
 		if name != "avatar" || len(files) != 1 {
-			return input, false, NewError("BAD_REQUEST", "unknown or repeated file", http.StatusBadRequest)
+			return input, nil, NewError("BAD_REQUEST", "unknown or repeated file", http.StatusBadRequest)
 		}
 	}
-	return input, len(r.MultipartForm.File["avatar"]) == 1, nil
+	if files := r.MultipartForm.File["avatar"]; len(files) == 1 {
+		return input, files[0], nil
+	}
+	return input, nil, nil
 }
 
 func registrationParseError(err error) *APIError {

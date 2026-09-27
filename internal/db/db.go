@@ -68,6 +68,10 @@ func initDBWithMigrations(ctx context.Context, dbPath string, files fs.FS) (*sql
 			return nil, WrapError("seed categories", MapSQLError(err))
 		}
 	}
+	if err := PrepareAvatarStorage(ctx, db); err != nil {
+		db.Close()
+		return nil, WrapError("prepare avatar storage", err)
+	}
 
 	return db, nil
 }

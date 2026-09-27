@@ -142,7 +142,7 @@ func TestSocialRegistrationRejectsInvalidInputWithoutAccount(t *testing.T) {
 	}
 }
 
-func TestSocialMultipartAndAvatarUnavailable(t *testing.T) {
+func TestSocialMultipartRejectsInvalidAvatar(t *testing.T) {
 	handler, conn := socialAPI(t)
 	build := func(avatar bool) (string, []byte) {
 		var body bytes.Buffer
@@ -167,8 +167,8 @@ func TestSocialMultipartAndAvatarUnavailable(t *testing.T) {
 	}
 	contentType, body := build(true)
 	blocked := socialRequest(t, handler, http.MethodPost, "/api/v1/users/register", contentType, body, "")
-	if blocked.Code != http.StatusServiceUnavailable {
-		t.Fatalf("avatar accepted: %d %s", blocked.Code, blocked.Body.String())
+	if blocked.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("invalid avatar accepted: %d %s", blocked.Code, blocked.Body.String())
 	}
 	var count int
 	_ = conn.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&count)
