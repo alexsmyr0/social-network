@@ -19,9 +19,6 @@ data/*.db
 data/*.db-wal
 data/*.db-shm
 
-# Frontend (if backend-only docker build)
-web/
-
 # Build outputs
 forum-backend
 forum-frontend

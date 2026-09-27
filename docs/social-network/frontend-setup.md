@@ -36,3 +36,56 @@ bun run test:e2e
 ```
 
 The focused Playwright configuration runs the active A03 shell journeys. The inherited forum E2E files remain in `SPA/tests/e2e/` as historical migration evidence, but are outside the active match because A02 intentionally retired their forum-only routes. Unit coverage continues to exercise the reusable inherited modules until later feature tickets port or retire them.
+
+## Frontend container handoff
+
+SN-A06 packages the browser bundle and its Go same-origin proxy in a frontend-only image named `social-network-frontend`. The build is self-contained: it installs locked Bun dependencies, builds `SPA/dist`, compiles the frontend server and does not consume local `node_modules`, binaries or generated assets.
+
+```bash
+docker build --file Dockerfile.frontend --tag social-network-frontend .
+docker run --rm --name social-network-frontend \
+  --publish 3000:3000 \
+  --env BACKEND_URL=http://backend:8080 \
+  social-network-frontend
+```
+
+The container listens on port `3000`. `GET /healthz` is its frontend-only health endpoint and returns `200`; it deliberately does not require backend availability. Browser REST and WebSocket traffic stays same-origin at `/api/` and `/ws`. The server-side `BACKEND_URL` must be an absolute backend origin reachable from the frontend container, normally the backend service name and internal port on their shared Docker network. It is read when the frontend process starts, is not browser configuration and is not present in the built JavaScript/CSS. The image default is `http://backend:8080`; local standalone use commonly needs `http://host.docker.internal:8080` plus the platform-appropriate host mapping.
+
+For a shared network handoff to SN-B07:
+
+```bash
+docker network create social-network
+docker run --rm --name social-network-frontend \
+  --network social-network \
+  --publish 3000:3000 \
+  --env BACKEND_URL=http://backend:8080 \
+  social-network-frontend
+```
+
+The backend container must join that network with the name `backend` and expose its service on `8080`; SN-B07 owns the combined startup/stop commands. If the target is missing or unreachable, proxied requests return HTTP `502` with `BACKEND_UNAVAILABLE`. Session restoration consequently enters the existing unavailable state rather than claiming that authentication succeeded or that the user logged out.
+
+### Image verification
+
+From a clean checkout, run:
+
+```bash
+docker build --no-cache --file Dockerfile.frontend --tag social-network-frontend .
+docker run --detach --rm --name social-network-frontend-smoke \
+  --publish 127.0.0.1:3300:3000 \
+  --env BACKEND_URL=http://127.0.0.1:1 \
+  social-network-frontend
+curl --fail http://127.0.0.1:3300/healthz
+curl --fail --header 'Accept: text/html' http://127.0.0.1:3300/login
+curl --fail --header 'Accept: text/html' http://127.0.0.1:3300/register
+curl --fail --header 'Accept: text/html' http://127.0.0.1:3300/protected/deep-link
+curl --fail http://127.0.0.1:3300/favicon.ico
+curl --silent --output /dev/null --write-out '%{http_code}\n' \
+  http://127.0.0.1:3300/api/v1/users/me # expected: 502
+docker stop social-network-frontend-smoke
+```
+
+The Docker build itself uses a sentinel `BACKEND_URL` and fails if that server-only value appears in `SPA/dist`. The container runs as the unprivileged `frontend` user and contains `/app/frontend`, the built SPA, error assets and favicon—not the backend executable, database or media storage.
+
+SN-A06 verification on 2026-09-27 used `docker build --no-cache --file Dockerfile.frontend --tag social-network-frontend:a06 .` and produced image `sha256:6b07e93e02d6e6692d922e4d8d1db136c539c257c605f81e8b99bb8c33dbb5f0`. Container smoke checks returned `200` for health, login, registration, a deep link, favicon and the generated JavaScript/CSS; the disconnected target returned JSON `502 BACKEND_UNAVAILABLE`. A named-network echo service returned `A06_CONFIGURED_BACKEND` through `/api/`, proving that the runtime target was used. Inspection confirmed user `frontend`, exposed port `3000`, the healthcheck, required runtime files and the absence of a backend binary/data directory.
+
+`go test ./cmd/frontend/...`, `bun run build`, `git diff --check` and `make test` all exited 0. The full gate passed Go tests and scoped race checks, Biome/gofmt/vet, Vitest 540/540 and Playwright 13/13. The temporary smoke containers and Docker network were removed after verification.

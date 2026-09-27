@@ -97,6 +97,13 @@ func TestSPARouting(t *testing.T) {
 			expectedBody:        indexContent,
 		},
 		{
+			name:                "Frontend health",
+			path:                "/healthz",
+			expectedStatus:      http.StatusOK,
+			expectedContentType: "application/json",
+			expectedBody:        `{"status":"ok","service":"frontend"}`,
+		},
+		{
 			name:                "API Proxy (Proxy gate check)",
 			path:                "/api/v1/posts",
 			expectedStatus:      http.StatusOK,
@@ -193,6 +200,7 @@ func TestSecurityHeaders(t *testing.T) {
 		"/static/test.css",
 		"/favicon.ico",
 		"/errors/404.html",
+		"/healthz",
 	}
 
 	for _, path := range paths {
