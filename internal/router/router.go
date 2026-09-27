@@ -2,10 +2,13 @@
 package router
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"os"
+	"strings"
 
+	"forum/internal/db"
 	"forum/internal/handlers"
 	"forum/internal/middleware"
 	"forum/internal/ws"
@@ -15,20 +18,21 @@ const apiPrefix = "/api/v1"
 
 func NewRouter(database *sql.DB, hub *ws.Hub) http.Handler {
 	mux := http.NewServeMux()
+	socialSchema, _ := db.IsSocialSchema(context.Background(), database)
 
 	/*-----------
 	  HANDLERS
 	-----------*/
 	health := handlers.NewHealthHandler()
 	posts := handlers.NewPostsHandler(database)
-	users := handlers.NewUsersHandler(database)
+	users := handlers.NewUsersHandler(database, hub)
 	categories := handlers.NewCategoriesHandler(database)
-	wsHandler := handlers.NewWsHandler(database, hub)
+	wsHandler := handlers.NewWsHandler(database, hub, socialSchema)
 
 	/*------------
 	  MIDDLEWARE
 	------------*/
-	auth := middleware.Auth(database)
+	auth := middleware.Auth(database, hub)
 
 	frontendOrigin := os.Getenv("FRONTEND_URL")
 	if frontendOrigin == "" {
@@ -168,10 +172,14 @@ func NewRouter(database *sql.DB, hub *ws.Hub) http.Handler {
 		),
 	)
 
+	logoutHandler := http.Handler(http.HandlerFunc(users.Logout))
+	if !socialSchema {
+		logoutHandler = auth(logoutHandler)
+	}
 	mux.Handle(
 		apiPrefix+"/users/logout",
 		middleware.AllowMethods(
-			auth(http.HandlerFunc(users.Logout)),
+			logoutHandler,
 			http.MethodPost,
 		),
 	)
@@ -285,7 +293,7 @@ func NewRouter(database *sql.DB, hub *ws.Hub) http.Handler {
 		http.ServeFile(w, r, "./web/static/favicon.ico")
 	})
 
-	return addMiddlewares(mux, frontendOrigin)
+	return addMiddlewares(mux, frontendOrigin, socialSchema)
 }
 
 func notFoundJSON(w http.ResponseWriter, r *http.Request) {
@@ -296,7 +304,28 @@ func notFoundJSON(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
-func addMiddlewares(handler http.Handler, frontendOrigin string) http.Handler {
+func addMiddlewares(handler http.Handler, frontendOrigin string, socialSchema bool) http.Handler {
+	if socialSchema {
+		next := handler
+		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, apiPrefix+"/users/") {
+				w.Header().Set("Cache-Control", "no-store")
+			}
+			if strings.HasPrefix(r.URL.Path, apiPrefix+"/") &&
+				(r.Method == http.MethodPost || r.Method == http.MethodPut ||
+					r.Method == http.MethodPatch || r.Method == http.MethodDelete) {
+				if !middleware.BrowserOriginAllowed(r, frontendOrigin, true) {
+					handlers.WriteError(w, r, handlers.NewError("ORIGIN_FORBIDDEN", "forbidden origin", http.StatusForbidden))
+					return
+				}
+				if values := r.Header.Values("X-Requested-With"); len(values) != 1 || values[0] != "XMLHttpRequest" {
+					handlers.WriteError(w, r, handlers.NewError("CSRF_CHECK_FAILED", "missing request header", http.StatusForbidden))
+					return
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 	handler = middleware.EnableCORS(frontendOrigin)(handler)
 	handler = middleware.Logger(handler)
 	handler = middleware.Recoverer(handler)

@@ -43,6 +43,13 @@ func CreateSession(
 	ip,
 	userAgent string,
 ) (Session, error) {
+	social, err := IsSocialSchema(ctx, db)
+	if err != nil {
+		return Session{}, err
+	}
+	if social {
+		return createSocialSession(ctx, db, userID, "", ip, userAgent)
+	}
 
 	ctx, cancel := context.WithTimeout(ctx, sessionTimeout)
 	defer cancel()
@@ -99,6 +106,13 @@ func GetSessionByToken(
 	db *sql.DB,
 	token string,
 ) (Session, error) {
+	social, err := IsSocialSchema(ctx, db)
+	if err != nil {
+		return Session{}, err
+	}
+	if social {
+		return getSocialSession(ctx, db, token)
+	}
 
 	ctx, cancel := context.WithTimeout(ctx, sessionTimeout)
 	defer cancel()
@@ -111,6 +125,13 @@ func InvalidateSessionByToken(
 	db *sql.DB,
 	token string,
 ) error {
+	social, err := IsSocialSchema(ctx, db)
+	if err != nil {
+		return err
+	}
+	if social {
+		return revokeSocialSession(ctx, db, token)
+	}
 
 	ctx, cancel := context.WithTimeout(ctx, sessionTimeout)
 	defer cancel()

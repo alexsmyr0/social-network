@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -17,17 +18,22 @@ type Client struct {
 	Conn     *websocket.Conn
 	Send     chan []byte
 	Username string
+	Token    string
+	Done     chan struct{}
 }
 
 func NewClient(conn *websocket.Conn) *Client {
 	return &Client{
 		Conn: conn,
 		Send: make(chan []byte, 64),
+		Done: make(chan struct{}),
 	}
 }
 
 type Hub struct {
-	mu sync.RWMutex
+	mu     sync.RWMutex
+	gateMu sync.Mutex
+	gates  map[string]*sessionGate
 
 	connections map[int64]map[*Client]bool
 
@@ -35,9 +41,62 @@ type Hub struct {
 	onDisconnect func(userID int64)
 }
 
+type sessionGate struct {
+	mu   sync.RWMutex
+	refs int
+}
+
+func (h *Hub) acquireSessionGate(token string) (*sessionGate, func()) {
+	h.gateMu.Lock()
+	if h.gates == nil {
+		h.gates = make(map[string]*sessionGate)
+	}
+	gate := h.gates[token]
+	if gate == nil {
+		gate = &sessionGate{}
+		h.gates[token] = gate
+	}
+	gate.refs++
+	h.gateMu.Unlock()
+	return gate, func() {
+		h.gateMu.Lock()
+		gate.refs--
+		if gate.refs == 0 {
+			delete(h.gates, token)
+		}
+		h.gateMu.Unlock()
+	}
+}
+
+// WithSessionAdmission holds a token's gate through validation and privileged
+// work. Revocation waits for admitted work before invalidating the token.
+func (h *Hub) WithSessionAdmission(token string, admit func()) {
+	gate, release := h.acquireSessionGate(token)
+	gate.mu.RLock()
+	defer release()
+	defer gate.mu.RUnlock()
+	admit()
+}
+
+// RevokeToken waits for admitted work, invalidates the token, then closes its
+// retained sockets. The gate is released before waiting for read pumps, which
+// may themselves be waiting to revalidate through that gate.
+func (h *Hub) RevokeToken(ctx context.Context, token string, revoke func() error) error {
+	gate, release := h.acquireSessionGate(token)
+	gate.mu.Lock()
+	err := revoke()
+	gate.mu.Unlock()
+	release()
+	if err != nil {
+		return err
+	}
+	return h.DisconnectToken(ctx, token)
+}
+
 func NewHub() *Hub {
 	return &Hub{
 		connections: make(map[int64]map[*Client]bool),
+		gates:       make(map[string]*sessionGate),
 	}
 }
 
@@ -54,7 +113,12 @@ func (h *Hub) SetCallbacks(onConnect, onDisconnect func(int64)) {
 // Add registers a new client for the given user. Returns the client and whether
 // this is the user's first connection.
 func (h *Hub) Add(userID int64, conn *websocket.Conn) (*Client, bool) {
+	return h.AddSession(userID, "", conn)
+}
+
+func (h *Hub) AddSession(userID int64, token string, conn *websocket.Conn) (*Client, bool) {
 	c := NewClient(conn)
+	c.Token = token
 
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -83,7 +147,11 @@ func (h *Hub) Remove(userID int64, c *Client) int {
 		return 0
 	}
 
+	if !h.connections[userID][c] {
+		return len(h.connections[userID])
+	}
 	delete(h.connections[userID], c)
+	close(c.Done)
 	remaining := len(h.connections[userID])
 
 	if remaining == 0 {
@@ -94,6 +162,36 @@ func (h *Hub) Remove(userID int64, c *Client) int {
 	}
 
 	return remaining
+}
+
+// DisconnectToken closes only sockets authenticated with this session. It
+// waits for each read pump to remove its client before the caller reports
+// successful revocation.
+func (h *Hub) DisconnectToken(ctx context.Context, token string) error {
+	if token == "" {
+		return nil
+	}
+	h.mu.RLock()
+	var clients []*Client
+	for _, byUser := range h.connections {
+		for c := range byUser {
+			if c.Token == token {
+				clients = append(clients, c)
+			}
+		}
+	}
+	h.mu.RUnlock()
+	for _, c := range clients {
+		_ = c.Conn.Close()
+	}
+	for _, c := range clients {
+		select {
+		case <-c.Done:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return nil
 }
 
 func (h *Hub) GetOnlineUserIDs() []int64 {

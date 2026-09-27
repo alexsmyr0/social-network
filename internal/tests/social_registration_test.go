@@ -20,13 +20,19 @@ import (
 )
 
 func socialAPI(t *testing.T) (http.Handler, *sql.DB) {
+	handler, conn, _ := socialAPIWithHub(t)
+	return handler, conn
+}
+
+func socialAPIWithHub(t *testing.T) (http.Handler, *sql.DB, *ws.Hub) {
 	t.Helper()
 	conn, err := db.InitDB(context.Background(), filepath.Join(t.TempDir(), "social.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { conn.Close() })
-	return router.NewRouter(conn, ws.NewHub()), conn
+	hub := ws.NewHub()
+	return router.NewRouter(conn, hub), conn, hub
 }
 
 func socialRequest(t *testing.T, handler http.Handler, method, path, contentType string, body []byte, token string) *httptest.ResponseRecorder {
@@ -34,6 +40,10 @@ func socialRequest(t *testing.T, handler http.Handler, method, path, contentType
 	req := httptest.NewRequest(method, path, bytes.NewReader(body))
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
+	}
+	if method == http.MethodPost || method == http.MethodPut || method == http.MethodPatch || method == http.MethodDelete {
+		req.Header.Set("Origin", "http://localhost:3000")
+		req.Header.Set("X-Requested-With", "XMLHttpRequest")
 	}
 	if token != "" {
 		req.AddCookie(&http.Cookie{Name: "session_token", Value: token})
