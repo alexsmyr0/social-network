@@ -6,21 +6,35 @@ import { createMemoryHistory } from 'vue-router';
 
 import App from '../../../../src/app/App.vue';
 import { createAppRouter } from '../../../../src/app/router.js';
+import { createSessionState, sessionKey } from '../../../../src/features/auth/session-state.js';
 
-async function mountAt(path, fetchRef) {
+const account = { id: 42, email: 'alex@example.com', display_name: 'Alex Example' };
+
+async function mountAt(
+	path,
+	fetchRef,
+	{
+		current = { status: 'authenticated', account },
+		logout = vi.fn(async () => ({ status: 'logged-out' })),
+	} = {},
+) {
 	vi.stubGlobal('fetch', fetchRef);
 	vi.stubGlobal('scrollTo', vi.fn());
-	const router = createAppRouter(createMemoryHistory());
+	const session = createSessionState({
+		fetchCurrent: vi.fn(async () => current),
+		logout,
+	});
+	const router = createAppRouter(createMemoryHistory(), session);
 	await router.push(path);
 	await router.isReady();
 
 	const wrapper = mount(App, {
 		attachTo: document.body,
-		global: { plugins: [router] },
+		global: { plugins: [router], provide: { [sessionKey]: session } },
 	});
 	await flushPromises();
 
-	return { router, wrapper };
+	return { router, session, wrapper };
 }
 
 afterEach(() => {
@@ -51,7 +65,9 @@ describe('framework shell', () => {
 				status: 200,
 				json: async () => ({ data: { status: 'ok' } }),
 			});
-		const { wrapper } = await mountAt('/login', fetchRef);
+		const { wrapper } = await mountAt('/login', fetchRef, {
+			current: { status: 'unauthenticated' },
+		});
 
 		expect(wrapper.get('[role="alert"]').text()).toContain('Connection interrupted');
 		await wrapper.get('.health-status__retry').trigger('click');
@@ -59,6 +75,49 @@ describe('framework shell', () => {
 
 		expect(wrapper.get('.health-status').text()).toContain('Backend connected');
 		expect(fetchRef).toHaveBeenCalledTimes(2);
+	});
+
+	test('does not expose protected content when session restoration is unavailable', async () => {
+		const fetchRef = vi.fn(async () => ({
+			ok: true,
+			status: 200,
+			json: async () => ({ data: { status: 'ok' } }),
+		}));
+		const { wrapper } = await mountAt('/', fetchRef, {
+			current: { status: 'unavailable' },
+		});
+
+		expect(wrapper.find('[data-screen="home"]').exists()).toBe(false);
+		expect(wrapper.get('.session-gate').text()).toContain('still private');
+	});
+
+	test('keeps protected state on failed logout and clears it after a successful retry', async () => {
+		const logout = vi
+			.fn()
+			.mockResolvedValueOnce({ status: 'unavailable' })
+			.mockResolvedValueOnce({ status: 'logged-out' });
+		const fetchRef = vi.fn(async () => ({
+			ok: true,
+			status: 200,
+			json: async () => ({ data: { status: 'ok' } }),
+		}));
+		const { router, session, wrapper } = await mountAt('/', fetchRef, { logout });
+
+		await wrapper.get('.site-nav__logout').trigger('click');
+		await flushPromises();
+		expect(session.state.status).toBe('authenticated');
+		expect(wrapper.get('[role="alert"]').text()).toContain('still shown as signed in');
+		expect(wrapper.get('[data-screen="home"]').exists()).toBe(true);
+
+		await wrapper.get('.session-banner button').trigger('click');
+		await flushPromises();
+		expect(session.state.status).toBe('unauthenticated');
+		expect(router.currentRoute.value.name).toBe('login');
+		expect(wrapper.find('[data-screen="home"]').exists()).toBe(false);
+
+		await router.back();
+		await flushPromises();
+		expect(router.currentRoute.value.name).toBe('login');
 	});
 
 	test('renders retired routes as a migration state without redirecting', async () => {
