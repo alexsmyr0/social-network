@@ -43,13 +43,19 @@ SN-A06 packages the browser bundle and its Go same-origin proxy in a frontend-on
 
 ```bash
 docker build --file Dockerfile.frontend --tag social-network-frontend .
-docker run --rm --name social-network-frontend \
-  --publish 3000:3000 \
-  --env BACKEND_URL=http://backend:8080 \
-  social-network-frontend
 ```
 
-The container listens on port `3000`. `GET /healthz` is its frontend-only health endpoint and returns `200`; it deliberately does not require backend availability. Browser REST and WebSocket traffic stays same-origin at `/api/` and `/ws`. The server-side `BACKEND_URL` must be an absolute backend origin reachable from the frontend container, normally the backend service name and internal port on their shared Docker network. It is read when the frontend process starts, is not browser configuration and is not present in the built JavaScript/CSS. The image default is `http://backend:8080`; local standalone use commonly needs `http://host.docker.internal:8080` plus the platform-appropriate host mapping.
+The build uses `Dockerfile.frontend.dockerignore`, so the shared `.dockerignore` used by the backend image is unchanged.
+
+The container listens on port `3000`. `GET /healthz` is its frontend-only health endpoint and returns `200`; it deliberately does not require backend availability. Browser REST and WebSocket traffic stays same-origin at `/api/` and `/ws`. The server-side `BACKEND_URL` must be an absolute backend origin reachable from the frontend container, normally the backend service name and internal port on their shared Docker network. It is read when the frontend process starts, is not browser configuration and is not present in the built JavaScript/CSS. The image default is `http://backend:8080`, which only resolves on a shared Docker network (below). To target a backend running on the host instead:
+
+```bash
+docker run --rm --name social-network-frontend \
+  --publish 3000:3000 \
+  --add-host host.docker.internal:host-gateway \
+  --env BACKEND_URL=http://host.docker.internal:8080 \
+  social-network-frontend
+```
 
 For a shared network handoff to SN-B07:
 
@@ -86,6 +92,6 @@ docker stop social-network-frontend-smoke
 
 The Docker build itself uses a sentinel `BACKEND_URL` and fails if that server-only value appears in `SPA/dist`. The container runs as the unprivileged `frontend` user and contains `/app/frontend`, the built SPA, error assets and favicon—not the backend executable, database or media storage.
 
-SN-A06 verification on 2026-09-27 used `docker build --no-cache --file Dockerfile.frontend --tag social-network-frontend:a06 .` and produced image `sha256:6b07e93e02d6e6692d922e4d8d1db136c539c257c605f81e8b99bb8c33dbb5f0`. Container smoke checks returned `200` for health, login, registration, a deep link, favicon and the generated JavaScript/CSS; the disconnected target returned JSON `502 BACKEND_UNAVAILABLE`. A named-network echo service returned `A06_CONFIGURED_BACKEND` through `/api/`, proving that the runtime target was used. Inspection confirmed user `frontend`, exposed port `3000`, the healthcheck, required runtime files and the absence of a backend binary/data directory.
+SN-A06 verification on 2026-09-27 used `docker build --no-cache --file Dockerfile.frontend --tag social-network-frontend:a06 .` and produced image `sha256:6875d5161b4d0f466b82c21bafd9ac7cd83ab84752789665b4c1fc7066549c3d`. Container smoke checks returned `200` for health, login, registration, a deep link, favicon and the generated JavaScript/CSS; the disconnected target returned JSON `502 BACKEND_UNAVAILABLE`. A named-network echo service returned `A06_CONFIGURED_BACKEND` through `/api/`, proving that the runtime target was used. Inspection confirmed user `frontend`, exposed port `3000`, the healthcheck, required runtime files and the absence of a backend binary/data directory.
 
 `go test ./cmd/frontend/...`, `bun run build`, `git diff --check` and `make test` all exited 0. The full gate passed Go tests and scoped race checks, Biome/gofmt/vet, Vitest 540/540 and Playwright 13/13. The temporary smoke containers and Docker network were removed after verification.
