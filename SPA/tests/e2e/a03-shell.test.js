@@ -124,13 +124,20 @@ test.describe('SN-A03 framework shell', () => {
 			registrations += 1;
 			await route.abort('connectionreset');
 		});
-		await page.route('**/api/v1/users/me', (route) =>
-			route.fulfill({
+		await page.route('**/api/v1/users/me', (route) => {
+			if (registrations === 0) {
+				return route.fulfill({
+					status: 401,
+					contentType: 'application/json',
+					body: JSON.stringify({ error: { code: 'UNAUTHORIZED' } }),
+				});
+			}
+			return route.fulfill({
 				status: 200,
 				contentType: 'application/json',
 				body: JSON.stringify({ data: { id: 42, display_name: 'Alex Example' } }),
-			}),
-		);
+			});
+		});
 		await page.goto('/register');
 		await page.getByLabel('Email *').fill('alex@example.com');
 		await page.getByLabel('Password *').fill('correct horse battery');

@@ -1,8 +1,11 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, reactive, ref } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, reactive, ref } from 'vue';
 
 import { RegistrationError, registerAccount } from '../../api/registration.js';
 import { fetchCurrentAccount, loginAccount } from '../../api/session.js';
+import { sessionKey } from './session-state.js';
+
+const session = inject(sessionKey, null);
 
 const avatarTypes = new Set(['image/jpeg', 'image/png', 'image/gif']);
 const form = reactive({
@@ -200,6 +203,7 @@ function recover(recoveredAccount, source) {
 	recoveredBy.value = source;
 	recovery.value = 'recovered';
 	account.value = recoveredAccount;
+	session?.acceptAccount(recoveredAccount);
 }
 
 async function confirmRegistration() {
@@ -218,6 +222,7 @@ async function register() {
 	submittedCredentials = null;
 	try {
 		account.value = await registerAccount(form);
+		session?.acceptAccount(account.value);
 		form.password = '';
 	} catch (error) {
 		if (error instanceof RegistrationError && error.ambiguous) {

@@ -1,5 +1,6 @@
 const CURRENT_ACCOUNT_PATH = '/api/v1/users/me';
 const LOGIN_PATH = '/api/v1/users/login';
+const LOGOUT_PATH = '/api/v1/users/logout';
 
 async function readPayload(response) {
 	return response.json().catch(() => null);
@@ -53,4 +54,27 @@ export async function loginAccount({ email, password }, fetchRef = globalThis.fe
 	return { status: 'authenticated', account: payload.data };
 }
 
-export { CURRENT_ACCOUNT_PATH, LOGIN_PATH };
+// Logout is only locally complete after the server confirms revocation. A
+// network/5xx/malformed response has an unknown outcome, so the caller must
+// keep the protected UI and offer a safe retry instead of pretending success.
+export async function logoutAccount(fetchRef = globalThis.fetch) {
+	let response;
+	try {
+		response = await fetchRef(LOGOUT_PATH, {
+			method: 'POST',
+			headers: {
+				Accept: 'application/json',
+				'X-Requested-With': 'XMLHttpRequest',
+			},
+			credentials: 'include',
+		});
+	} catch {
+		return { status: 'unavailable' };
+	}
+
+	const payload = await readPayload(response);
+	if (!response.ok || !payload?.data) return { status: 'unavailable' };
+	return { status: 'logged-out' };
+}
+
+export { CURRENT_ACCOUNT_PATH, LOGIN_PATH, LOGOUT_PATH };

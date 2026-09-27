@@ -4,7 +4,9 @@ import {
 	CURRENT_ACCOUNT_PATH,
 	fetchCurrentAccount,
 	LOGIN_PATH,
+	LOGOUT_PATH,
 	loginAccount,
+	logoutAccount,
 } from '../../../../src/api/session.js';
 
 const account = { id: 42, email: 'alex@example.com', display_name: 'Alex Example' };
@@ -71,6 +73,23 @@ describe('session contract adapter', () => {
 			offline(),
 		]) {
 			await expect(loginAccount(credentials, fetchRef)).resolves.toEqual({ status: 'unavailable' });
+		}
+	});
+
+	test('logs out through the cookie contract only after a valid success response', async () => {
+		const fetchRef = reply(200, { data: { message: 'Logged out' } });
+		await expect(logoutAccount(fetchRef)).resolves.toEqual({ status: 'logged-out' });
+		const [path, request] = fetchRef.mock.calls[0];
+		expect(path).toBe(LOGOUT_PATH);
+		expect(request).toMatchObject({ method: 'POST', credentials: 'include' });
+		expect(request.headers['X-Requested-With']).toBe('XMLHttpRequest');
+
+		for (const failingFetch of [
+			reply(500, { error: { code: 'INTERNAL_SERVER_ERROR' } }),
+			reply(200),
+			offline(),
+		]) {
+			await expect(logoutAccount(failingFetch)).resolves.toEqual({ status: 'unavailable' });
 		}
 	});
 });

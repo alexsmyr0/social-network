@@ -23,11 +23,11 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 
 ## Current checkpoint — 2026-09-27
 
-- Documentation setup and code import are complete. SN-A03 provides the Vue framework shell and backend-health transport; SN-A04 adds the contract-driven registration UI against test-only fixtures. Real account/media integration remains SN-A07.
+- Documentation setup and code import are complete. SN-A03 provides the Vue framework shell and backend-health transport; SN-A04 adds contract-driven registration and SN-A05 adds login, session restoration, route gating and global logout against test-only fixtures. Real account/session/media integration remains SN-A07.
 - Imported all 302 tracked files from the clean sibling real-time-forum checkout at commit `c7be375`, preserving the social-network docs and this repository's Git identity.
 - Root README and AGENTS now point here; inherited docs remain available locally. See [inherited context](inherited-context.md) for provenance and [planning](planning.md) for import verification.
 - No legacy files were deleted. Local runtime data, secrets, generated files, and source Git history were excluded.
-- Phase 1 has 17 tickets (8 A, 9 B). SN-A03 provides the approved [Vue 3 shell](frontend-setup.md) and passed its local gate. SN-B02's [auth contract](auth-contract.md) is complete after the owner confirmed Dev 1's fixture review on 2026-09-26. The owner approved SN-B08's [storage decision](data-decision.md) on 2026-09-26. SN-B03 [startup migrations](backend-migrations.md) and SN-B04 [account registration](backend-accounts.md) passed local gates on 2026-09-27; SN-B05 is the next backend ticket.
+- Phase 1 has 17 tickets (8 A, 9 B). SN-A03 provides the approved [Vue 3 shell](frontend-setup.md); SN-A04 registration and SN-A05 session UI passed their frontend-only fixture gates. SN-B02's [auth contract](auth-contract.md) is owner-approved. The owner approved SN-B08's [storage decision](data-decision.md) on 2026-09-26. SN-B03 [startup migrations](backend-migrations.md) and SN-B04 [account registration](backend-accounts.md) passed local gates on 2026-09-27; SN-B05 is the next backend ticket.
 - Remote `main` includes merged SN-A03 at `fa7ca4d`. Hosted two-image CI evidence remains a future SN-B07 gate.
 
 ## Maintenance rules
