@@ -5,6 +5,10 @@ The [Zone01 social-network requirements](docs/social-network/requirements.md) de
 Use the [social-network ticket tracker](docs/social-network/ticket-tracker.md) for active work and its track A/B definitions for scope, dependencies and verification gates. The old tracker and A/B/C/D tickets below are historical only.
 Follow [ticket-writing rules](docs/social-network/ticket-rules.md) when creating or reviewing tickets.
 Use the caveman skill by default for coding tasks, as requested by the project owner.
+Do not launch Docker Desktop or start the Docker daemon automatically. If Docker
+is already running, Docker checks may run. Otherwise, complete independent
+checks and report Docker-dependent verification as unverified. Start Docker only
+when the project owner explicitly asks.
 
 The guide below was imported from real-time-forum as historical context. Its old
 project identity, requirements authority, vanilla-JS restriction, feature scope,
