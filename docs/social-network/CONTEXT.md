@@ -31,7 +31,8 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 - Root README and AGENTS now point here; inherited docs remain available locally. See [inherited context](inherited-context.md) for provenance and [planning](planning.md) for import verification.
 - No legacy files were deleted. Local runtime data, secrets, generated files, and source Git history were excluded.
 - Phase 1 has 17 tickets (8 A, 9 B). SN-A03 provides the approved [Vue 3 shell](frontend-setup.md); SN-A04 registration and SN-A05 session UI passed their frontend-only fixture gates. SN-B02's [auth contract](auth-contract.md) is owner-approved. The owner approved SN-B08's [storage decision](data-decision.md) on 2026-09-26. SN-B03 [startup migrations](backend-migrations.md), SN-B04 [account registration](backend-accounts.md), SN-B05 [session lifecycle](backend-sessions.md), SN-B09 [avatars](backend-avatars.md) and SN-B06 [backend image](backend-image.md) passed local gates on 2026-09-27.
-- Remote `main` includes merged SN-B05 in PR #11. SN-B09 and SN-B06 are verified on their joint local branch. Hosted two-image CI evidence remains a future SN-B07 gate.
+- SN-A06 provides the separately buildable `social-network-frontend` image and its documented SN-B07 runtime handoff. A no-cache image build, route/asset/outage/configuration smoke checks and the full repository gate passed on `chbaikas/A06` on 2026-09-27.
+- Remote `main` includes merged SN-A06 in PR #12. SN-B09 and SN-B06 are verified on their joint branch. Hosted two-image CI evidence remains a future SN-B07 gate.
 
 ## Maintenance rules
 

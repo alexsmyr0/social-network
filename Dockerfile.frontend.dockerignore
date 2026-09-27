@@ -1,0 +1,35 @@
+# Frontend image build context (BuildKit reads this instead of .dockerignore
+# when building Dockerfile.frontend). Keeps web/ available for error assets
+# without changing the shared backend ignore rules.
+
+# Version control and editor files
+.git/
+.gitignore
+.vscode/
+.idea/
+**/.DS_Store
+
+# Local dependencies and generated assets (rebuilt inside the image)
+**/node_modules/
+SPA/dist/
+dist/
+coverage/
+test-results/
+playwright-report/
+
+# Build outputs and logs
+bin/
+*.exe
+*.out
+*.log
+forum-backend
+forum-frontend
+
+# Runtime data, uploads and secrets
+data/
+web/static/uploads/
+.env
+*.env
+cmd/backend/.env
+cmd/frontend/.env
+tmp/
