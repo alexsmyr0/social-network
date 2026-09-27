@@ -418,15 +418,9 @@ func TestMigrate_SkipsMissingTables(t *testing.T) {
   INITDB BOOT-PATH INTEGRATION
 ------------------------*/
 
-// TestInitDB_AppliesSchemaAndMigratesLegacyFile proves the production boot
-// path: a real on-disk file containing a pre-C10 users table is opened via
-// InitDB, which must (a) apply forum_schema.sql (no-op on the existing
-// users table) and then (b) call Migrate to add the C10 columns. After
-// that the database must be usable end-to-end.
-//
-// This is the only test that exercises db.go's wiring change in C07;
-// every other test calls db.Migrate directly.
-func TestInitDB_AppliesSchemaAndMigratesLegacyFile(t *testing.T) {
+// Production startup follows the approved fresh-database policy. The old
+// Migrate function below remains for isolated forum compatibility tests.
+func TestInitDB_RejectsLegacyFile(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "legacy.sqlite")
 
@@ -449,45 +443,21 @@ func TestInitDB_AppliesSchemaAndMigratesLegacyFile(t *testing.T) {
 	}
 	bootstrap.Close()
 
-	// Boot via the production path.
+	// Boot via the production path; keep the legacy record untouched.
 	conn, err := db.InitDB(context.Background(), dbPath)
+	if err == nil {
+		conn.Close()
+		t.Fatal("InitDB accepted an unversioned legacy file")
+	}
+	conn2, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		t.Fatalf("InitDB on legacy file: %v", err)
-	}
-	defer conn.Close()
-
-	// C10 columns must now be present on the legacy table.
-	for _, col := range []string{"age", "gender", "first_name", "last_name"} {
-		if !columnSet(t, conn, "users")[col] {
-			t.Errorf("expected users.%s after InitDB, missing", col)
-		}
-	}
-
-	// Legacy row survived AND its new columns hold defaults.
-	var (
-		username string
-		age      int
-		gender   string
-	)
-	if err := conn.QueryRow(`SELECT username, age, gender FROM users WHERE id = 1`).
-		Scan(&username, &age, &gender); err != nil {
-		t.Fatalf("read legacy user post-InitDB: %v", err)
-	}
-	if username != "legacy_carol" {
-		t.Errorf("legacy username corrupted: %q", username)
-	}
-	if age != 0 || gender != "" {
-		t.Errorf("legacy row defaults wrong: age=%d gender=%q", age, gender)
-	}
-
-	// Booting again against the same file is idempotent — Migrate must
-	// observe the columns it added and do nothing this time around.
-	conn.Close()
-	conn2, err := db.InitDB(context.Background(), dbPath)
-	if err != nil {
-		t.Fatalf("InitDB second call (idempotency): %v", err)
+		t.Fatal(err)
 	}
 	defer conn2.Close()
+	var username string
+	if err := conn2.QueryRow(`SELECT username FROM users WHERE id = 1`).Scan(&username); err != nil || username != "legacy_carol" {
+		t.Fatalf("legacy record changed: username=%q err=%v", username, err)
+	}
 }
 
 /*-----------------------

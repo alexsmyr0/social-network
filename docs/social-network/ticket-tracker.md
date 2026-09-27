@@ -23,7 +23,7 @@ Follow the [ticket-writing rules](ticket-rules.md). The [audit record](ticket-au
 
 ## Summary
 
-17 tickets: 8 in A, 9 in B. Done: 7. In progress: 0. Blocked: 0. Not started: 10. Ready to start: SN-B03, SN-A05 and SN-A08.
+17 tickets: 8 in A, 9 in B. Done: 9. In progress: 0. Blocked: 0. Not started: 8. Ready to start: SN-B05, SN-A05 and SN-A08.
 
 | Status | Ticket | Description | Depends on | Blocks | Evidence / external gate |
 |---|---|---|---|---|---|
@@ -33,9 +33,9 @@ Follow the [ticket-writing rules](ticket-rules.md). The [audit record](ticket-au
 | [x] | [SN-B02](track-b.md#sn-b02--approve-auth-contracts) | Approve auth contracts | SN-A02 | SN-B08, SN-A04, SN-A05, SN-A08 | [Owner-approved auth contract](auth-contract.md), merged in PR #4. Owner approved on 2026-09-24; owner explicitly confirmed Dev 1's A04/A05 fixture review in chat on 2026-09-26. No runtime implementation or passing API tests claimed. |
 | [x] | [SN-A03](track-a.md#sn-a03--framework-shell-and-api-connection) | Framework shell and API connection | SN-A02 | SN-A04, SN-A05 | [Vue shell and frontend commands](frontend-setup.md). `make test` **exit 0**: builds, Biome, gofmt/vet, Go suite and race checks, Vitest 488/488 with coverage, Playwright 5/5; desktop and 360px visual QA completed. |
 | [x] | [SN-B08](track-b.md#sn-b08--approve-account-storage-and-migration-design) | Approve account storage and migration design | SN-B02 | SN-B03 | [Approved storage decision](data-decision.md) in PR #6. Owner approved fresh DB, `golang-migrate` and private avatar storage in chat on 2026-09-26; no client-facing contract change. Documentation checks passed; no runtime behavior claimed. |
-| [ ] | [SN-B03](track-b.md#sn-b03--startup-migrations-and-account-schema) | Startup migrations and account schema | SN-B08 | SN-B04 | — |
+| [x] | [SN-B03](track-b.md#sn-b03--startup-migrations-and-account-schema) | Startup migrations and account schema | SN-B08 | SN-B04 | [Migration and recovery record](backend-migrations.md). On `ticket/sn-b03-b04-account-foundations`, `go test ./...` and `make test` exit 0: build, Biome, gofmt/vet, Go suite/race, Vitest 522/522, Playwright 9/9. Startup tests cover empty/repeated/failed boot, dirty version, preserved legacy file, account constraints and independent session rows. |
 | [x] | [SN-A04](track-a.md#sn-a04--registration-ui) | Registration UI | SN-A03, SN-B02 | SN-A06 | Frontend-only contract fixtures: `bun run test:a04` 34/34; `make test` exit 0 with Vitest 522/522 and Playwright 9/9. Required/optional payloads, JPEG/PNG/GIF preview/removal (invalid replacement discards the earlier file), validation, duplicate email, ambiguous-registration recovery in contract order (`/users/me` → explicit login → explicit retry), duplicate-submit prevention, accessible avatar errors/focus, keyboard and 360px/desktop checks pass. Real backend/media integration remains SN-A07. |
-| [ ] | [SN-B04](track-b.md#sn-b04--registration-and-account-api) | Registration and account API | SN-B03 | SN-B05 | — |
+| [x] | [SN-B04](track-b.md#sn-b04--registration-and-account-api) | Registration and account API | SN-B03 | SN-B05 | [Account API record](backend-accounts.md). On `ticket/sn-b03-b04-account-foundations`, `go test ./internal/tests -run TestSocial -count=1` and `make test` exit 0. Versioned API tests cover required/optional registration, validation/duplicate errors, readback and secret exclusion, no partial account on invalid/avatar input, explicit avatar 503, multipart text and existing-session rejection. B05 owns final session policy. |
 | [ ] | [SN-A05](track-a.md#sn-a05--login-session-restoration-and-global-logout-ui) | Login, session restoration and global logout UI | SN-A03, SN-B02 | SN-A06 | — |
 | [ ] | [SN-B05](track-b.md#sn-b05--session-lifecycle-and-auth-enforcement) | Session lifecycle and auth enforcement | SN-B04 | SN-B09 | — |
 | [ ] | [SN-A08](track-a.md#sn-a08--align-active-project-documentation) | Align active project documentation | SN-B02 | SN-A07 | — |
