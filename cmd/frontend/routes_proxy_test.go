@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/sha1"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -13,6 +14,33 @@ import (
 	"testing"
 	"time"
 )
+
+func TestAPIProxyReportsUnavailableBackend(t *testing.T) {
+	originalBackendURL := backendBaseURL
+	defer func() { backendBaseURL = originalBackendURL }()
+
+	backendBaseURL = "http://127.0.0.1:0"
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/users/me", nil)
+	res := httptest.NewRecorder()
+
+	NewMux().ServeHTTP(res, req)
+
+	if res.Code != http.StatusBadGateway {
+		t.Fatalf("expected status %d, got %d", http.StatusBadGateway, res.Code)
+	}
+
+	var payload struct {
+		Error struct {
+			Code string `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
+		t.Fatalf("decode proxy error: %v", err)
+	}
+	if payload.Error.Code != "BACKEND_UNAVAILABLE" {
+		t.Fatalf("expected BACKEND_UNAVAILABLE, got %q", payload.Error.Code)
+	}
+}
 
 func TestConfiguredBackendBaseURL(t *testing.T) {
 	t.Setenv("BACKEND_URL", "http://backend:9090")

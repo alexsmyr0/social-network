@@ -1,0 +1,54 @@
+# syntax=docker/dockerfile:1
+
+FROM oven/bun:1.3.12 AS assets
+
+WORKDIR /src
+
+COPY package.json bun.lock vite.config.js ./
+RUN bun install --frozen-lockfile
+
+COPY SPA ./SPA
+
+# BACKEND_URL configures only the development/build server proxy. Building with
+# a sentinel and scanning the output proves that server-only runtime input is
+# not embedded in browser-delivered assets.
+RUN BACKEND_URL=http://server-only.invalid:65535 bun run build \
+	&& ! grep -R "server-only.invalid" SPA/dist
+
+FROM golang:1.24 AS server
+
+WORKDIR /src
+
+ENV CGO_ENABLED=0
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY cmd/frontend ./cmd/frontend
+COPY web/startupcheck ./web/startupcheck
+RUN go build -trimpath -ldflags="-s -w" -o /out/frontend ./cmd/frontend
+
+FROM debian:12-slim AS runtime
+
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends ca-certificates curl \
+	&& rm -rf /var/lib/apt/lists/* \
+	&& useradd --system --uid 10001 --create-home frontend
+
+WORKDIR /app
+
+ENV BACKEND_URL=http://backend:8080
+
+COPY --from=server /out/frontend /app/frontend
+COPY --from=assets /src/SPA/dist /app/SPA/dist
+COPY web/errors /app/web/errors
+COPY web/static/favicon.ico /app/web/static/favicon.ico
+
+EXPOSE 3000
+
+USER frontend
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+	CMD ["curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:3000/healthz"]
+
+ENTRYPOINT ["/app/frontend"]

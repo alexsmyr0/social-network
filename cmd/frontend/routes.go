@@ -2,6 +2,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -89,6 +90,17 @@ func NewMux() http.Handler {
 		log.Fatal(err)
 	}
 	proxy := httputil.NewSingleHostReverseProxy(backendURL)
+	proxy.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, err error) {
+		log.Printf("frontend proxy: backend unavailable: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadGateway)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"error": map[string]string{
+				"code":    "BACKEND_UNAVAILABLE",
+				"message": "The backend service is unavailable.",
+			},
+		})
+	}
 
 	// Route both /api/ and /ws through the same backend proxy so the frontend
 	// server stays the browser-facing entry point while preserving session-cookie
@@ -100,6 +112,17 @@ func NewMux() http.Handler {
 
 	mux.Handle("/api/", proxyHandler)
 	mux.Handle("/ws", proxyHandler)
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.Header().Set("Allow", http.MethodGet)
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-store")
+		_, _ = w.Write([]byte(`{"status":"ok","service":"frontend"}`))
+	})
 
 	/*-----------------------------
 	  SPA Catch-all
