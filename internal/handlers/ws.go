@@ -92,7 +92,7 @@ func (h *WsHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.hub.WithSessionAdmission(func() {
+	h.hub.WithSessionAdmission(token, func() {
 		session, err := db.GetSessionByToken(r.Context(), h.db, token)
 		if err != nil {
 			if errors.Is(err, db.ErrNotFound) {
@@ -175,22 +175,25 @@ func (h *WsHandler) readPump(userID int64, c *ws.Client) {
 		if err != nil {
 			break
 		}
-		if _, err := db.GetSessionByToken(context.Background(), h.db, c.Token); err != nil {
+		active := false
+		h.hub.WithSessionAdmission(c.Token, func() {
+			if _, err := db.GetSessionByToken(context.Background(), h.db, c.Token); err != nil {
+				return
+			}
+			active = true
+			c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+
+			var msg ws.WSMessage
+			if err := json.Unmarshal(raw, &msg); err != nil {
+				// Malformed frame: no type to attribute an error to.
+				return
+			}
+			if msg.Type == "dm.send" {
+				h.handleDMSend(userID, c, msg.Payload)
+			}
+		})
+		if !active {
 			break
-		}
-		c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-
-		var msg ws.WSMessage
-		if err := json.Unmarshal(raw, &msg); err != nil {
-			// Malformed frame: drop silently. We have no `type` to attribute
-			// the error to and no contract for a generic protocol error. The
-			// connection stays open — a buggy client can recover on its own.
-			continue
-		}
-
-		switch msg.Type {
-		case "dm.send":
-			h.handleDMSend(userID, c, msg.Payload)
 		}
 	}
 }

@@ -31,8 +31,9 @@ func NewClient(conn *websocket.Conn) *Client {
 }
 
 type Hub struct {
-	mu          sync.RWMutex
-	sessionGate sync.RWMutex
+	mu     sync.RWMutex
+	gateMu sync.Mutex
+	gates  map[string]*sessionGate
 
 	connections map[int64]map[*Client]bool
 
@@ -40,21 +41,53 @@ type Hub struct {
 	onDisconnect func(userID int64)
 }
 
-// WithSessionAdmission holds the admission gate through the session lookup,
-// upgrade and Hub registration. Revocation cannot miss a connection that was
-// authenticated just before the database write.
-func (h *Hub) WithSessionAdmission(admit func()) {
-	h.sessionGate.RLock()
-	defer h.sessionGate.RUnlock()
+type sessionGate struct {
+	mu   sync.RWMutex
+	refs int
+}
+
+func (h *Hub) acquireSessionGate(token string) (*sessionGate, func()) {
+	h.gateMu.Lock()
+	if h.gates == nil {
+		h.gates = make(map[string]*sessionGate)
+	}
+	gate := h.gates[token]
+	if gate == nil {
+		gate = &sessionGate{}
+		h.gates[token] = gate
+	}
+	gate.refs++
+	h.gateMu.Unlock()
+	return gate, func() {
+		h.gateMu.Lock()
+		gate.refs--
+		if gate.refs == 0 {
+			delete(h.gates, token)
+		}
+		h.gateMu.Unlock()
+	}
+}
+
+// WithSessionAdmission holds a token's gate through validation and privileged
+// work. Revocation waits for admitted work before invalidating the token.
+func (h *Hub) WithSessionAdmission(token string, admit func()) {
+	gate, release := h.acquireSessionGate(token)
+	gate.mu.RLock()
+	defer release()
+	defer gate.mu.RUnlock()
 	admit()
 }
 
-// RevokeToken serializes the database revocation with socket admission, then
-// waits for that token's retained sockets to close before returning success.
+// RevokeToken waits for admitted work, invalidates the token, then closes its
+// retained sockets. The gate is released before waiting for read pumps, which
+// may themselves be waiting to revalidate through that gate.
 func (h *Hub) RevokeToken(ctx context.Context, token string, revoke func() error) error {
-	h.sessionGate.Lock()
-	defer h.sessionGate.Unlock()
-	if err := revoke(); err != nil {
+	gate, release := h.acquireSessionGate(token)
+	gate.mu.Lock()
+	err := revoke()
+	gate.mu.Unlock()
+	release()
+	if err != nil {
 		return err
 	}
 	return h.DisconnectToken(ctx, token)
@@ -63,6 +96,7 @@ func (h *Hub) RevokeToken(ctx context.Context, token string, revoke func() error
 func NewHub() *Hub {
 	return &Hub{
 		connections: make(map[int64]map[*Client]bool),
+		gates:       make(map[string]*sessionGate),
 	}
 }
 

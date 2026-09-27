@@ -135,7 +135,7 @@ func TestAuth_Chokepoint(t *testing.T) {
 	insertSession(t, conn, userID, validToken, time.Now().Add(time.Hour))
 	insertSession(t, conn, expiredUser, expiredToken, time.Now().Add(-time.Hour))
 
-	auth := Auth(conn)
+	auth := Auth(conn, nil)
 
 	cases := []struct {
 		name     string

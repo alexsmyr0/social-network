@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"forum/internal/db"
+	"forum/internal/middleware"
 	"forum/internal/router"
 	"forum/internal/ws"
 
@@ -139,6 +140,88 @@ func TestSocialSessionIndependentLoginLogoutAndReplay(t *testing.T) {
 	restarted := router.NewRouter(reopened, ws.NewHub())
 	assertSocialCode(t, socialRequest(t, restarted, http.MethodGet, "/api/v1/users/me", "", nil, second), http.StatusUnauthorized, "UNAUTHORIZED")
 	assertSocialCode(t, socialRequest(t, restarted, http.MethodGet, "/api/v1/users/me", "", nil, third), http.StatusOK, "")
+}
+
+func TestSocialSessionLogoutWaitsForInFlightWrite(t *testing.T) {
+	handler, conn, hub := socialAPIWithHub(t)
+	token := registerSocialUser(t, handler, "writer@example.com")
+	if _, err := conn.Exec(`CREATE TABLE write_probe (id INTEGER PRIMARY KEY)`); err != nil {
+		t.Fatal(err)
+	}
+
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	writeDone := make(chan struct{})
+	protected := middleware.Auth(conn, hub)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(entered)
+		<-release
+		if _, err := conn.ExecContext(r.Context(), `INSERT INTO write_probe (id) VALUES (1)`); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	writeRequest := func() *http.Request {
+		req := httptest.NewRequest(http.MethodPost, "/probe", nil)
+		req.AddCookie(&http.Cookie{Name: "session_token", Value: token})
+		return req
+	}
+	writeResponse := httptest.NewRecorder()
+	go func() {
+		defer close(writeDone)
+		protected.ServeHTTP(writeResponse, writeRequest())
+	}()
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		close(release)
+		t.Fatal("protected write never passed authentication")
+	}
+
+	logoutRequest := httptest.NewRequest(http.MethodPost, "/api/v1/users/logout", nil)
+	logoutRequest.Header.Set("Origin", "http://localhost:3000")
+	logoutRequest.Header.Set("X-Requested-With", "XMLHttpRequest")
+	logoutRequest.AddCookie(&http.Cookie{Name: "session_token", Value: token})
+	logoutResponse := httptest.NewRecorder()
+	logoutDone := make(chan struct{})
+	go func() {
+		defer close(logoutDone)
+		handler.ServeHTTP(logoutResponse, logoutRequest)
+	}()
+
+	logoutFinishedEarly := false
+	select {
+	case <-logoutDone:
+		logoutFinishedEarly = true
+	case <-time.After(200 * time.Millisecond):
+	}
+	close(release)
+	select {
+	case <-writeDone:
+	case <-time.After(5 * time.Second):
+		t.Fatal("protected write did not finish")
+	}
+	select {
+	case <-logoutDone:
+	case <-time.After(5 * time.Second):
+		t.Fatal("logout did not finish")
+	}
+	if logoutFinishedEarly {
+		t.Fatal("logout completed before authenticated write finished")
+	}
+	if writeResponse.Code != http.StatusNoContent || logoutResponse.Code != http.StatusOK {
+		t.Fatalf("write: %d %s; logout: %d %s", writeResponse.Code, writeResponse.Body.String(), logoutResponse.Code, logoutResponse.Body.String())
+	}
+	var count int
+	if err := conn.QueryRow(`SELECT COUNT(*) FROM write_probe`).Scan(&count); err != nil || count != 1 {
+		t.Fatalf("write count: %d %v", count, err)
+	}
+	replay := httptest.NewRecorder()
+	protected.ServeHTTP(replay, writeRequest())
+	assertSocialCode(t, replay, http.StatusUnauthorized, "UNAUTHORIZED")
+	if err := conn.QueryRow(`SELECT COUNT(*) FROM write_probe`).Scan(&count); err != nil || count != 1 {
+		t.Fatalf("revoked write changed data: %d %v", count, err)
+	}
 }
 
 func TestSocialSessionOriginAndBodyEnforcement(t *testing.T) {

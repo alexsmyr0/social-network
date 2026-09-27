@@ -32,7 +32,7 @@ func NewRouter(database *sql.DB, hub *ws.Hub) http.Handler {
 	/*------------
 	  MIDDLEWARE
 	------------*/
-	auth := middleware.Auth(database)
+	auth := middleware.Auth(database, hub)
 
 	frontendOrigin := os.Getenv("FRONTEND_URL")
 	if frontendOrigin == "" {

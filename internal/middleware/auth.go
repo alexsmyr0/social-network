@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"forum/internal/db"
+	"forum/internal/ws"
 )
 
 type contextKey string
@@ -17,7 +18,7 @@ type contextKey string
 const UserIDKey contextKey = "userID"
 
 // Auth ensures a valid session and injects userID into context.
-func Auth(database *sql.DB) func(http.Handler) http.Handler {
+func Auth(database *sql.DB, hub *ws.Hub) func(http.Handler) http.Handler {
 	socialSchema, _ := db.IsSocialSchema(context.Background(), database)
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -34,21 +35,31 @@ func Auth(database *sql.DB) func(http.Handler) http.Handler {
 				return
 			}
 
-			session, err := db.GetSessionByToken(r.Context(), database, token)
-			if err != nil {
-				if errors.Is(err, db.ErrNotFound) {
-					if !socialSchema {
-						clearSessionCookie(w)
+			serve := func() {
+				session, err := db.GetSessionByToken(r.Context(), database, token)
+				if err != nil {
+					if errors.Is(err, db.ErrNotFound) {
+						if !socialSchema {
+							clearSessionCookie(w)
+						}
+						writeAuthError(w, http.StatusUnauthorized, "UNAUTHORIZED", "login required")
+					} else {
+						writeAuthError(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "session lookup failed")
 					}
-					writeAuthError(w, http.StatusUnauthorized, "UNAUTHORIZED", "login required")
-				} else {
-					writeAuthError(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "session lookup failed")
+					return
 				}
-				return
+
+				ctx := context.WithValue(r.Context(), UserIDKey, session.UserID)
+				next.ServeHTTP(w, r.WithContext(ctx))
 			}
 
-			ctx := context.WithValue(r.Context(), UserIDKey, session.UserID)
-			next.ServeHTTP(w, r.WithContext(ctx))
+			// Keep writes admitted until their handler returns, so logout cannot
+			// revoke a token while an authenticated write is still committing.
+			if hub != nil && r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions {
+				hub.WithSessionAdmission(token, serve)
+				return
+			}
+			serve()
 		})
 	}
 }
