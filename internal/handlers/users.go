@@ -97,6 +97,9 @@ func (u *UsersHandler) Me(w http.ResponseWriter, r *http.Request) {
 			writeHandlerError(w, r, err, "failed to load account")
 			return
 		}
+		if cookie, err := r.Cookie(sessionCookieName); err == nil {
+			http.SetCookie(w, socialSessionCookie(cookie.Value))
+		}
 		WriteOK(w, account, nil)
 		return
 	}
@@ -176,6 +179,10 @@ func (u *UsersHandler) Login(w http.ResponseWriter, r *http.Request) {
 		MethodNotAllowed(w, r)
 		return
 	}
+	if u.socialSchema {
+		u.loginAccount(w, r)
+		return
+	}
 
 	var req repository.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -225,6 +232,10 @@ func (u *UsersHandler) Login(w http.ResponseWriter, r *http.Request) {
 func (u *UsersHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		MethodNotAllowed(w, r)
+		return
+	}
+	if u.socialSchema {
+		u.logoutAccount(w, r)
 		return
 	}
 

@@ -1,9 +1,7 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
-	"io"
 	"mime"
 	"net/http"
 	"strings"
@@ -68,7 +66,7 @@ func (u *UsersHandler) registerAccount(w http.ResponseWriter, r *http.Request) {
 		writeHandlerError(w, r, err, "failed to create session")
 		return
 	}
-	http.SetCookie(w, sessionCookie(session.Token))
+	http.SetCookie(w, socialSessionCookie(session.Token))
 	WriteCreated(w, account)
 }
 
@@ -79,17 +77,9 @@ func parseRegistration(w http.ResponseWriter, r *http.Request) (registrationInpu
 		return input, false, NewError("UNSUPPORTED_MEDIA_TYPE", "unsupported content type", http.StatusUnsupportedMediaType)
 	}
 	if mediaType == "application/json" {
-		r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
-		decoder := json.NewDecoder(r.Body)
-		decoder.DisallowUnknownFields()
-		if err := decoder.Decode(&input); err != nil {
-			return input, false, registrationParseError(err)
-		}
-		if err := decoder.Decode(new(any)); err != io.EOF {
-			if err != nil {
-				return input, false, registrationParseError(err)
-			}
-			return input, false, NewError("BAD_REQUEST", "invalid json", http.StatusBadRequest)
+		if apiErr := decodeStrictAuthObject(w, r, &input,
+			"email", "password", "first_name", "last_name", "date_of_birth", "nickname", "about_me"); apiErr != nil {
+			return input, false, apiErr
 		}
 		return input, false, nil
 	}

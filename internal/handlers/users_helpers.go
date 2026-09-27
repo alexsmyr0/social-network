@@ -5,14 +5,19 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
+
+	"forum/internal/ws"
 )
 
 type UsersHandler struct {
 	conn         *sql.DB
 	socialSchema bool
+	hub          *ws.Hub
 }
 
 const sessionCookieName = "session_token"
+const socialCookieSeconds = 400 * 24 * 60 * 60
 
 // sessionCookieSecure reports whether the session cookie should carry the
 // Secure attribute. It is derived from the frontend origin rather than
@@ -49,10 +54,23 @@ func clearedSessionCookie() *http.Cookie {
 	}
 }
 
-func NewUsersHandler(database *sql.DB) *UsersHandler {
+func socialSessionCookie(token string) *http.Cookie {
+	cookie := sessionCookie(token)
+	cookie.MaxAge = socialCookieSeconds
+	cookie.Expires = time.Now().UTC().Add(socialCookieSeconds * time.Second)
+	return cookie
+}
+
+func socialClearedSessionCookie() *http.Cookie {
+	cookie := clearedSessionCookie()
+	cookie.Expires = time.Unix(0, 0).UTC()
+	return cookie
+}
+
+func NewUsersHandler(database *sql.DB, hub *ws.Hub) *UsersHandler {
 	var versioned int
 	_ = database.QueryRow(`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_migrations'`).Scan(&versioned)
-	return &UsersHandler{conn: database, socialSchema: versioned == 1}
+	return &UsersHandler{conn: database, socialSchema: versioned == 1, hub: hub}
 }
 
 func resolveUserID(w http.ResponseWriter, r *http.Request) (int64, bool) {

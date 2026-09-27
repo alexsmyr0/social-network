@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -17,22 +18,46 @@ type Client struct {
 	Conn     *websocket.Conn
 	Send     chan []byte
 	Username string
+	Token    string
+	Done     chan struct{}
 }
 
 func NewClient(conn *websocket.Conn) *Client {
 	return &Client{
 		Conn: conn,
 		Send: make(chan []byte, 64),
+		Done: make(chan struct{}),
 	}
 }
 
 type Hub struct {
-	mu sync.RWMutex
+	mu          sync.RWMutex
+	sessionGate sync.RWMutex
 
 	connections map[int64]map[*Client]bool
 
 	onConnect    func(userID int64)
 	onDisconnect func(userID int64)
+}
+
+// WithSessionAdmission holds the admission gate through the session lookup,
+// upgrade and Hub registration. Revocation cannot miss a connection that was
+// authenticated just before the database write.
+func (h *Hub) WithSessionAdmission(admit func()) {
+	h.sessionGate.RLock()
+	defer h.sessionGate.RUnlock()
+	admit()
+}
+
+// RevokeToken serializes the database revocation with socket admission, then
+// waits for that token's retained sockets to close before returning success.
+func (h *Hub) RevokeToken(ctx context.Context, token string, revoke func() error) error {
+	h.sessionGate.Lock()
+	defer h.sessionGate.Unlock()
+	if err := revoke(); err != nil {
+		return err
+	}
+	return h.DisconnectToken(ctx, token)
 }
 
 func NewHub() *Hub {
@@ -54,7 +79,12 @@ func (h *Hub) SetCallbacks(onConnect, onDisconnect func(int64)) {
 // Add registers a new client for the given user. Returns the client and whether
 // this is the user's first connection.
 func (h *Hub) Add(userID int64, conn *websocket.Conn) (*Client, bool) {
+	return h.AddSession(userID, "", conn)
+}
+
+func (h *Hub) AddSession(userID int64, token string, conn *websocket.Conn) (*Client, bool) {
 	c := NewClient(conn)
+	c.Token = token
 
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -83,7 +113,11 @@ func (h *Hub) Remove(userID int64, c *Client) int {
 		return 0
 	}
 
+	if !h.connections[userID][c] {
+		return len(h.connections[userID])
+	}
 	delete(h.connections[userID], c)
+	close(c.Done)
 	remaining := len(h.connections[userID])
 
 	if remaining == 0 {
@@ -94,6 +128,36 @@ func (h *Hub) Remove(userID int64, c *Client) int {
 	}
 
 	return remaining
+}
+
+// DisconnectToken closes only sockets authenticated with this session. It
+// waits for each read pump to remove its client before the caller reports
+// successful revocation.
+func (h *Hub) DisconnectToken(ctx context.Context, token string) error {
+	if token == "" {
+		return nil
+	}
+	h.mu.RLock()
+	var clients []*Client
+	for _, byUser := range h.connections {
+		for c := range byUser {
+			if c.Token == token {
+				clients = append(clients, c)
+			}
+		}
+	}
+	h.mu.RUnlock()
+	for _, c := range clients {
+		_ = c.Conn.Close()
+	}
+	for _, c := range clients {
+		select {
+		case <-c.Done:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return nil
 }
 
 func (h *Hub) GetOnlineUserIDs() []int64 {

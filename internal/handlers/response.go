@@ -89,7 +89,8 @@ func WriteNoContent(w http.ResponseWriter) {
 -------------------*/
 
 func WriteError(w http.ResponseWriter, r *http.Request, err *APIError) {
-	acceptsHTML := strings.Contains(r.Header.Get("Accept"), "text/html")
+	acceptsHTML := strings.Contains(r.Header.Get("Accept"), "text/html") &&
+		!strings.HasPrefix(r.URL.Path, "/api/v1/")
 
 	// Custom error page shouldn't be served for forbidden and unauthorized errors
 	isAuthError := err.Status == http.StatusUnauthorized || err.Status == http.StatusForbidden

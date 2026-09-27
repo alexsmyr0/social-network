@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"net/url"
@@ -17,6 +18,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"forum/internal/db"
+	"forum/internal/middleware"
 	"forum/internal/ws"
 )
 
@@ -62,18 +64,25 @@ func allowedWSOrigin() string {
 const dmDBTimeout = 5 * time.Second
 
 type WsHandler struct {
-	db  *sql.DB
-	hub *ws.Hub
+	db           *sql.DB
+	hub          *ws.Hub
+	socialSchema bool
 }
 
-func NewWsHandler(database *sql.DB, hub *ws.Hub) *WsHandler {
+func NewWsHandler(database *sql.DB, hub *ws.Hub, socialSchema bool) *WsHandler {
 	return &WsHandler{
-		db:  database,
-		hub: hub,
+		db: database, hub: hub, socialSchema: socialSchema,
 	}
 }
 
 func (h *WsHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+	if h.socialSchema {
+		w.Header().Set("Cache-Control", "no-store")
+		if !middleware.BrowserOriginAllowed(r, allowedWSOrigin(), false) {
+			http.Error(w, "forbidden origin", http.StatusForbidden)
+			return
+		}
+	}
 	token := ""
 	if cookie, err := r.Cookie("session_token"); err == nil {
 		token = cookie.Value
@@ -83,42 +92,54 @@ func (h *WsHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := db.GetSessionByToken(r.Context(), h.db, token)
-	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
+	h.hub.WithSessionAdmission(func() {
+		session, err := db.GetSessionByToken(r.Context(), h.db, token)
+		if err != nil {
+			if errors.Is(err, db.ErrNotFound) {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+			} else {
+				http.Error(w, "session lookup failed", http.StatusInternalServerError)
+			}
+			return
+		}
 
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		return
-	}
+		selectedUpgrader := upgrader
+		if h.socialSchema {
+			selectedUpgrader.CheckOrigin = func(request *http.Request) bool {
+				return middleware.BrowserOriginAllowed(request, allowedWSOrigin(), false)
+			}
+		}
+		conn, err := selectedUpgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
 
-	client, firstConnection := h.hub.Add(session.UserID, conn)
+		client, firstConnection := h.hub.AddSession(session.UserID, token, conn)
 
-	// Cache the sender's username on the client so dm.send does not need to
-	// query the users table per outbound message. Best-effort: on lookup
-	// failure the field stays "" and handleDMSend falls back to "unknown".
-	if users, err := db.GetUsersByIDs(r.Context(), h.db, []int64{session.UserID}); err == nil && len(users) > 0 {
-		client.Username = users[0].Username
-	}
+		// Cache the sender's username on the client so dm.send does not need to
+		// query the users table per outbound message. Best-effort: on lookup
+		// failure the field stays "" and handleDMSend falls back to "unknown".
+		if users, err := db.GetUsersByIDs(r.Context(), h.db, []int64{session.UserID}); err == nil && len(users) > 0 {
+			client.Username = users[0].Username
+		}
 
-	// Enqueue presence messages before starting goroutines. The Send channel is
-	// buffered so this is safe. Doing it here — rather than after launching
-	// readPump — eliminates a race where readPump's defer (Remove + offline
-	// broadcast) could fire before the online broadcast is enqueued, leaving
-	// other clients with a stale "online" event for a user who has already gone.
-	//
-	// Every new connection receives a snapshot so it knows who is online, even
-	// when the same user opens a second tab. The presence.update broadcast only
-	// fires on an offline→online state transition (first connection).
-	h.hub.SendSnapshotToClient(client)
-	if firstConnection {
-		h.hub.BroadcastPresenceUpdate(session.UserID, true)
-	}
+		// Enqueue presence messages before starting goroutines. The Send channel is
+		// buffered so this is safe. Doing it here — rather than after launching
+		// readPump — eliminates a race where readPump's defer (Remove + offline
+		// broadcast) could fire before the online broadcast is enqueued, leaving
+		// other clients with a stale "online" event for a user who has already gone.
+		//
+		// Every new connection receives a snapshot so it knows who is online, even
+		// when the same user opens a second tab. The presence.update broadcast only
+		// fires on an offline→online state transition (first connection).
+		h.hub.SendSnapshotToClient(client)
+		if firstConnection {
+			h.hub.BroadcastPresenceUpdate(session.UserID, true)
+		}
 
-	go h.readPump(session.UserID, client)
-	go h.writePump(client)
+		go h.readPump(session.UserID, client)
+		go h.writePump(client)
+	})
 }
 
 func (h *WsHandler) readPump(userID int64, c *ws.Client) {
@@ -152,6 +173,9 @@ func (h *WsHandler) readPump(userID int64, c *ws.Client) {
 	for {
 		_, raw, err := c.Conn.ReadMessage()
 		if err != nil {
+			break
+		}
+		if _, err := db.GetSessionByToken(context.Background(), h.db, c.Token); err != nil {
 			break
 		}
 		c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))

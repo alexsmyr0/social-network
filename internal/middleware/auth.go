@@ -5,6 +5,7 @@ package middleware
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -17,6 +18,7 @@ const UserIDKey contextKey = "userID"
 
 // Auth ensures a valid session and injects userID into context.
 func Auth(database *sql.DB) func(http.Handler) http.Handler {
+	socialSchema, _ := db.IsSocialSchema(context.Background(), database)
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -28,14 +30,20 @@ func Auth(database *sql.DB) func(http.Handler) http.Handler {
 			}
 
 			if token == "" {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				writeAuthError(w, http.StatusUnauthorized, "UNAUTHORIZED", "login required")
 				return
 			}
 
 			session, err := db.GetSessionByToken(r.Context(), database, token)
 			if err != nil {
-				clearSessionCookie(w)
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				if errors.Is(err, db.ErrNotFound) {
+					if !socialSchema {
+						clearSessionCookie(w)
+					}
+					writeAuthError(w, http.StatusUnauthorized, "UNAUTHORIZED", "login required")
+				} else {
+					writeAuthError(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", "session lookup failed")
+				}
 				return
 			}
 
@@ -43,6 +51,15 @@ func Auth(database *sql.DB) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+func writeAuthError(w http.ResponseWriter, status int, code, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"error": map[string]string{"code": code, "message": message},
+	})
 }
 
 // GetUserID extracts authenticated user ID from context.

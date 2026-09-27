@@ -23,7 +23,7 @@ Follow the [ticket-writing rules](ticket-rules.md). The [audit record](ticket-au
 
 ## Summary
 
-17 tickets: 8 in A, 9 in B. Done: 10. In progress: 0. Blocked: 0. Not started: 7. Ready to start: SN-B05, SN-A08 and SN-A06.
+17 tickets: 8 in A, 9 in B. Done: 11. In progress: 0. Blocked: 0. Not started: 6. Ready to start: SN-B09, SN-A08 and SN-A06.
 
 | Status | Ticket | Description | Depends on | Blocks | Evidence / external gate |
 |---|---|---|---|---|---|
@@ -37,7 +37,7 @@ Follow the [ticket-writing rules](ticket-rules.md). The [audit record](ticket-au
 | [x] | [SN-A04](track-a.md#sn-a04--registration-ui) | Registration UI | SN-A03, SN-B02 | SN-A06 | Frontend-only contract fixtures: `bun run test:a04` 34/34; `make test` exit 0 with Vitest 522/522 and Playwright 9/9. Required/optional payloads, JPEG/PNG/GIF preview/removal (invalid replacement discards the earlier file), validation, duplicate email, ambiguous-registration recovery in contract order (`/users/me` → explicit login → explicit retry), duplicate-submit prevention, accessible avatar errors/focus, keyboard and 360px/desktop checks pass. Real backend/media integration remains SN-A07. |
 | [x] | [SN-B04](track-b.md#sn-b04--registration-and-account-api) | Registration and account API | SN-B03 | SN-B05 | [Account API record](backend-accounts.md). On `ticket/sn-b03-b04-account-foundations`, `go test ./internal/tests -run TestSocial -count=1` and `make test` exit 0. Versioned API tests cover required/optional registration, validation/duplicate errors, readback and secret exclusion, no partial account on invalid/avatar input, explicit avatar 503, multipart text and existing-session rejection. B05 owns final session policy. |
 | [x] | [SN-A05](track-a.md#sn-a05--login-session-restoration-and-global-logout-ui) | Login, session restoration and global logout UI | SN-A03, SN-B02 | SN-A06 | Frontend-only contract fixtures on PR #10: `bun run test:a05` 34/34; `make test` exit 0 with Vitest 540/540 and Playwright 13/13. Valid/invalid login, restored sessions, guarded deep links, 401 versus outage handling, duplicate-submit prevention, successful/failed logout, protected-state/resource cleanup, back-navigation revalidation, cross-tab logout and mobile/desktop access pass. Real persistence remains SN-A07. |
-| [ ] | [SN-B05](track-b.md#sn-b05--session-lifecycle-and-auth-enforcement) | Session lifecycle and auth enforcement | SN-B04 | SN-B09 | — |
+| [x] | [SN-B05](track-b.md#sn-b05--session-lifecycle-and-auth-enforcement) | Session lifecycle and auth enforcement | SN-B04 | SN-B09 | [Session lifecycle record](backend-sessions.md). On `ticket/sn-b05-session-lifecycle`, scoped social API and race tests plus `make test` exited 0. Tests cover real login, 13-hour/30-day/401-day validity, renewable cookie flags, independent devices, idempotent logout, restart replay denial, origin/header checks, failure handling and retained-socket revocation. Browser-profile reopen remains SN-A07. |
 | [ ] | [SN-A08](track-a.md#sn-a08--align-active-project-documentation) | Align active project documentation | SN-B02 | SN-A07 | — |
 | [ ] | [SN-B09](track-b.md#sn-b09--avatar-upload-and-account-attachment) | Avatar upload and account attachment | SN-B05 | SN-B06 | — |
 | [ ] | [SN-A06](track-a.md#sn-a06--frontend-image-and-runtime-handoff) | Frontend image and runtime handoff | SN-A04, SN-A05 | SN-B07 | — |
