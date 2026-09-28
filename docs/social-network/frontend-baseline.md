@@ -218,8 +218,8 @@ Disposition is a **recommendation requiring owner approval** (SN-A02) — nothin
 | File | Affected references | Disposition |
 |---|---|---|
 | [docs/ticket-tracker.md](../ticket-tracker.md) | 29 links to `pr-message/<TICKET>-pr.md` — the forum's per-ticket PR write-ups | **keep the file, rewrite the links** (SN-A08). The tracker is the historical delivery record; only its PR column is dead. |
-| [.github/prompts/fix-gitea-issue.prompt.md](../../.github/prompts/fix-gitea-issue.prompt.md), [.agents/workflows/fix-gitea-issue.prompt.md](../../.agents/workflows/fix-gitea-issue.prompt.md) | `../../docs/pr-message` | **archive or rewrite** — a Gitea PR workflow inherited from the forum; verify whether the flow is still used before either. |
-| [.github/prompts/Implement-ticket.prompt.md](../../.github/prompts/Implement-ticket.prompt.md), [.agents/workflows/impl-ticket.md](../../.agents/workflows/impl-ticket.md), [.github/pull_request_template.md](../../.github/pull_request_template.md) | Plain-text `docs/pr-message/` or `pr-template.md` references; `impl-ticket.md` also links to an old absolute `file://` template path | **rewrite or archive** — active-looking PR instructions point to missing or machine-specific locations. |
+| [.github/prompts/fix-gitea-issue.prompt.md](../archive/real-time-forum/prompts/fix-gitea-issue.prompt.md.txt), [.agents/workflows/fix-gitea-issue.prompt.md](../archive/real-time-forum/workflows/fix-gitea-issue.prompt.md.txt) | `../../docs/pr-message` | **archive or rewrite** — a Gitea PR workflow inherited from the forum; verify whether the flow is still used before either. |
+| [.github/prompts/Implement-ticket.prompt.md](../archive/real-time-forum/prompts/Implement-ticket.prompt.md.txt), [.agents/workflows/impl-ticket.md](../archive/real-time-forum/workflows/impl-ticket.md.txt), [.github/pull_request_template.md](../archive/real-time-forum/pull_request_template.md.txt) | Plain-text `docs/pr-message/` or `pr-template.md` references; `impl-ticket.md` also links to an old absolute `file://` template path | **rewrite or archive** — active-looking PR instructions point to missing or machine-specific locations. |
 | [docs/audit.md](../audit.md) | `../../good-practices/README.md` | **keep, rewrite the link** — points outside the repo to the 01-edu shared folder. |
 | [docs/requirements.md](../requirements.md) | `../forum/README.md#Communication` | **keep, rewrite the link** — same class: a sibling-repo path from the original exercise layout. |
 
@@ -233,15 +233,15 @@ All in [docs/social-network/](.) and internally consistent as far as inspected: 
 
 | File | Content | Disposition |
 |---|---|---|
-| [architecture.md](../../architecture.md) | 12.6 KB forum architecture. Actively asserted by a passing test ([docs-consistency.test.js](../../SPA/tests/unit/docs-consistency.test.js#L16-L76) checks it for `web/templates` absence, `exponential backoff`, schema agreement) | **keep until the framework port**, then rewrite. Deleting it breaks 5 currently-passing assertions. |
-| [README.md](../../README.md) | Forum-branded, forum feature list; its doc links resolve at this revision | **rewrite** (SN-A08) — it is the repo's front door and still introduces the project as the forum |
+| [Archived forum architecture](../archive/real-time-forum/architecture.md.txt) | 12.6 KB forum architecture. Actively asserted by a passing test ([docs-consistency.test.js](../../SPA/tests/unit/docs-consistency.test.js#L16-L76) checks it for `web/templates` absence, `exponential backoff`, schema agreement) | **keep until the framework port**, then rewrite. Deleting it breaks 5 currently-passing assertions. |
+| [Archived forum README](../archive/real-time-forum/README.md.txt) | Forum-branded, forum feature list; its doc links resolve at this revision | **rewrite** (SN-A08) — it is the repo's front door and still introduces the project as the forum |
 
 ### 4.4 Agent scratch and prompt files
 
 | Path | Content | Disposition |
 |---|---|---|
 | [archived former `.agents/scratch/`](../archive/real-time-forum/scratch/) | Per-ticket forum plans (`PLAN-A06.md`, `PLAN-C08.md`, `PLAN-D01.md`, `PLAN.md`, `PLAN-audit-fixes-*.md`) citing `docs/SDS.md` line numbers, which resolve at this revision; `PLAN-A06.md`, `PLAN-C08.md` and `PLAN-audit-fixes-*.md` also mention the missing `docs/pr-message/` directory | **archive** — historical planning records, superseded by the SN tickets but still the clearest account of some forum contract decisions (e.g. roster sort order, [PLAN-D01.md:13](../archive/real-time-forum/scratch/PLAN-D01.md.txt)). |
-| [.github/prompts/](../../.github/prompts/) | Orchestration prompts driving forum audit workflows off `docs/audit.md`, `docs/PRD.md`, `docs/SDS.md` — all present at this revision | **rewrite or archive** (SN-A08) — they target the forum's acceptance criteria, not the social-network assignment. |
+| [Archived forum prompts](../archive/real-time-forum/prompts/) | Orchestration prompts driving forum audit workflows off `docs/audit.md`, `docs/PRD.md`, `docs/SDS.md` — all present at this revision | **rewrite or archive** (SN-A08) — they target the forum's acceptance criteria, not the social-network assignment. |
 
 ### 4.5 Legacy code trees referenced by docs
 
