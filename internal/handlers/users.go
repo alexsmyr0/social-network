@@ -34,7 +34,15 @@ func (u *UsersHandler) HandleUser(w http.ResponseWriter, r *http.Request) {
 	}
 	if u.socialSchema {
 		ownerID, authErr := middleware.GetUserID(r.Context())
-		if authErr != nil || ownerID != userID || len(parts) != 1 {
+		if authErr != nil || ownerID != userID {
+			notFound(w, r)
+			return
+		}
+		if len(parts) == 2 && parts[1] == "avatar" {
+			u.avatar(w, r, userID)
+			return
+		}
+		if len(parts) != 1 {
 			notFound(w, r)
 			return
 		}

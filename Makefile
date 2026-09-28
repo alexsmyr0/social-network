@@ -167,11 +167,13 @@ deps-frontend:
 	@bun x playwright install chromium
 
 # -----------------------------------------------------
-# 🐳 Docker (Backend Only – Production)
+# 🐳 Docker (Backend image; two-image orchestration belongs to SN-B07)
 # -----------------------------------------------------
 
-IMAGE      = forum
-CONTAINER  = forum_app
+IMAGE      = social-network-backend
+CONTAINER  = social-network-backend
+FRONTEND_ORIGIN ?= http://localhost:3000
+BACKEND_VOLUME ?= social-network-backend-data
 
 # -----------------------------------------------------
 # Build & Run
@@ -185,7 +187,8 @@ docker-run:
 	@echo "🚀 Running Docker container..."
 	docker container run -d \
 		-p $(PORT):8080 \
-		-v forum-data:/data \
+		-v $(BACKEND_VOLUME):/data \
+		-e FRONTEND_URL=$(FRONTEND_ORIGIN) \
 		--name $(CONTAINER) \
 		$(IMAGE)
 
@@ -226,11 +229,11 @@ docker-inspect:
 # -----------------------------------------------------
 
 docker-clean-images:
-	@echo "🧹 Removing Forum image..."
+	@echo "🧹 Removing backend image..."
 	-@docker rmi -f $(IMAGE) 2>/dev/null || true
 
 docker-clean-all: docker-stop docker-clean-images
-	@echo "✅ Forum Docker cleanup complete"
+	@echo "✅ Backend Docker cleanup complete"
 
 
 # -----------------------------------------------------

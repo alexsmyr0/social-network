@@ -45,7 +45,7 @@ SN-A06 packages the browser bundle and its Go same-origin proxy in a frontend-on
 docker build --file Dockerfile.frontend --tag social-network-frontend .
 ```
 
-The build uses `Dockerfile.frontend.dockerignore`, so the shared `.dockerignore` used by the backend image is unchanged.
+The build uses `Dockerfile.frontend.dockerignore`, separate from the backend image's `.dockerignore`.
 
 The container listens on port `3000`. `GET /healthz` is its frontend-only health endpoint and returns `200`; it deliberately does not require backend availability. Browser REST and WebSocket traffic stays same-origin at `/api/` and `/ws`. The server-side `BACKEND_URL` must be an absolute backend origin reachable from the frontend container, normally the backend service name and internal port on their shared Docker network. It is read when the frontend process starts, is not browser configuration and is not present in the built JavaScript/CSS. The image default is `http://backend:8080`, which only resolves on a shared Docker network (below). To target a backend running on the host instead:
 

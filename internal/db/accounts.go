@@ -35,6 +35,77 @@ type NewAccount struct {
 	AboutMe     *string
 }
 
+// CreateRegisteredAccount commits the account and its first session together.
+// avatarKey names a private file already made durable by the caller.
+func CreateRegisteredAccount(ctx context.Context, database *sql.DB, input NewAccount, avatarKey, ip, userAgent string) (Account, Session, error) {
+	hash, err := hashPassword(input.Password)
+	if err != nil {
+		return Account{}, Session{}, err
+	}
+	tx, err := database.BeginTx(ctx, nil)
+	if err != nil {
+		return Account{}, Session{}, fmt.Errorf("begin registration: %w", err)
+	}
+	defer tx.Rollback()
+	username := "u" + strings.ReplaceAll(uuid.NewString(), "-", "")[:29]
+	var key any
+	if avatarKey != "" {
+		key = avatarKey
+	}
+	result, err := tx.ExecContext(ctx, `INSERT INTO users
+		(username, email, password_hash, first_name, last_name, date_of_birth, nickname, about_me, avatar_key)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, username, input.Email, hash, input.FirstName,
+		input.LastName, input.DateOfBirth, input.Nickname, input.AboutMe, key)
+	if err != nil {
+		var sqliteErr sqlite3.Error
+		if errors.As(err, &sqliteErr) && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
+			// Email is the only client-provided unique value.
+			return Account{}, Session{}, ErrEmailTaken
+		}
+		return Account{}, Session{}, fmt.Errorf("insert account: %w", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return Account{}, Session{}, fmt.Errorf("account id: %w", err)
+	}
+	token := generateSessionToken()
+	sessionResult, err := tx.ExecContext(ctx, `INSERT INTO sessions (user_id, token, ip, user_agent) VALUES (?, ?, ?, ?)`, id, token, ip, userAgent)
+	if err != nil {
+		return Account{}, Session{}, fmt.Errorf("insert registration session: %w", err)
+	}
+	sessionID, err := sessionResult.LastInsertId()
+	if err != nil {
+		return Account{}, Session{}, fmt.Errorf("session id: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return Account{}, Session{}, fmt.Errorf("commit registration: %w", err)
+	}
+	account := Account{ID: id, Email: input.Email, FirstName: input.FirstName,
+		LastName: input.LastName, DateOfBirth: input.DateOfBirth,
+		Nickname: input.Nickname, AboutMe: input.AboutMe,
+		DisplayName: input.FirstName + " " + input.LastName}
+	if input.Nickname != nil {
+		account.DisplayName = *input.Nickname
+	}
+	if avatarKey != "" {
+		url := fmt.Sprintf("/api/v1/users/%d/avatar", id)
+		account.AvatarURL = &url
+	}
+	return account, Session{ID: sessionID, UserID: id, Token: token, IP: ip, UserAgent: userAgent, IsValid: true}, nil
+}
+
+func AvatarKey(ctx context.Context, database *sql.DB, id int64) (string, error) {
+	var key sql.NullString
+	err := database.QueryRowContext(ctx, `SELECT avatar_key FROM users WHERE id = ?`, id).Scan(&key)
+	if err != nil {
+		return "", err
+	}
+	if !key.Valid {
+		return "", sql.ErrNoRows
+	}
+	return key.String, nil
+}
+
 func CreateAccount(ctx context.Context, database *sql.DB, input NewAccount) (Account, error) {
 	hash, err := hashPassword(input.Password)
 	if err != nil {

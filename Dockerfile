@@ -1,47 +1,22 @@
-#  Dockerfile
-
-# =========================
-# Build stage
-# =========================
-FROM golang:1.24 AS builder
-
-WORKDIR /app
-
-ENV CGO_ENABLED=1 \
-    GOOS=linux \
-    GOARCH=amd64
-
-RUN apt-get update && apt-get install -y gcc libc6-dev
-
+FROM golang:1.24-bookworm AS build
+WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
+COPY cmd/backend ./cmd/backend
+COPY internal ./internal
+RUN CGO_ENABLED=1 go build -trimpath -o /server ./cmd/backend
 
-COPY . .
-RUN go build -o server ./cmd/backend
-
-# =========================
-# Runtime stage
-# =========================
-FROM debian:12-slim
-
-# Create non-root user
-RUN useradd -m appuser
-
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -g 10001 app && useradd -u 10001 -g app -M app \
+    && mkdir -p /data /app && chown app:app /data
 WORKDIR /app
-
-# Create writable data dir for SQLite
-RUN mkdir -p /data && chown -R appuser:appuser /data
-
-ENV PORT=8080 \
-    DB_PATH=/data/forum.db \
-    TZ=Europe/Athens
-
-COPY --from=builder /app/server /app/server
-
+COPY --from=build /server /app/server
+ENV DB_PATH=/data/social.db MEDIA_ROOT=/data/media FRONTEND_URL=http://localhost:3000
 EXPOSE 8080
-
-USER appuser
-
-VOLUME ["/data"]
-
+VOLUME /data
+USER app
+HEALTHCHECK --interval=15s --timeout=3s --start-period=30s --retries=3 \
+    CMD curl --fail --silent http://127.0.0.1:8080/api/v1/health >/dev/null || exit 1
 CMD ["/app/server"]
