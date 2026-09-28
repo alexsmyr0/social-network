@@ -1,21 +1,19 @@
 # Social Network — Delivery Roadmap
 
-Planning baseline: 2026-09-21. Two developers, tracks A and B. The [Zone01 assignment](requirements.md) defines completion; the old forum's completed tickets do not count as social-network delivery.
+Planning baseline: 2026-09-21; implementation checkpoint: 2026-09-28. Two developers, tracks A and B. The [Zone01 assignment](requirements.md) defines completion; the old forum's completed tickets do not count as social-network delivery. Use the [active tracker](ticket-tracker.md) for the latest ticket status.
 
-Only **Phase 1 — Foundations and account access** has implementation tickets: 17 across tracks A and B after the [ticket audit](ticket-audit.md). Maintain them using the [ticket rules](ticket-rules.md). Later phases are work packages to refine after the preceding phase is accepted. This is a scope breakdown, not a calendar estimate; effort depends on pending framework, compatibility, and data decisions.
+Only **Phase 1 — Foundations and account access** has implementation tickets: 17 across tracks A and B after the [ticket audit](ticket-audit.md). Maintain them using the [ticket rules](ticket-rules.md). Later phases are work packages to refine after the preceding phase is accepted. This is a scope breakdown, not a calendar estimate; effort depends on unresolved privacy, relationship, group and chat decisions.
 
-## Starting point
+## Current starting point
 
-The [inherited context](inherited-context.md) records the imported baseline and its earlier test run. Planning spot checks confirm:
+The [inherited context](inherited-context.md) preserves the original forum baseline. At the 2026-09-28 checkpoint, the social-network implementation has:
 
-- The frontend remains vanilla JS in `SPA/`; the assignment requires a JS framework.
-- `internal/db/users.go` and `forum_schema.sql` still require a username and model age/gender rather than the new registration fields.
-- `internal/db/db.go` applies an embedded schema and procedural migrations; the assignment calls for organized migration files applied at startup.
-- `internal/db/sessions.go` uses a 12-hour session duration; `users_helpers.go` issues a browser-session cookie. Neither proves the required stay-logged-in-until-logout behavior.
-- The root Dockerfile builds only the backend.
-- Chat, uploads, notifications, and tests are useful starting points, but need new access rules and feature coverage.
+- A [Vue 3, Vite and Vue Router frontend](frontend-setup.md) with registration and session UI verified against the [approved auth contract](auth-contract.md) using fixtures. Real-service browser acceptance remains [SN-A07](track-a.md#sn-a07--phase-1-integrated-acceptance).
+- A [Go/SQLite account schema and startup migrations](backend-migrations.md) using the [approved fresh-database policy](data-decision.md). Existing forum databases are refused rather than silently converted.
+- [Account registration](backend-accounts.md), [persistent sessions](backend-sessions.md) and [private avatars](backend-avatars.md) verified at the backend layer. Their complete frontend-to-backend journey remains SN-A07.
+- Separately built [frontend](frontend-setup.md#frontend-container-handoff) and [backend](backend-image.md) images. Combined startup, transport checks and hosted CI remain [SN-B07](track-b.md#sn-b07--shared-run-and-quality-gate).
 
-These observations guide tickets; they do not replace their verification gates. Existing API routes, schemas, and frontend structure remain inherited implementation details until reviewed.
+The inherited forum feed, profiles, notifications and chat remain migration references. They do not satisfy the later social-network feature gates without new privacy rules, framework integration and verification. The [active tracker](ticket-tracker.md) owns completion status.
 
 ## Full scope by phase
 
@@ -35,7 +33,7 @@ Phases are delivery order, not permission to defer quality: each feature needs t
 | Requirement source | Planned coverage |
 |---|---|
 | [Frontend/framework](requirements.md#frontend) | Framework decision and working auth slice in Phase 1; remaining routes ported in Phases 2–5; responsiveness/performance verified throughout and in Phase 6 |
-| [Backend, SQLite, migrations and media](requirements.md#backend) | Preserve Go/SQLite baseline, select migration tooling, implement startup migrations and avatar media in Phase 1; post/comment JPEG/PNG/GIF flows in Phase 3 and group flows in Phase 4 |
+| [Backend, SQLite, migrations and media](requirements.md#backend) | Go/SQLite, approved migration tooling, startup migrations and avatar media in Phase 1; post/comment JPEG/PNG/GIF flows in Phase 3 and group flows in Phase 4 |
 | [Two Docker images](requirements.md#docker) | Build and integrate both images in Phase 1; evolve them alongside features and retest fresh deployment in Phase 6 |
 | [Authentication](requirements.md#authentication) | All mandatory and optional registration fields, sessions/cookies, persistent login and global logout in Phase 1 |
 | [Followers](requirements.md#followers) | Public immediate follows, private requests with accept/decline, unfollow in Phase 2 |
@@ -51,8 +49,8 @@ Phases are delivery order, not permission to defer quality: each feature needs t
 | Decision | When / owner | Required record |
 |---|---|---|
 | JS framework, frontend migration boundary and runtime/proxy arrangement | Phase 1, SN-A02 | [Approved frontend decision](frontend-decision.md): Vue 3, vertical migration, same-origin proxy and backend-owned media boundary |
-| Auth request/response fields, optional nickname semantics, avatar upload/access behavior, session persistence and concurrent-session behavior | Phase 1, SN-B02, reviewed by A | Owner-approved contract; do not silently inherit 12-hour expiry or single-session behavior |
-| Migration library/layout, user/session model, avatar storage and treatment of old databases | Phase 1, SN-B08 | Owner-approved data policy; no inferred birthdays or automatic destructive resets |
+| Auth request/response fields, optional nickname semantics, avatar upload/access behavior, session persistence and concurrent-session behavior | Phase 1, SN-B02, reviewed by A | [Approved auth contract](auth-contract.md); no inherited 12-hour expiry or single-session behavior |
+| Migration library/layout, user/session model, avatar storage and treatment of old databases | Phase 1, SN-B08 | [Approved data decision](data-decision.md); no inferred birthdays or automatic destructive resets |
 | Profile defaults, public-post/private-profile interaction and follow-state behavior | Before Phase 2/3 implementation | Visibility and state-transition rules before endpoint/schema work |
 | Group membership, event and chat models, including the source's asymmetric DM delivery wording and offline behavior | Before Phase 4/5 implementation | Approved models and authorization rules before expanding APIs |
 | Retain/remove forum extras such as categories, reactions, drafts, presence UI and DM images | During baseline review, revisited before each affected phase | Explicit disposition; no obligation to rebuild every old feature |
@@ -69,4 +67,4 @@ The frontend transition decision must state how old forum routes remain usable o
 
 Exit requires [SN-A07](track-a.md#sn-a07--phase-1-integrated-acceptance) evidence: a fresh checkout can run the two images, create an account with optional fields omitted or supplied, restore a session, reject invalid access, log out everywhere, and retain required data across restart. Then start a separate planning pass to reassess this roadmap and write **Phase 2 tickets only**; producing that backlog is not part of the Phase 1 acceptance gate.
 
-Remote `main` was verified on 2026-09-22 at clean import snapshot `b295348`, matching the committed source tree without the inherited history. Use this baseline for new work; do not merge old branches containing credential history. Hosted CI evidence is still required by SN-B07.
+The 2026-09-22 verification of clean import snapshot `b295348` is historical evidence, not the current implementation checkpoint. Hosted two-image CI evidence remains an [SN-B07](track-b.md#sn-b07--shared-run-and-quality-gate) gate.
