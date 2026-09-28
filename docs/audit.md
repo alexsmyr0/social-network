@@ -1,3 +1,5 @@
+> **Historical real-time-forum document.** For current social-network requirements and tickets, use the [Zone01 assignment](social-network/requirements.md) and [active tracker](social-network/ticket-tracker.md).
+
 #### Functional
 
 ###### Has the requirement for the allowed packages been respected? (Check the [allowed packages](requirements.md))
@@ -78,7 +80,7 @@
 
 ###### +Does the project run quickly and effectively? (Favoring recursion, no unnecessary data requests, etc...)
 
-###### +Does the code obey the [good practices](../../good-practices/README.md)?
+###### +Does the code obey the good practices from the original 01-edu exercise?
 
 ###### +Do the users have profiles?
 

@@ -240,7 +240,7 @@ All in [docs/social-network/](.) and internally consistent as far as inspected: 
 
 | Path | Content | Disposition |
 |---|---|---|
-| [.agents/scratch/](../../.agents/scratch/) | Per-ticket forum plans (`PLAN-A06.md`, `PLAN-C08.md`, `PLAN-D01.md`, `PLAN.md`, `PLAN-audit-fixes-*.md`) citing `docs/SDS.md` line numbers, which resolve at this revision; `PLAN-A06.md`, `PLAN-C08.md` and `PLAN-audit-fixes-*.md` also mention the missing `docs/pr-message/` directory | **archive** — historical planning records, superseded by the SN tickets but still the clearest account of some forum contract decisions (e.g. roster sort order, [PLAN-D01.md:13](../../.agents/scratch/PLAN-D01.md#L13)). |
+| [archived former `.agents/scratch/`](../archive/real-time-forum/scratch/) | Per-ticket forum plans (`PLAN-A06.md`, `PLAN-C08.md`, `PLAN-D01.md`, `PLAN.md`, `PLAN-audit-fixes-*.md`) citing `docs/SDS.md` line numbers, which resolve at this revision; `PLAN-A06.md`, `PLAN-C08.md` and `PLAN-audit-fixes-*.md` also mention the missing `docs/pr-message/` directory | **archive** — historical planning records, superseded by the SN tickets but still the clearest account of some forum contract decisions (e.g. roster sort order, [PLAN-D01.md:13](../archive/real-time-forum/scratch/PLAN-D01.md.txt)). |
 | [.github/prompts/](../../.github/prompts/) | Orchestration prompts driving forum audit workflows off `docs/audit.md`, `docs/PRD.md`, `docs/SDS.md` — all present at this revision | **rewrite or archive** (SN-A08) — they target the forum's acceptance criteria, not the social-network assignment. |
 
 ### 4.5 Legacy code trees referenced by docs

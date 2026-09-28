@@ -10,9 +10,9 @@ The social-network checkout was initially empty. At the owner's request, all 302
 
 | Source | Context recovered |
 |---|---|
-| [AGENTS.md](../../AGENTS.md) | Legacy identity, document hierarchy, coding conventions, architecture and historical constraints |
-| [README.md](../../README.md) | Maintenance status, feature overview, setup and verification entry points |
-| [architecture.md](../../architecture.md) | Layer boundaries, split servers, auth, SPA structure, notification and chat behavior |
+| [Archived forum AGENTS.md](../archive/real-time-forum/AGENTS.md.txt) | Legacy identity, document hierarchy, coding conventions, architecture and historical constraints |
+| [Archived forum README.md](../archive/real-time-forum/README.md.txt) | Legacy maintenance status, feature overview, setup and verification entry points |
+| [Archived forum architecture](../archive/real-time-forum/architecture.md.txt) | Inherited layer boundaries, split servers, auth, SPA structure, notification and chat behavior |
 | [docs/PRD.md](../../docs/PRD.md) | Forum product scope and retained features; some status text is stale |
 | [docs/SDS.md](../../docs/SDS.md) | Existing API contracts, database design, WebSocket events, testing model; some status text is stale |
 | [docs/ticket-tracker.md](../../docs/ticket-tracker.md) | Reports all 37 tickets complete; historical delivery record |

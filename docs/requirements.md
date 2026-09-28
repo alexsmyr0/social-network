@@ -1,3 +1,5 @@
+> **Historical real-time-forum document.** For current social-network requirements and tickets, use the [Zone01 assignment](social-network/requirements.md) and [active tracker](social-network/ticket-tracker.md).
+
 ## real-time-forum
 
 Remember the forum you did a while ago? Well it's time to make one even better also using JS, private messages, real time actions, live sharing video and live screen sharing too. Well, maybe not the last two. To get things straight there is a list below of what you will have to do.
@@ -13,7 +15,7 @@ On this project you will have to focus on a few points:
 
 As you already did the first forum you can use part of the code, but not all of it. Your new forum will have five different parts:
 
-- **SQLite**, in which you will store data, just like in the [previous forum](../forum/README.md#Communication)
+- **SQLite**, in which you will store data, just like in the previous 01-edu forum exercise
 - **Golang**, in which you will handle data and Websockets (Backend)
 - **Javascript**, in which you will handle all the Frontend events and clients Websockets
 - **HTML**, in which you will organize the elements of the page

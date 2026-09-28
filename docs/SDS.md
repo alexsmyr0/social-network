@@ -1,3 +1,5 @@
+> **Historical real-time-forum document.** For current social-network requirements and tickets, use the [Zone01 assignment](social-network/requirements.md) and [active tracker](social-network/ticket-tracker.md).
+
 # Real-Time Forum SDS
 
 ## 1. Overview
