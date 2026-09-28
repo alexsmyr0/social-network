@@ -54,7 +54,7 @@ Before publishing a ticket update, verify: unique IDs; known dependencies; no cy
 ```markdown
 ## SN-Axx — Verb + concrete outcome
 
-Source: [Relevant requirement](requirements.md#section) | Phase: 1 | Type: implementation
+Source: [Relevant requirement](requirements.md#authentication) | Phase: 1 | Type: implementation
 
 Goal: One observable outcome.
 

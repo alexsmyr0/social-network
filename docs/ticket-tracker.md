@@ -1,3 +1,5 @@
+> **Historical real-time-forum delivery record.** For active social-network work, use the [current tracker](social-network/ticket-tracker.md) and [Zone01 requirements](social-network/requirements.md). The forum PR write-ups were not imported; their missing links have been removed.
+
 # Ticket Progress Tracker
 
 This file tracks delivery progress for the real-time forum project.
@@ -61,12 +63,12 @@ The implementation is organized into **6 waves**. Waves 1–3 deliver a function
 
 | # | Status | Ticket | Track | Description | Depends on | Blocks |
 |---|--------|--------|-------|-------------|------------|--------|
-| 1 | [x] | **A01** | A | Infrastructure, CI/CD, and Dev Tools Setup ([PR](pr-message/A01-InfrastructureSetup-pr.md)) | None | A02 |
-| 2 | [x] | **A02** | A | Frontend Architecture & Directory Restructuring ([PR](pr-message/A02-FrontendArchitecture-pr.md)) | A01 | A10, D09 |
-| 3 | [x] | **A10** | A | Single SPA Shell Entry ([PR](pr-message/A10-Single-SPA-Shell-Entry-pr.md)) | A02 | D09, A03 |
-| 4 | [x] | **C10** | C | User Profile Schema Extension ([PR](pr-message/C10-UserProfileSchemaExtension-pr.md)) | None | C11, C02, C07 |
-| 5 | [x] | **C01** | C | Authenticated WebSocket Endpoint and Connection Manager ([PR](pr-message/C01-WebSocket-Endpoint-pr.md)) | None | C04, C05, C06, D04, C08 |
-| 6 | [x] | **A03** | A | SPA Boot and Client Routing ([PR](pr-message/A03-SPA-Boot-and-Client-Routing-pr.md)) | A10 | A04, D10, A05, B01, B05 |
+| 1 | [x] | **A01** | A | Infrastructure, CI/CD, and Dev Tools Setup | None | A02 |
+| 2 | [x] | **A02** | A | Frontend Architecture & Directory Restructuring | A01 | A10, D09 |
+| 3 | [x] | **A10** | A | Single SPA Shell Entry | A02 | D09, A03 |
+| 4 | [x] | **C10** | C | User Profile Schema Extension | None | C11, C02, C07 |
+| 5 | [x] | **C01** | C | Authenticated WebSocket Endpoint and Connection Manager | None | C04, C05, C06, D04, C08 |
+| 6 | [x] | **A03** | A | SPA Boot and Client Routing | A10 | A04, D10, A05, B01, B05 |
 
 ### Wave 2 — Auth + Shell + Core Forum (P1)
 
@@ -74,14 +76,14 @@ The implementation is organized into **6 waves**. Waves 1–3 deliver a function
 
 | # | Status | Ticket | Track | Description | Depends on | Blocks |
 |---|--------|--------|-------|-------------|------------|--------|
-| 7 | [x] | **C11** | C | Registration API Contract ([PR](pr-message/C11-RegistrationAPIContract-pr.md)) | C10 | C08 |
-| 8 | [x] | **A04** | A | Persistent App Shell Layout ([PR](pr-message/A04-Persistent-App-Shell-Layout-pr.md)) | A03 | A06, B01, B04, B05, D01, B06 |
-| 9 | [x] | **A05** | A | Authenticated-Only Forum Access ([PR](pr-message/A05-Authenticated-Only-Forum-Access-pr.md)) | A03 | A06, B01, B04, B05, D04, C08 |
-| 10 | [x] | **D10** | D | SPA Login and Registration Views ([PR](pr-message/D10-SPA-Login-and-Registration-Views-pr.md)) | A03 | D05 |
-| 11 | [x] | **A06** | A | Global Logout Across the Forum ([PR](pr-message/A06-Global-Logout-Across-the-Forum-pr.md)) | A04, A05 | D05 |
+| 7 | [x] | **C11** | C | Registration API Contract | C10 | C08 |
+| 8 | [x] | **A04** | A | Persistent App Shell Layout | A03 | A06, B01, B04, B05, D01, B06 |
+| 9 | [x] | **A05** | A | Authenticated-Only Forum Access | A03 | A06, B01, B04, B05, D04, C08 |
+| 10 | [x] | **D10** | D | SPA Login and Registration Views | A03 | D05 |
+| 11 | [x] | **A06** | A | Global Logout Across the Forum | A04, A05 | D05 |
 | 12 | [x] | **B01** | B | Feed Route in the SPA | A03, A04, A05 | B02, B03, B06, B07 |
-| 13 | [x] | **B02** | B | Remove Feed Comment Rendering ([PR](pr-message/B02-Remove-Feed-Comment-Rendering-pr.md)) | B01 | D05 |
-| 14 | [x] | **B03** | B | Post Detail Route and Comment Flow ([PR](pr-message/B03-Post-Detail-Route-and-Comment-Flow-pr.md)) | B01 | D05, B06, B07 |
+| 13 | [x] | **B02** | B | Remove Feed Comment Rendering | B01 | D05 |
+| 14 | [x] | **B03** | B | Post Detail Route and Comment Flow | B01 | D05, B06, B07 |
 | 15 | [x] | **B04** | B | Create and Edit Post SPA Flows | A04, A05 | D05, B08 |
 | 16 | [x] | **C02** | C | Private Messages Schema and Repository Layer | C10 | C03, C05, C06, C07 |
 
@@ -94,12 +96,12 @@ The implementation is organized into **6 waves**. Waves 1–3 deliver a function
 | 17 | [x] | **D09** | D | Frontend WebSocket Proxy | A02 | D04 |
 | 18 | [x] | **C03** | C | Chat History API | C02 | D02, C08 |
 | 19 | [x] | **C04** | C | Presence Broadcasting | C01 | C06, D04, C08 |
-| 20 | [x] | **C05** | C | Chat Roster API ([PR](pr-message/C05-Chat-Roster-API-pr.md)) | C02, C01 | D01, C08 |
-| 21 | [x] | **C06** | C | Realtime DM Send and Delivery ([PR](pr-message/C06-Realtime-DM-Send-and-Delivery-pr.md)) | C02, C01, C04 | D04, C08 |
-| 22 | [x] | **D01** | D | Persistent Chat Roster UI ([PR](pr-message/D01-Persistent-Chat-Roster-UI-pr.md)) | A04, C05 | D02, D04, D06 |
+| 20 | [x] | **C05** | C | Chat Roster API | C02, C01 | D01, C08 |
+| 21 | [x] | **C06** | C | Realtime DM Send and Delivery | C02, C01, C04 | D04, C08 |
+| 22 | [x] | **D01** | D | Persistent Chat Roster UI | A04, C05 | D02, D04, D06 |
 | 23 | [x] | **D02** | D | Active Conversation Panel and Composer | C03, D01 | D03, D04, D06 |
-| 24 | [x] | **D03** | D | Incremental History Loading ([PR](pr-message/D03-Incremental-History-Loading-pr.md)) | D02 | D06 |
-| 25 | [x] | **D04** | D | Browser WebSocket Chat Integration ([PR](pr-message/D04-Browser-WebSocket-Chat-Integration-pr.md)) | D09, A05, C01, C04, C06, D01, D02 | D06, D07 |
+| 24 | [x] | **D03** | D | Incremental History Loading | D02 | D06 |
+| 25 | [x] | **D04** | D | Browser WebSocket Chat Integration | D09, A05, C01, C04, C06, D01, D02 | D06, D07 |
 
 ### Wave 4 — Retained Legacy Features (P2)
 
@@ -107,10 +109,10 @@ The implementation is organized into **6 waves**. Waves 1–3 deliver a function
 
 | # | Status | Ticket | Track | Description | Depends on | Blocks |
 |---|--------|--------|-------|-------------|------------|--------|
-| 26 | [x] | **B05** | B | Activity View in the SPA ([PR](pr-message/B05-Activity-View-in-the-SPA-pr.md)) | A03, A04, A05 | D05, D07 |
-| 27 | [x] | **B06** | B | Notification Behavior in the SPA ([PR](pr-message/B06-Notification-Behavior-in-the-SPA-pr.md)) | A04, B01, B03 | D05, D07 |
-| 28 | [x] | **B07** | B | Reaction Behavior in the SPA ([PR](pr-message/B07-Reaction-Behavior-in-the-SPA-pr.md)) | B01, B03 | D05, D07 |
-| 29 | [x] | **B08** | B | Draft Workflows in the SPA ([PR](pr-message/B08-Draft-Workflows-in-the-SPA-pr.md)) | B04 | D05, D07 |
+| 26 | [x] | **B05** | B | Activity View in the SPA | A03, A04, A05 | D05, D07 |
+| 27 | [x] | **B06** | B | Notification Behavior in the SPA | A04, B01, B03 | D05, D07 |
+| 28 | [x] | **B07** | B | Reaction Behavior in the SPA | B01, B03 | D05, D07 |
+| 29 | [x] | **B08** | B | Draft Workflows in the SPA | B04 | D05, D07 |
 
 ### Wave 5 — Bonus Features (P5)
 
@@ -118,8 +120,8 @@ The implementation is organized into **6 waves**. Waves 1–3 deliver a function
 
 | # | Status | Ticket | Track | Description | Depends on | Blocks |
 |---|--------|--------|-------|-------------|------------|--------|
-| 30 | [x] | **A07** | A | User Profile Page (Bonus) (Note: Roster link blocked by D01) ([PR](pr-message/A07-User-Profile-Page-pr.md)) | C10, A04, A05 | D07 |
-| 31 | [x] | **C09** | C | DM Image Upload Backend (Bonus) ([PR](pr-message/C09-DM-Image-Upload-Backend-pr.md)) | C02, C06 | D08, D07 |
+| 30 | [x] | **A07** | A | User Profile Page (Bonus) (Note: Roster link blocked by D01) | C10, A04, A05 | D07 |
+| 31 | [x] | **C09** | C | DM Image Upload Backend (Bonus) | C02, C06 | D08, D07 |
 | 32 | [x] | **D08** | D | DM Image Rendering Frontend (Bonus) | C09, D02, D04 | D07 |
 
 ### Wave 6 — Finalization & Acceptance (P3–P4)
@@ -128,11 +130,11 @@ The implementation is organized into **6 waves**. Waves 1–3 deliver a function
 
 | # | Status | Ticket | Track | Description | Depends on | Blocks |
 |---|--------|--------|-------|-------------|------------|--------|
-| 33 | [x] | **C07** | C | Database Migration Strategy ([PR](pr-message/C07-Database-Migration-Strategy-pr.md)) | C10, C02 | D07 |
-| 34 | [x] | **C08** | C | Backend Test Coverage for Auth, Messaging, and Presence ([PR](pr-message/C08-Backend-Test-Coverage-pr.md)) | C11, A05, C01, C03, C04, C05, C06 | D07 |
-| 35 | [x] | **D05** | D | SPA and Forum Frontend Regression Coverage ([PR](pr-message/D05-SPA-Forum-Regression-Coverage-pr.md)) | D10, A06, B02, B03, B04, B05, B06, B07, B08 | D07 |
-| 36 | [x] | **D06** | D | Chat Frontend Regression Coverage ([PR](pr-message/D06-Chat-Frontend-Regression-Coverage-pr.md)) | D01, D02, D03, D04 | D07 |
-| 37 | [x] | **D07** | D | Final Acceptance Validation ([PR](pr-message/D07-Final-Acceptance-Validation-pr.md)) | B05, B06, B07, B08, C07, C08, D04, D05, D06, A07, C09, D08 | None |
+| 33 | [x] | **C07** | C | Database Migration Strategy | C10, C02 | D07 |
+| 34 | [x] | **C08** | C | Backend Test Coverage for Auth, Messaging, and Presence | C11, A05, C01, C03, C04, C05, C06 | D07 |
+| 35 | [x] | **D05** | D | SPA and Forum Frontend Regression Coverage | D10, A06, B02, B03, B04, B05, B06, B07, B08 | D07 |
+| 36 | [x] | **D06** | D | Chat Frontend Regression Coverage | D01, D02, D03, D04 | D07 |
+| 37 | [x] | **D07** | D | Final Acceptance Validation | B05, B06, B07, B08, C07, C08, D04, D05, D06, A07, C09, D08 | None |
 
 ---
 
