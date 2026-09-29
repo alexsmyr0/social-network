@@ -20,6 +20,7 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 | Reviewing real account registration | [Backend accounts](backend-accounts.md) | SN-B04 registration validation, account reads and provisional avatar/session behavior |
 | Reviewing real sessions and origin enforcement | [Backend sessions](backend-sessions.md) | SN-B05 cookie, login/logout, CSRF and WebSocket revocation behavior |
 | Reviewing avatar storage and access | [Backend avatars](backend-avatars.md) | SN-B09 upload validation, private storage, owner retrieval and cleanup |
+| Running both images or shared checks | [Shared runtime](shared-runtime.md) | SN-B07 startup/stop, isolated local and hosted gates, SN-A07 browser hook |
 | Running the backend image | [Backend image](backend-image.md) | SN-B06 build, volume, health and smoke commands |
 | Reviewing active architecture | [Architecture](../../architecture.md) | Current Vue/Go boundary and delivered Phase 1 scope |
 | Reviewing documentation alignment | [Documentation alignment](documentation-alignment.md) | SN-A08 dispositions, historical destinations and link checks |
