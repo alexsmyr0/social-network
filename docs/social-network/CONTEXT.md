@@ -27,7 +27,7 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 | Selecting or updating implementation work | [Ticket tracker](ticket-tracker.md) | Phase 1 status and dependencies for two developers; links to tracks A and B |
 | Creating or reviewing tickets | [Ticket rules](ticket-rules.md) | Compact format, scope, dependencies and verification; [latest audit](ticket-audit.md) |
 
-## Current checkpoint — 2026-09-28
+## Current checkpoint — 2026-09-29
 
 - Documentation setup and code import are complete. SN-A03 provides the Vue framework shell and backend-health transport; SN-A04 adds contract-driven registration and SN-A05 adds login, session restoration, route gating and global logout against test-only fixtures. Real account/session/media integration remains SN-A07.
 - Imported all 302 tracked files from the clean sibling real-time-forum checkout at commit `c7be375`, preserving the social-network docs and this repository's Git identity.
@@ -36,7 +36,7 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 - Phase 1 has 17 tickets (8 A, 9 B). SN-A03 provides the approved [Vue 3 shell](frontend-setup.md); SN-A04 registration and SN-A05 session UI passed their frontend-only fixture gates. SN-B02's [auth contract](auth-contract.md) is owner-approved. The owner approved SN-B08's [storage decision](data-decision.md) on 2026-09-26. SN-B03 [startup migrations](backend-migrations.md), SN-B04 [account registration](backend-accounts.md), SN-B05 [session lifecycle](backend-sessions.md), SN-B09 [avatars](backend-avatars.md) and SN-B06 [backend image](backend-image.md) passed local gates on 2026-09-27.
 - SN-A06 provides the separately buildable `social-network-frontend` image and its documented SN-B07 runtime handoff. A no-cache image build, route/asset/outage/configuration smoke checks and the full repository gate passed on `chbaikas/A06` on 2026-09-27.
 - SN-A08 aligns the active README, AGENTS, architecture and workflow guidance with the approved social-network decisions; imported forum material remains accessible as historical evidence.
-- Remote `main` includes merged SN-A06 in PR #12. SN-B09 and SN-B06 are verified on their joint branch. Hosted two-image CI evidence remains a future SN-B07 gate.
+- Remote `main` includes SN-A06 (PR #12), SN-B09/SN-B06 (PR #13) and SN-A08 (PR #14). SN-B07 now provides [combined runtime and isolated quality gates](shared-runtime.md) on `asmyrogl/B07`: native checks and hosted two-image CI passed. Local container verification remains outstanding because Docker was stopped; the tracker records that blocker.
 
 ## Maintenance rules
 

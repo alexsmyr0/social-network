@@ -62,6 +62,11 @@ Compose startup follows [Docker's health-dependent ordering](https://docs.docker
 
 ## Verification record
 
-Implementation starts from clean main `5b3b0f3` on `asmyrogl/B07`. On 2026-09-29, `make deps`, `docker compose config --quiet`, shell syntax checks, changed-document link/anchor checks and `git diff --check` passed. `make check` passed its complete native `make test` stage: build/format/lint/vet, Go suites and scoped race checks, Vitest 540/540 and Playwright 15/15. It then failed at `docker compose build` because the local Docker daemon was stopped. It was not started automatically. Local image/container verification remains outstanding; hosted results will be recorded after publishing.
+Implementation starts from clean main `5b3b0f3` on `asmyrogl/B07`. On 2026-09-29, `make deps`, `docker compose config --quiet`, shell syntax checks, changed-document link/anchor checks and `git diff --check` passed. `make check` passed its complete native `make test` stage: build/format/lint/vet, Go suites and scoped race checks, Vitest 540/540 and Playwright 15/15. It then failed at `docker compose build` because the local Docker daemon was stopped. It was not started automatically. Local image/container verification remains outstanding. A separate occupied-port probe confirmed that the browser harness fails without killing or reusing an unrelated listener.
 
 The first transport run exposed two test assumptions (missing WebSocket Origin and a nonempty logout body); aligning requests with the approved contract made both pass, without changing API behavior.
+
+
+Hosted [CI run 36574650827](https://github.com/alexsmyr0/social-network/actions/runs/36574650827) passed `make check` on implementation commit `c771a6f` from clean main history. It passed the same native gates (Vitest 540/540; Playwright 15/15), built both images from a fresh checkout, passed `scripts/smoke-backend-image.sh social-network-backend`, and passed both two-image Playwright transport tests plus the stopped-backend `502` check. The isolated stack's containers, network and volume were removed successfully. No image registry publishing, merge, protection changes or history rewrite occurred.
+
+To finish the outstanding local gate, the owner must start Docker, then run `make test-images`. The tracker remains blocked until that local result is available; SN-A07 acceptance remains separate.
