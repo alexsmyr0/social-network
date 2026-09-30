@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { chromium, expect, test } from '@playwright/test';
@@ -64,7 +64,7 @@ test('required-only registration, invalid and valid login, protected entry and l
 	await expect(page.locator('[data-screen="home"]')).toHaveCount(0);
 
 	const user = account('required');
-	await createAccount(page, user);
+	await createAccount(page, { ...user, email: user.email.toUpperCase() });
 	const profile = await currentAccount(page);
 	expect(profile).toMatchObject({
 		email: user.email,
@@ -74,10 +74,13 @@ test('required-only registration, invalid and valid login, protected entry and l
 		avatar_url: null,
 	});
 	const cookie = (await context.cookies()).find(({ name }) => name === 'session_token');
-	expect(cookie?.httpOnly).toBe(true);
-	expect(cookie?.expires).toBeGreaterThan(Date.now() / 1000 + 12 * 60 * 60);
+	expect(cookie).toMatchObject({ httpOnly: true, sameSite: 'Lax', secure: false, path: '/' });
+	expect(cookie?.expires).toBeGreaterThan(Date.now() / 1000 + 399 * 24 * 60 * 60);
+	await page.goto('/?from=protected');
+	await expect(page.locator('[data-screen="home"]')).toBeVisible();
 	await signOut(page);
 	await page.goBack();
+	await expect(page).toHaveURL(/\/login\?redirect=/);
 	await expect(page.locator('[data-screen="home"]')).toHaveCount(0);
 	await page.goto('/');
 	await expect(page).toHaveURL(/\/login\?redirect=/);
@@ -127,7 +130,7 @@ for (const [extension, contentType] of [
 		const avatar = await context.request.get(profile.avatar_url);
 		expect(avatar.status()).toBe(200);
 		expect(avatar.headers()['content-type']).toContain(contentType);
-		expect((await avatar.body()).length).toBeGreaterThan(0);
+		expect(await avatar.body()).toEqual(readFileSync(join(fixtures, `avatar.${extension}`)));
 		await signOut(page);
 		expect((await request.get(profile.avatar_url)).status()).toBe(401);
 		if (extension === 'png') {
@@ -168,6 +171,9 @@ test('persistent browser profile, backend recreation, avatar and repeated startu
 	baseURL,
 }) => {
 	test.setTimeout(120000);
+	if (!/^sn-b07-test-\d+$/u.test(process.env.COMPOSE_PROJECT_NAME || '')) {
+		throw new Error('A07 container recreation requires the isolated make test-browser stack');
+	}
 	const profileDir = mkdtempSync(join(tmpdir(), 'sn-a07-browser-'));
 	const user = account('reopen');
 	let browserContext;
@@ -185,46 +191,33 @@ test('persistent browser profile, backend recreation, avatar and repeated startu
 		await expect(page.locator('[data-screen="home"]')).toContainText('Ada Lovelace');
 		expect((await currentAccount(page)).id).toBe(saved.id);
 
-		execFileSync(
-			'docker',
-			[
-				'compose',
-				'--env-file',
-				'/dev/null',
-				'-f',
-				'compose.yaml',
-				'up',
-				'-d',
-				'--no-deps',
-				'--force-recreate',
-				'--wait',
-				'backend',
-			],
-			{ stdio: 'pipe', timeout: 120000 },
-		);
-		execFileSync(
-			'docker',
-			[
-				'compose',
-				'--env-file',
-				'/dev/null',
-				'-f',
-				'compose.yaml',
-				'up',
-				'-d',
-				'--no-deps',
-				'--wait',
-				'backend',
-			],
-			{ stdio: 'pipe', timeout: 120000 },
-		);
-		await page.reload();
-		await expect(page.locator('[data-screen="home"]')).toContainText('Ada Lovelace');
-		const restored = await currentAccount(page);
-		expect(restored.id).toBe(saved.id);
-		const avatar = await browserContext.request.get(restored.avatar_url);
-		expect(avatar.status()).toBe(200);
-		expect(avatar.headers()['content-type']).toContain('image/png');
+		for (let restart = 0; restart < 2; restart += 1) {
+			execFileSync(
+				'docker',
+				[
+					'compose',
+					'--env-file',
+					'/dev/null',
+					'-f',
+					'compose.yaml',
+					'up',
+					'-d',
+					'--no-deps',
+					'--force-recreate',
+					'--wait',
+					'backend',
+				],
+				{ stdio: 'pipe', timeout: 120000 },
+			);
+			await page.reload();
+			await expect(page.locator('[data-screen="home"]')).toContainText('Ada Lovelace');
+			const restored = await currentAccount(page);
+			expect(restored.id).toBe(saved.id);
+			const avatar = await browserContext.request.get(restored.avatar_url);
+			expect(avatar.status()).toBe(200);
+			expect(avatar.headers()['content-type']).toContain('image/png');
+			expect(await avatar.body()).toEqual(readFileSync(join(fixtures, 'avatar.png')));
+		}
 		await signOut(page);
 	} finally {
 		await browserContext?.close();
