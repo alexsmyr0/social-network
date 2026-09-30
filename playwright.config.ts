@@ -1,38 +1,38 @@
+import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
+
+const frontendPort = process.env.TEST_FRONTEND_PORT || '3301';
+const backendPort = process.env.TEST_BACKEND_PORT || '18081';
+const baseURL = `http://localhost:${frontendPort}`;
+const backendURL = `http://localhost:${backendPort}`;
+
+if (!process.env.TEST_RUNTIME_DIR) {
+	throw new Error('Run make test-e2e (or bun run test:e2e) to isolate test data.');
+}
 
 export default defineConfig({
 	testDir: './SPA/tests/e2e',
-	testMatch: ['a03-shell.test.js', 'a05-session.test.js'],
+	testMatch: ['a03-shell.test.js', 'a05-session.test.js', 'b07-transport.test.js'],
 	fullyParallel: true,
 	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 2 : 0,
 	workers: process.env.CI ? 1 : undefined,
-	reporter: 'html',
-	use: {
-		baseURL: 'http://localhost:3000',
-		trace: 'on-first-retry',
-	},
-	projects: [
-		{
-			name: 'chromium',
-			use: { ...devices['Desktop Chrome'] },
-		},
-	],
+	reporter: [['list'], ['html', { open: 'never' }]],
+	use: { baseURL, trace: 'retain-on-failure' },
+	projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 	webServer: [
 		{
-			command: 'make run-backend',
-			url: 'http://localhost:8080/api/v1/users/me',
-			// Never attach to a pre-existing process: a leaked/stale server would
-			// otherwise be reused and the suite would run against the wrong app.
-			// `make test-e2e` frees these ports first, so a fresh server always starts.
+			command: path.resolve('forum-backend'),
+			// Avoid loading the developer's .env into the disposable backend.
+			cwd: process.env.TEST_RUNTIME_DIR,
+			env: { LISTEN_ADDR: `127.0.0.1:${backendPort}`, FRONTEND_URL: baseURL },
+			url: `${backendURL}/api/v1/health`,
 			reuseExistingServer: false,
 		},
 		{
-			command: 'bun run serve',
-			url: 'http://localhost:3000',
-			// Never attach to a pre-existing process: a leaked/stale server would
-			// otherwise be reused and the suite would run against the wrong app.
-			// `make test-e2e` frees these ports first, so a fresh server always starts.
+			command: './forum-frontend',
+			env: { LISTEN_ADDR: `127.0.0.1:${frontendPort}`, BACKEND_URL: backendURL },
+			url: `${baseURL}/healthz`,
 			reuseExistingServer: false,
 		},
 	],

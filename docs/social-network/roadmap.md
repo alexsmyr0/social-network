@@ -1,17 +1,17 @@
 # Social Network — Delivery Roadmap
 
-Planning baseline: 2026-09-21; implementation checkpoint: 2026-09-28. Two developers, tracks A and B. The [Zone01 assignment](requirements.md) defines completion; the old forum's completed tickets do not count as social-network delivery. Use the [active tracker](ticket-tracker.md) for the latest ticket status.
+Planning baseline: 2026-09-21; implementation checkpoint: 2026-09-30. Two developers, tracks A and B. The [Zone01 assignment](requirements.md) defines completion; the old forum's completed tickets do not count as social-network delivery. Use the [active tracker](ticket-tracker.md) for the latest ticket status.
 
 Only **Phase 1 — Foundations and account access** has implementation tickets: 17 across tracks A and B after the [ticket audit](ticket-audit.md). Maintain them using the [ticket rules](ticket-rules.md). Later phases are work packages to refine after the preceding phase is accepted. This is a scope breakdown, not a calendar estimate; effort depends on unresolved privacy, relationship, group and chat decisions.
 
 ## Current starting point
 
-The [inherited context](inherited-context.md) preserves the original forum baseline. At the 2026-09-28 checkpoint, the social-network implementation has:
+The [inherited context](inherited-context.md) preserves the original forum baseline. At the 2026-09-30 checkpoint, the social-network implementation has:
 
 - A [Vue 3, Vite and Vue Router frontend](frontend-setup.md) with registration and session UI verified against the [approved auth contract](auth-contract.md) using fixtures. Real-service browser acceptance remains [SN-A07](track-a.md#sn-a07--phase-1-integrated-acceptance).
 - A [Go/SQLite account schema and startup migrations](backend-migrations.md) using the [approved fresh-database policy](data-decision.md). Existing forum databases are refused rather than silently converted.
 - [Account registration](backend-accounts.md), [persistent sessions](backend-sessions.md) and [private avatars](backend-avatars.md) verified at the backend layer. Their complete frontend-to-backend journey remains SN-A07.
-- Separately built [frontend](frontend-setup.md#frontend-container-handoff) and [backend](backend-image.md) images. Combined startup, transport checks and hosted CI remain [SN-B07](track-b.md#sn-b07--shared-run-and-quality-gate).
+- Separately built [frontend](frontend-setup.md#frontend-container-handoff) and [backend](backend-image.md) images. [SN-B07 shared startup, transport checks and hosted CI](shared-runtime.md) have passed hosted and local verification; revision-specific evidence is in the [verification record](shared-runtime.md#verification-record). SN-A07 integrated acceptance is next.
 
 The inherited forum feed, profiles, notifications and chat remain migration references. They do not satisfy the later social-network feature gates without new privacy rules, framework integration and verification. The [active tracker](ticket-tracker.md) owns completion status.
 
@@ -67,4 +67,4 @@ The frontend transition decision must state how old forum routes remain usable o
 
 Exit requires [SN-A07](track-a.md#sn-a07--phase-1-integrated-acceptance) evidence: a fresh checkout can run the two images, create an account with optional fields omitted or supplied, restore a session, reject invalid access, log out everywhere, and retain required data across restart. Then start a separate planning pass to reassess this roadmap and write **Phase 2 tickets only**; producing that backlog is not part of the Phase 1 acceptance gate.
 
-The 2026-09-22 verification of clean import snapshot `b295348` is historical evidence, not the current implementation checkpoint. Hosted two-image CI evidence remains an [SN-B07](track-b.md#sn-b07--shared-run-and-quality-gate) gate.
+The 2026-09-22 verification of clean import snapshot `b295348` is historical evidence, not the current implementation checkpoint. SN-B07 now has successful hosted two-image CI and local image/transport evidence in its [verification record](shared-runtime.md#verification-record); resubmission HEAD checks are reported separately in its PR.

@@ -14,8 +14,6 @@ import (
 	"forum/internal/ws"
 )
 
-const addr = ":8080"
-
 func Start() {
 	/* ----------------------------
 	   Load environment variables
@@ -70,7 +68,11 @@ func Start() {
 	-----------------------------*/
 	handler := router.NewRouter(database, hub)
 
-	log.Println("Server running on http://localhost" + addr)
+	addr := os.Getenv("LISTEN_ADDR")
+	if addr == "" {
+		addr = ":8080"
+	}
+	log.Println("Backend listening on " + addr)
 
 	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatal("SERVER ERROR:", err)
