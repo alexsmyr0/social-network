@@ -23,7 +23,7 @@ Follow the [ticket-writing rules](ticket-rules.md). The [audit record](ticket-au
 
 ## Summary
 
-17 tickets: 8 in A, 9 in B. Done: 15. In progress: 0. Blocked: 0. Not started: 2. Ready to start: SN-B07.
+17 tickets: 8 in A, 9 in B. Done: 15. In progress: 0. Blocked: 1. Not started: 1. SN-B07 awaits local Docker verification.
 
 | Status | Ticket | Description | Depends on | Blocks | Evidence / external gate |
 |---|---|---|---|---|---|
@@ -42,7 +42,7 @@ Follow the [ticket-writing rules](ticket-rules.md). The [audit record](ticket-au
 | [x] | [SN-B09](track-b.md#sn-b09--avatar-upload-and-account-attachment) | Avatar upload and account attachment | SN-B05 | SN-B06 | [Avatar implementation and tests](backend-avatars.md). On `ticket/sn-b09-b06-avatar-backend-image`, social avatar API tests and `make test` exit 0; JPEG/PNG/GIF, limits, owner-only retrieval, atomic account/session, duplicate submission, failed-write cleanup and startup orphan recovery covered. |
 | [x] | [SN-A06](track-a.md#sn-a06--frontend-image-and-runtime-handoff) | Frontend image and runtime handoff | SN-A04, SN-A05 | SN-B07 | [Frontend image handoff](frontend-setup.md#frontend-container-handoff). No-cache image build; health/auth/deep-link/JS/CSS smoke; runtime target and JSON `502` outage checks; non-root/distinct-image inspection; `make test` exit 0 with Vitest 540/540 and Playwright 13/13. |
 | [x] | [SN-B06](track-b.md#sn-b06--backend-image-and-persistent-storage) | Backend image and persistent storage | SN-B09 | SN-B07 | [Backend image and run instructions](backend-image.md). `docker build -q -t social-network-backend .` and `scripts/smoke-backend-image.sh social-network-backend` exit 0: clean migration, account/avatar/login/logout, retained session and media after container recreation, invalid DB/media readiness refusal. `make test` exit 0. |
-| [ ] | [SN-B07](track-b.md#sn-b07--shared-run-and-quality-gate) | Shared run and quality gate | SN-A06, SN-B06 | SN-A07 | Hosted CI access and successful run required |
+| [!] | [SN-B07](track-b.md#sn-b07--shared-run-and-quality-gate) | Shared run and quality gate | SN-A06, SN-B06 | SN-A07 | [Shared runtime and gate](shared-runtime.md) on `asmyrogl/B07`, implementation `c771a6f`. Native gate passed (Vitest 540/540, Playwright 15/15); [hosted `make check`](https://github.com/alexsmyr0/social-network/actions/runs/36574650827) passed both image builds, backend persistence smoke and two-image transport/outage checks. **Local image gate blocked:** Docker daemon stopped; owner must start it, then run `make test-images`. |
 | [ ] | [SN-A07](track-a.md#sn-a07--phase-1-integrated-acceptance) | Phase 1 integrated acceptance | SN-B07, SN-A08 | None | — |
 
 ## Suggested two-developer sequence

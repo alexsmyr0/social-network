@@ -5,6 +5,7 @@ import (
 	"forum/cmd/frontend/config"
 	"log"
 	"net/http"
+	"os"
 )
 
 func main() {
@@ -15,6 +16,10 @@ func main() {
 
 	mux := NewMux()
 
-	log.Println("Frontend running at http://localhost:3000")
-	log.Fatal(http.ListenAndServe(":3000", mux))
+	addr := os.Getenv("LISTEN_ADDR")
+	if addr == "" {
+		addr = ":3000"
+	}
+	log.Println("Frontend listening on " + addr)
+	log.Fatal(http.ListenAndServe(addr, mux))
 }
