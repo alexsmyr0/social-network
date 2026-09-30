@@ -35,7 +35,7 @@ On 2026-10-01, review commit `541d1ad` strengthened the browser assertions: uppe
 
 ## Hosted verification record
 
-[CI run 36780790373](https://github.com/alexsmyr0/social-network/actions/runs/36780790373), triggered manually on branch commit `7857295`, passed `make check` on a clean hosted runner. It passed Vitest 540/540, native Playwright 15/15, both image builds, backend image smoke, image Playwright 9/9 (A07 7/7 and B07 2/2), and the stopped-backend outage smoke. The workflow finished successfully; the browser-failure artifact step was skipped because there was no failure. This is evidence for `7857295`; the later evidence-only commit does not change application code or tests.
+[CI run 36782718815](https://github.com/alexsmyr0/social-network/actions/runs/36782718815), triggered manually on reviewed branch commit `f230451`, passed `make check` on a clean hosted runner. It passed Vitest 540/540, native Playwright 15/15, both image builds, backend image smoke, image Playwright 9/9 (A07 7/7 and B07 2/2), and the stopped-backend outage smoke. The workflow finished successfully; the browser-failure artifact step was skipped because there was no failure. The subsequent evidence-only commit changes no application code or tests.
 
 ## Manual review steps
 
