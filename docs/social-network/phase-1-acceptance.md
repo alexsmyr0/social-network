@@ -1,6 +1,6 @@
 # Phase 1 integrated acceptance — SN-A07
 
-Status: implementation and local verification complete on `chbaikas/A07`; hosted verification and Dev 2 evidence review remain open. Ticket status is maintained in the [tracker](ticket-tracker.md).
+Status: implementation, local and hosted verification complete on `chbaikas/A07`; Dev 2 evidence review remains open. Ticket status is maintained in the [tracker](ticket-tracker.md).
 
 ## Scope and setup
 
@@ -29,10 +29,14 @@ On 2026-10-01, implementation commit `7ab36c4`:
 
 The first local run found an ambiguous `role=status` test locator; the second found expectations that did not match browser history and the server's duplicate-email message. Those test assertions were corrected. The final full gate above passed; no application-code change was needed.
 
+## Hosted verification record
+
+[CI run 36780790373](https://github.com/alexsmyr0/social-network/actions/runs/36780790373), triggered manually on branch commit `7857295`, passed `make check` on a clean hosted runner. It passed Vitest 540/540, native Playwright 15/15, both image builds, backend image smoke, image Playwright 9/9 (A07 7/7 and B07 2/2), and the stopped-backend outage smoke. The workflow finished successfully; the browser-failure artifact step was skipped because there was no failure. This is evidence for `7857295`; the later evidence-only commit does not change application code or tests.
+
 ## Manual review steps
 
 From a fresh checkout with Docker already running, execute `make deps` and `make check`. To inspect the UI directly, run `make stack-up`, open `http://localhost:3000/register`, and register once with only required fields and once with nickname, about-me and one of the avatar fixtures. Confirm home access, logout and denied direct entry after logout. Repeat in a 360px viewport, using Tab to move from email to password and checking that Sign out remains visible. For browser persistence, close and reopen the same non-private browser profile before logging out; `make stack-down` preserves the development volume. The automated suite performs these checks against disposable storage, including backend recreation.
 
 ## Remaining gate
 
-Run hosted `make check` on the final A07 branch revision and record its run URL and results. Dev 2 must review this evidence and any backend findings. Until both gates pass, SN-A07 remains in progress and Phase 1 acceptance is not claimed complete. After acceptance, request a separate Phase 2 planning pass; writing Phase 2 tickets is outside A07.
+Dev 2 must review the local and hosted evidence and any backend findings. Until that review is recorded, SN-A07 remains in progress and Phase 1 acceptance is not claimed complete. After acceptance, request a separate Phase 2 planning pass; writing Phase 2 tickets is outside A07.

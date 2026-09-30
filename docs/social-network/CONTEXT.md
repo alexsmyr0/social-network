@@ -38,7 +38,7 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 - SN-A06 provides the separately buildable `social-network-frontend` image and its documented SN-B07 runtime handoff. A no-cache image build, route/asset/outage/configuration smoke checks and the full repository gate passed on `chbaikas/A06` on 2026-09-27.
 - SN-A08 aligns the active README, AGENTS, architecture and workflow guidance with the approved social-network decisions; imported forum material remains accessible as historical evidence.
 - [PR #15 — feat(SN-B07): add shared runtime and quality gate](https://github.com/alexsmyr0/social-network/pull/15) merged as `e34874b` on 2026-09-30, then was reverted in `53fb158` for resubmission with complete records; no implementation defect was identified. Hosted `make check` passed on `c771a6f`, and the owner reported local `make test-images` passed on `e34874b`, including both builds, persistence, transport/outage and cleanup. The [shared runtime record](shared-runtime.md#verification-record) distinguishes these historical results from fresh resubmission HEAD checks.
-- SN-B07 was restored in PR #16. **SN-A07 — Phase 1 integrated acceptance** is in progress on `chbaikas/A07`: real-service browser journeys and the local `make check` gate passed. [Acceptance evidence](phase-1-acceptance.md) records the remaining hosted run and Dev 2 review.
+- SN-B07 was restored in PR #16. **SN-A07 — Phase 1 integrated acceptance** is in progress on `chbaikas/A07`: real-service browser journeys and local/hosted `make check` gates passed. [Acceptance evidence](phase-1-acceptance.md) records the remaining Dev 2 review.
 
 ## Maintenance rules
 
