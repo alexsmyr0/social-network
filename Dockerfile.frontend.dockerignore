@@ -33,6 +33,3 @@ web/static/uploads/
 cmd/backend/.env
 cmd/frontend/.env
 tmp/
-
-# Shared local Go caches and temporary verification data
-.tmp/

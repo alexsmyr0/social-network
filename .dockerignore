@@ -37,6 +37,3 @@ dist/
 SPA/
 docs/
 .github/
-
-# Shared local Go caches and temporary verification data
-.tmp/

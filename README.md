@@ -2,7 +2,7 @@
 
 This repository is building the [Zone01 social-network assignment](docs/social-network/requirements.md) from an imported real-time-forum codebase. The current implementation is **Phase 1: foundations and account access**. Registration, login, session restoration, logout, avatar storage and separate frontend/backend images have ticketed implementations; [integrated acceptance](docs/social-network/track-a.md#sn-a07--phase-1-integrated-acceptance) and the shared hosted quality gate are still pending. Feed, groups, followers and social chat remain later-phase work, regardless of what the inherited forum code supports.
 
-Start with the [project context](docs/social-network/CONTEXT.md), [active tracker](docs/social-network/ticket-tracker.md) and [roadmap](docs/social-network/roadmap.md). The [architecture overview](architecture.md) describes the active Vue/Go boundary. The [auth contract](docs/social-network/auth-contract.md) defines the approved account and session behavior. The [frontend setup](docs/social-network/frontend-setup.md) and [backend image guide](docs/social-network/backend-image.md) document the independently built images; the [shared runtime guide](docs/social-network/shared-runtime.md) owns combined startup and local/CI commands.
+Start with the [project context](docs/social-network/CONTEXT.md), [active tracker](docs/social-network/ticket-tracker.md) and [roadmap](docs/social-network/roadmap.md). The [architecture overview](architecture.md) describes the active Vue/Go boundary. The [auth contract](docs/social-network/auth-contract.md) defines the approved account and session behavior. The [frontend setup](docs/social-network/frontend-setup.md) and [backend image guide](docs/social-network/backend-image.md) document the independently built images; combined runtime and CI instructions belong to SN-B07.
 
 ## Current structure
 
@@ -13,7 +13,7 @@ Start with the [project context](docs/social-network/CONTEXT.md), [active tracke
 
 ## Development
 
-Run `make deps`, then `make stack-up` for the two-image app at http://localhost:3000; `make stack-down` preserves its data. See the [shared runtime guide](docs/social-network/shared-runtime.md) for prerequisites, isolated test ports and cleanup. `make test` runs native regressions; `make check` adds both image builds and real-service transport smoke, matching hosted CI. Docker must already be running for container commands.
+The frontend setup guide has the current local development and frontend image commands. The backend image guide has backend build and storage checks. `make test` runs the repository gate; the tracker records results already obtained for completed tickets. Docker is only needed for image and combined-runtime checks.
 
 ## Historical forum material
 

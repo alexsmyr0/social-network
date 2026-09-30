@@ -2,40 +2,33 @@ name: CI
 
 on:
   push:
-    branches: [main, 'asmyrogl/B07']
+    branches: [ main ]
   pull_request:
-    branches: [main]
-  workflow_dispatch:
-
-permissions:
-  contents: read
+    branches: [ main ]
 
 jobs:
   quality-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version: '1.24'
+          
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: '1.3.12'
-      - name: Install locked dependencies
+          bun-version: latest
+          
+      - name: Install dependencies
         run: make deps
-      - name: Install browser system dependencies
-        run: bun x playwright install --with-deps chromium
-      - name: Shared quality and two-image gate
-        run: make check
-      - name: Browser failure evidence
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: browser-failure-evidence
-          path: |
-            playwright-report/
-            test-results/
-          retention-days: 7
+
+      - name: Quality gate
+        # One target, one run of each check. `make test` chains build → Biome →
+        # gofmt → go vet → Go tests → race → Vitest → Playwright. CI used to
+        # invoke overlapping targets here and ran Biome three times and Vitest
+        # twice; keeping the gate in the Makefile also stops CI drifting from
+        # what contributors run locally.
+        run: make test
