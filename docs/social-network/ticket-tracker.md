@@ -23,7 +23,7 @@ Follow the [ticket-writing rules](ticket-rules.md). The [audit record](ticket-au
 
 ## Summary
 
-17 tickets: 8 in A, 9 in B. Done: 16. In progress: 0. Blocked: 0. Not started: 1. Next ticket: SN-A07.
+17 tickets: 8 in A, 9 in B. Done: 16. In progress: 1. Blocked: 0. Not started: 0. SN-A07 awaits hosted verification and Dev 2 review.
 
 | Status | Ticket | Description | Depends on | Blocks | Evidence / external gate |
 |---|---|---|---|---|---|
@@ -43,7 +43,7 @@ Follow the [ticket-writing rules](ticket-rules.md). The [audit record](ticket-au
 | [x] | [SN-A06](track-a.md#sn-a06--frontend-image-and-runtime-handoff) | Frontend image and runtime handoff | SN-A04, SN-A05 | SN-B07 | [Frontend image handoff](frontend-setup.md#frontend-container-handoff). No-cache image build; health/auth/deep-link/JS/CSS smoke; runtime target and JSON `502` outage checks; non-root/distinct-image inspection; `make test` exit 0 with Vitest 540/540 and Playwright 13/13. |
 | [x] | [SN-B06](track-b.md#sn-b06--backend-image-and-persistent-storage) | Backend image and persistent storage | SN-B09 | SN-B07 | [Backend image and run instructions](backend-image.md). `docker build -q -t social-network-backend .` and `scripts/smoke-backend-image.sh social-network-backend` exit 0: clean migration, account/avatar/login/logout, retained session and media after container recreation, invalid DB/media readiness refusal. `make test` exit 0. |
 | [x] | [SN-B07](track-b.md#sn-b07--shared-run-and-quality-gate) | Shared run and quality gate | SN-A06, SN-B06 | SN-A07 | [Shared runtime and verification record](shared-runtime.md#verification-record). [Hosted `make check`](https://github.com/alexsmyr0/social-network/actions/runs/36574650827) passed on `c771a6f`; owner-reported local `make test-images` passed on PR #15 merge `e34874b`: both image builds, backend persistence smoke, Playwright transport 2/2, stopped-backend outage and cleanup. Reverted in `53fb158` for resubmission; fresh HEAD checks are recorded separately in the resubmission PR. |
-| [ ] | [SN-A07](track-a.md#sn-a07--phase-1-integrated-acceptance) | Phase 1 integrated acceptance | SN-B07, SN-A08 | None | — |
+| [-] | [SN-A07](track-a.md#sn-a07--phase-1-integrated-acceptance) | Phase 1 integrated acceptance | SN-B07, SN-A08 | None | [Local acceptance record](phase-1-acceptance.md) on `chbaikas/A07`: `make check` exited 0; A07 real-service journeys 7/7, image browser suite 9/9, native Playwright 15/15, Vitest 540/540, backend smoke and outage checks passed. Hosted run and Dev 2 evidence review remain. |
 
 ## Suggested two-developer sequence
 

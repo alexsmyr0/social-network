@@ -20,7 +20,8 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 | Reviewing real account registration | [Backend accounts](backend-accounts.md) | SN-B04 registration validation, account reads and provisional avatar/session behavior |
 | Reviewing real sessions and origin enforcement | [Backend sessions](backend-sessions.md) | SN-B05 cookie, login/logout, CSRF and WebSocket revocation behavior |
 | Reviewing avatar storage and access | [Backend avatars](backend-avatars.md) | SN-B09 upload validation, private storage, owner retrieval and cleanup |
-| Running both images or shared checks | [Shared runtime](shared-runtime.md) | SN-B07 startup/stop, isolated local and hosted gates, SN-A07 browser hook |
+| Running both images or shared checks | [Shared runtime](shared-runtime.md) | SN-B07 startup/stop and isolated local and hosted gates |
+| Reviewing Phase 1 account acceptance | [Phase 1 acceptance](phase-1-acceptance.md) | SN-A07 real-service journeys, persistence and verification evidence |
 | Running the backend image | [Backend image](backend-image.md) | SN-B06 build, volume, health and smoke commands |
 | Reviewing active architecture | [Architecture](../../architecture.md) | Current Vue/Go boundary and delivered Phase 1 scope |
 | Reviewing documentation alignment | [Documentation alignment](documentation-alignment.md) | SN-A08 dispositions, historical destinations and link checks |
@@ -37,7 +38,7 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 - SN-A06 provides the separately buildable `social-network-frontend` image and its documented SN-B07 runtime handoff. A no-cache image build, route/asset/outage/configuration smoke checks and the full repository gate passed on `chbaikas/A06` on 2026-09-27.
 - SN-A08 aligns the active README, AGENTS, architecture and workflow guidance with the approved social-network decisions; imported forum material remains accessible as historical evidence.
 - [PR #15 — feat(SN-B07): add shared runtime and quality gate](https://github.com/alexsmyr0/social-network/pull/15) merged as `e34874b` on 2026-09-30, then was reverted in `53fb158` for resubmission with complete records; no implementation defect was identified. Hosted `make check` passed on `c771a6f`, and the owner reported local `make test-images` passed on `e34874b`, including both builds, persistence, transport/outage and cleanup. The [shared runtime record](shared-runtime.md#verification-record) distinguishes these historical results from fresh resubmission HEAD checks.
-- SN-B07 is restored on `asmyrogl/B07-resubmit`; 16 of 17 Phase 1 tickets are complete. **SN-A07 — Phase 1 integrated acceptance** is next.
+- SN-B07 was restored in PR #16. **SN-A07 — Phase 1 integrated acceptance** is in progress on `chbaikas/A07`: real-service browser journeys and the local `make check` gate passed. [Acceptance evidence](phase-1-acceptance.md) records the remaining hosted run and Dev 2 review.
 
 ## Maintenance rules
 
