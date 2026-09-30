@@ -4,17 +4,17 @@ Status: implementation, local and hosted verification complete on `chbaikas/A07`
 
 ## Scope and setup
 
-The [A07 browser suite](../../SPA/tests/e2e/a07-acceptance.test.js) runs against the two real images through B07's isolated `make test-browser` hook. Every run creates disposable SQLite/media storage and a unique Compose project; no API responses are mocked. Three tiny [avatar fixtures](../../SPA/tests/fixtures/a07/) exercise JPEG, PNG and GIF decoding. The browser profile test creates a temporary persistent Chromium profile, closes and reopens the browser, force-recreates the backend container twice with its Compose volume retained, then verifies the same account, session and avatar. The suite removes its profile, and B07's harness removes its containers, network and volume.
+The [A07 browser suite](../../SPA/tests/e2e/a07-acceptance.test.js) runs against the two real images through B07's isolated `make test-browser` hook. Every run creates disposable SQLite/media storage and a unique Compose project; no API responses are mocked. Three tiny [avatar fixtures](../../SPA/tests/fixtures/a07/) exercise JPEG, PNG and GIF decoding. The browser profile test creates a temporary persistent Chromium profile, closes and reopens the browser, force-recreates the backend container twice with its Compose volume retained, then verifies the same account, session and avatar. The suite refuses container recreation unless B07 supplied an isolated `sn-b07-test-*` Compose project. It removes its browser profile, and B07's harness removes its containers, network and volume.
 
 ## Verified journeys
 
 | Journey | Evidence |
 |---|---|
-| Required-only account | Browser registration returns a signed-in account with normalized email, null optional fields, fallback display name and an HTTP-only persistent cookie; protected home renders. |
-| Full account and media | Separate browser registrations with nickname, about-me and JPEG, PNG or GIF each return readable owner avatar bytes and the correct content type. Anonymous retrieval returns 401; another signed-in account gets 404 for the PNG avatar. |
+| Required-only account | Browser registration submits an uppercase email and reads back its lowercase form, null optional fields and fallback display name. Protected home renders; the browser cookie is HTTP-only, SameSite=Lax, Path=/, non-Secure on local HTTP and valid for more than 399 days. |
+| Full account and media | Separate browser registrations with nickname, about-me and JPEG, PNG or GIF each return the exact uploaded owner avatar bytes and the correct content type. Anonymous retrieval returns 401; another signed-in account gets 404 for the PNG avatar. |
 | Failures and access | Corrupt PNG returns an avatar error without creating a partial account; retry with the same email succeeds. Case-changed duplicate email is rejected and the original account can still log in. Wrong password fails, correct password succeeds, and unauthenticated protected entry is redirected. |
-| Logout and navigation | The shared shell signs out, protected content disappears after back navigation and direct entry, a captured revoked cookie cannot read `/users/me`, and fresh login works. |
-| Persistence | Closing and reopening a persistent browser profile restores protected content. Two backend container startups with the same storage preserve the user, session and avatar; logout still revokes access. |
+| Logout and navigation | The shared shell signs out, protected content disappears when Back revisits a protected URL and on direct entry, a captured revoked cookie cannot read `/users/me`, and fresh login works. |
+| Persistence | Closing and reopening a persistent browser profile restores protected content. Each of two backend container recreations with the same storage preserves the user, session and exact avatar bytes; logout still revokes access. |
 | Viewports and keyboard | Desktop Chromium runs the journeys; 360px Chromium checks form width, Tab focus from email to password, registration and visible Sign out. |
 
 B05's [controlled-time session tests](backend-sessions.md) cover an unrevoked session at 13 hours, 30 days and beyond the 400-day browser-cookie lifetime. A07 tests browser persistence and container recreation with a real cookie; it does not advance account age as a substitute for session age. B07's [transport checks](shared-runtime.md) cover WebSocket revocation and stopped-backend `502` behavior.
@@ -28,6 +28,10 @@ On 2026-10-01, implementation commit `7ab36c4`:
 - `bun x biome check SPA/tests/e2e/a07-acceptance.test.js` and `git diff --check` exited 0.
 
 The first local run found an ambiguous `role=status` test locator; the second found expectations that did not match browser history and the server's duplicate-email message. Those test assertions were corrected. The final full gate above passed; no application-code change was needed.
+
+## Review correction and local recheck
+
+On 2026-10-01, review commit `541d1ad` strengthened the browser assertions: uppercase email normalization, persistent-cookie attributes, navigation back to a protected URL, exact avatar bytes, verification after **each** backend recreation and a guard against touching any non-test Compose project. `make test-browser PLAYWRIGHT_ARGS='a07-acceptance.test.js'` exited 0 (A07 7/7 and outage smoke). The complete `make check` then exited 0: Vitest 540/540, native Playwright 15/15, backend tests/race checks, both image builds, backend image smoke, image Playwright 9/9 and outage smoke. Biome and `git diff --check` also passed. No application code changed.
 
 ## Hosted verification record
 
