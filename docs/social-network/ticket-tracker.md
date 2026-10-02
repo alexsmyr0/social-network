@@ -1,29 +1,42 @@
 # Social Network — Ticket Progress Tracker
 
-Active scope: **Phase 1 — Foundations and account access**. Full scope: [roadmap](roadmap.md). Authority: [Zone01 assignment](requirements.md). The [forum tracker](../ticket-tracker.md) is historical.
+Execution checkpoint: **Phase 1 — Foundations and account access**. Ticketed scope: **Phases 1–4**; the owner authorized larger tickets following the [Phase 2–3 interview](phase-2-3-decisions.md) and [Phase 4 interview](phase-4-decisions.md). **Phase 5 is pending** at the owner's request; Phase 6 remains roadmap-only. Full scope: [roadmap](roadmap.md). Authority: [Zone01 assignment](requirements.md). The [forum tracker](../ticket-tracker.md) is historical.
 
 ## Team and ownership
 
 | Track | Developer | Owns | Details |
 |---|---|---|---|
-| A | Dev 1 | Frontend decision/app/UI/image, active docs, integrated acceptance | [Track A](track-a.md) |
-| B | Dev 2 | Auth/data decisions, migrations/accounts/sessions/avatars, backend image, shared run/CI | [Track B](track-b.md) |
+| A | Dev 1 | Frontend/app/UI/image, profiles/content/groups/notifications, active docs, phase acceptance | [Track A](track-a.md) |
+| B | Dev 2 | Contracts/data/APIs/media/notifications, backend image, shared run/CI | [Track B](track-b.md) |
 
-A owns frontend source/config and frontend setup docs. B owns Go/data files and shared Makefile/CI/orchestration edits, including final runtime setup instructions. A supplies frontend commands; coordinate shared README/ignore-file edits before work. Both review contracts. Track counts do not imply equal effort.
+A owns frontend source/config and frontend setup docs. B owns Go/data files and shared Makefile/CI/orchestration edits, including final runtime setup instructions. A supplies frontend commands; coordinate shared README/ignore-file edits before work. B owns SN-B13 changes to shared frontend Go static/proxy routes, with A review. Both review contracts. Track counts do not imply equal effort.
 
 ## Status and execution rules
 
-Follow the [ticket-writing rules](ticket-rules.md). The [audit record](ticket-audit.md) explains the scope/dependency corrections.
+Follow the [ticket-writing rules](ticket-rules.md). The [Phase 1 audit](ticket-audit.md), [Phase 2–3 audit](phase-2-3-ticket-audit.md) and [Phase 4 audit](phase-4-ticket-audit.md) explain scope/dependency corrections and the larger ticket boundaries.
 
 - `[ ]` not started; `[-]` in progress; `[x]` verified complete; `[!]` blocked with a concrete reason.
 - Status lives here only. Start scoped implementation after direct prerequisites are `[x]`; decision completion includes owner approval. `Blocks` lists direct consumers only.
 - SN-A04/SN-A05 may finish against approved contract fixtures. SN-A07 must exercise real services. SN-B07 supplies the harness without depending on SN-A07's future acceptance tests.
+- SN-A07 unlocks Phase 2 through SN-B10; SN-A11 unlocks Phase 3 through SN-B14; SN-A14 unlocks Phase 4 through SN-B17. SN-A09/A10, SN-A12/A13 and SN-A15/A16 may finish against reviewed contract fixtures; SN-A11/A14/A17 require real services. Contract handoffs translate approved policy and obtain approval for concrete new interface details before consumers start.
+- All inherited features remain assigned to their relevant phase; no feature is marked complete merely because old files remain.
 - Link each completed change and verification evidence. Keep failures/skips visible; do not inherit completion from the old forum.
 - SN-B07 has successful hosted and local verification recorded in the [shared runtime guide](shared-runtime.md#verification-record). Keep historical evidence tied to its tested revision; resubmission PRs must report checks on their own HEAD separately.
 
 ## Summary
 
-17 tickets: 8 in A, 9 in B. Done: 16. In progress: 1. Blocked: 0. Not started: 0. SN-A07 awaits Dev 2 evidence review.
+36 tickets: 17 in A, 19 in B. Done: 16. In progress: 1. Blocked: 0. Not started: 19. SN-A07 awaits Dev 2 evidence review. All 19 new Phase 2–4 tickets are unstarted.
+
+| Phase | A | B | Total | Done | In progress | Not started | Exit |
+|---|---|---|---|---|---|---|---|
+| 1 | 8 | 9 | 17 | 16 | 1 | 0 | SN-A07 |
+| 2 | 3 | 4 | 7 | 0 | 0 | 7 | SN-A11 |
+| 3 | 3 | 3 | 6 | 0 | 0 | 6 | SN-A14 |
+| 4 | 3 | 3 | 6 | 0 | 0 | 6 | SN-A17 |
+
+Phase 5 has no tickets or approved messaging/event model yet; unanswered proposals remain pending. Phase 6 will be discussed and ticketed later. Neither is counted as blocked or completed work.
+
+## Phase 1 — Foundations and account access
 
 | Status | Ticket | Description | Depends on | Blocks | Evidence / external gate |
 |---|---|---|---|---|---|
@@ -43,7 +56,41 @@ Follow the [ticket-writing rules](ticket-rules.md). The [audit record](ticket-au
 | [x] | [SN-A06](track-a.md#sn-a06--frontend-image-and-runtime-handoff) | Frontend image and runtime handoff | SN-A04, SN-A05 | SN-B07 | [Frontend image handoff](frontend-setup.md#frontend-container-handoff). No-cache image build; health/auth/deep-link/JS/CSS smoke; runtime target and JSON `502` outage checks; non-root/distinct-image inspection; `make test` exit 0 with Vitest 540/540 and Playwright 13/13. |
 | [x] | [SN-B06](track-b.md#sn-b06--backend-image-and-persistent-storage) | Backend image and persistent storage | SN-B09 | SN-B07 | [Backend image and run instructions](backend-image.md). `docker build -q -t social-network-backend .` and `scripts/smoke-backend-image.sh social-network-backend` exit 0: clean migration, account/avatar/login/logout, retained session and media after container recreation, invalid DB/media readiness refusal. `make test` exit 0. |
 | [x] | [SN-B07](track-b.md#sn-b07--shared-run-and-quality-gate) | Shared run and quality gate | SN-A06, SN-B06 | SN-A07 | [Shared runtime and verification record](shared-runtime.md#verification-record). [Hosted `make check`](https://github.com/alexsmyr0/social-network/actions/runs/36574650827) passed on `c771a6f`; owner-reported local `make test-images` passed on PR #15 merge `e34874b`: both image builds, backend persistence smoke, Playwright transport 2/2, stopped-backend outage and cleanup. Reverted in `53fb158` for resubmission; fresh HEAD checks are recorded separately in the resubmission PR. |
-| [-] | [SN-A07](track-a.md#sn-a07--phase-1-integrated-acceptance) | Phase 1 integrated acceptance | SN-B07, SN-A08 | None | [Local acceptance record](phase-1-acceptance.md) on `chbaikas/A07`: reviewed local `make check` exited 0 on `541d1ad`; A07 real-service journeys 7/7, image browser suite 9/9, native Playwright 15/15, Vitest 540/540, backend smoke and outage checks passed. [Hosted `make check`](https://github.com/alexsmyr0/social-network/actions/runs/36782718815) passed on reviewed `f230451` with image browser 9/9; Dev 2 evidence review remains. |
+| [-] | [SN-A07](track-a.md#sn-a07--phase-1-integrated-acceptance) | Phase 1 integrated acceptance | SN-B07, SN-A08 | SN-B10 | [Local acceptance record](phase-1-acceptance.md) on `chbaikas/A07`: reviewed local `make check` exited 0 on `541d1ad`; A07 real-service journeys 7/7, image browser suite 9/9, native Playwright 15/15, Vitest 540/540, backend smoke and outage checks passed. [Hosted `make check`](https://github.com/alexsmyr0/social-network/actions/runs/36782718815) passed on reviewed `f230451` with image browser 9/9; Dev 2 evidence review remains. |
+
+## Phase 2 — Profiles and following
+
+| Status | Ticket | Description | Depends on | Blocks | Evidence / external gate |
+|---|---|---|---|---|---|
+| [ ] | [SN-B10](track-b.md#sn-b10--publish-profile-follow-and-notification-contracts) | Publish profile, follow and notification contracts | SN-A07 | SN-B11, SN-A09 | Owner approval of concrete interfaces; Dev 1 fixture review. Approved product/architecture choices remain settled. |
+| [ ] | [SN-A09](track-a.md#sn-a09--build-people-profiles-and-follow-controls) | Build people, profiles and follow controls | SN-B10 | SN-A10 | Frontend fixture gate; real services in SN-A11. |
+| [ ] | [SN-B11](track-b.md#sn-b11--implement-profiles-and-the-follow-lifecycle) | Implement profiles and the follow lifecycle | SN-B10 | SN-B12, SN-B13 | — |
+| [ ] | [SN-A10](track-a.md#sn-a10--deliver-global-notifications-and-request-review) | Deliver global notifications and request review | SN-A09 | SN-A11 | Frontend fixture gate; real delivery in SN-A11. |
+| [ ] | [SN-B12](track-b.md#sn-b12--persist-and-deliver-relationship-notifications) | Persist and deliver relationship notifications | SN-B11 | SN-A11 | — |
+| [ ] | [SN-B13](track-b.md#sn-b13--protect-inherited-content-and-migrate-media-access) | Protect inherited content and migrate media access | SN-B11 | SN-A11 | B owns shared static/proxy edits with A review; preserve all referenced media. |
+| [ ] | [SN-A11](track-a.md#sn-a11--accept-profiles-following-and-privacy-end-to-end) | Accept profiles, following and privacy end to end | SN-A10, SN-B12, SN-B13 | SN-B14 | Local/hosted shared gates and both-developer review required. |
+
+## Phase 3 — Posts, comments, and audiences
+
+| Status | Ticket | Description | Depends on | Blocks | Evidence / external gate |
+|---|---|---|---|---|---|
+| [ ] | [SN-B14](track-b.md#sn-b14--publish-content-audience-and-lifecycle-contracts) | Publish content, audience and lifecycle contracts | SN-A11 | SN-B15, SN-A12 | Owner approval of concrete interfaces; Dev 1 fixture review. Approved policies remain settled. |
+| [ ] | [SN-A12](track-a.md#sn-a12--build-audience-aware-feeds-and-publishing) | Build audience-aware feeds and publishing | SN-B14 | SN-A13 | Frontend fixture gate; real services in SN-A14. |
+| [ ] | [SN-B15](track-b.md#sn-b15--implement-audience-aware-publishing-and-feeds) | Implement audience-aware publishing and feeds | SN-B14 | SN-B16 | — |
+| [ ] | [SN-A13](track-a.md#sn-a13--restore-discussions-and-private-activity) | Restore discussions and private activity | SN-A12 | SN-A14 | Frontend fixture gate; real services in SN-A14. |
+| [ ] | [SN-B16](track-b.md#sn-b16--enforce-audiences-across-discussions-and-activity) | Enforce audiences across discussions and activity | SN-B15 | SN-A14 | — |
+| [ ] | [SN-A14](track-a.md#sn-a14--accept-publishing-audiences-and-preserved-features) | Accept publishing, audiences and preserved features | SN-A13, SN-B16 | SN-B17 | Local/hosted shared gates and both-developer review required. |
+
+## Phase 4 — Groups and membership
+
+| Status | Ticket | Description | Depends on | Blocks | Evidence / external gate |
+|---|---|---|---|---|---|
+| [ ] | [SN-B17](track-b.md#sn-b17--publish-group-and-membership-contracts) | Publish group and membership contracts | SN-A14 | SN-B18, SN-A15 | Owner approval of concrete interfaces; Dev 1 fixture review. Approved group policies remain settled. |
+| [ ] | [SN-A15](track-a.md#sn-a15--build-group-discovery-and-membership-journeys) | Build group discovery and membership journeys | SN-B17 | SN-A16 | Frontend fixture gate; real services in SN-A17. |
+| [ ] | [SN-B18](track-b.md#sn-b18--implement-groups-and-membership-transitions) | Implement groups and membership transitions | SN-B17 | SN-B19 | — |
+| [ ] | [SN-A16](track-a.md#sn-a16--extend-publishing-and-discussions-into-groups) | Extend publishing and discussions into groups | SN-A15 | SN-A17 | Frontend fixture gate; real services in SN-A17. |
+| [ ] | [SN-B19](track-b.md#sn-b19--enforce-membership-across-group-content) | Enforce membership across group content | SN-B18 | SN-A17 | — |
+| [ ] | [SN-A17](track-a.md#sn-a17--accept-groups-and-membership-end-to-end) | Accept groups and membership end to end | SN-A16, SN-B19 | None | Local/hosted shared gates and both-developer review required. |
 
 ## Suggested two-developer sequence
 
@@ -56,6 +103,18 @@ Follow the [ticket-writing rules](ticket-rules.md). The [audit record](ticket-au
 | 5 | SN-A05 | SN-B04, then SN-B05 | Complete UI/session behavior and real account/session backend |
 | 6 | SN-A08, then SN-A06 | SN-B09, then SN-B06 | Align docs; deliver image handoffs |
 | 7 | Review integration setup | SN-B07 | Shared local/hosted gate; record any actual access blocker |
-| 8 | SN-A07 | Review acceptance and resolve backend findings | Complete Phase 1, then separately plan Phase 2 |
+| 8 | SN-A07 | Review acceptance and resolve backend findings | Complete Phase 1; unlock the already-authored Phase 2 backlog |
+| 9 | Review Phase 2 contract fixtures | SN-B10 | Record concrete interface approval and data/media handoffs |
+| 10 | SN-A09 | SN-B11 | UI can use approved fixtures independently of backend completion |
+| 11 | SN-A10 | SN-B12, then SN-B13 | Complete notification delivery and inherited privacy/media boundary |
+| 12 | SN-A11 | Support real-service acceptance; own shared harness changes | Complete Phase 2 before Phase 3 execution |
+| 13 | Review Phase 3 contract fixtures | SN-B14 | Record content interfaces and upgrade/feature-parity handoffs |
+| 14 | SN-A12 | SN-B15 | Independent fixture UI and real audience-aware publishing |
+| 15 | SN-A13 | SN-B16 | Finish discussions, private/profile activity and preserved bonuses |
+| 16 | SN-A14 | Support acceptance; own shared harness changes | Complete Phase 3 before Phase 4 execution |
+| 17 | Review Phase 4 contract fixtures | SN-B17 | Record group interfaces, membership transitions and content/upgrade handoffs |
+| 18 | SN-A15 | SN-B18 | Independent fixture UI and real membership/notification transactions |
+| 19 | SN-A16 | SN-B19 | Reuse publishing/discussions with membership enforcement across every surface |
+| 20 | SN-A17 | Support acceptance; own shared harness changes | Complete Phase 4; Phase 5 stays pending its own interview/ticketing |
 
 This is a suggested sequence, not extra dependency edges. Ready work may move earlier. Owner approvals and hosted-CI access remain visible constraints, not assumed completed work.

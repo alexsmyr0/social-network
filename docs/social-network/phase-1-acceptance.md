@@ -43,4 +43,4 @@ From a fresh checkout with Docker already running, execute `make deps` and `make
 
 ## Remaining gate
 
-Dev 2 must review the local and hosted evidence and any backend findings. Until that review is recorded, SN-A07 remains in progress and Phase 1 acceptance is not claimed complete. After acceptance, request a separate Phase 2 planning pass; writing Phase 2 tickets is outside A07.
+Dev 2 must review the local and hosted evidence and any backend findings. Until that review is recorded, SN-A07 remains in progress and Phase 1 acceptance is not claimed complete. The separately authorized Phase 2–4 backlog is already merged in [PR #18](https://github.com/alexsmyr0/social-network/pull/18); completing A07 unlocks Phase 2 execution through SN-B10. Writing or implementing later-phase tickets remains outside A07.
