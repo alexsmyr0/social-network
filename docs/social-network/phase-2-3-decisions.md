@@ -111,7 +111,7 @@ These are code-inspection findings, not fresh runtime verification. The current 
 
 ## Contract handoffs and implementation gates
 
-The choices above are settled. SN-B10 and SN-B14 translate them into exact requests/responses, examples, schema/migration mappings and test fixtures. They are bounded contract work, not a second interview about framework, privacy policy or storage strategy. Both tracks review the handoff; new public-interface decisions not covered here require owner approval before dependent implementation. Future artifacts are explicitly named in those tickets rather than linked as existing files.
+The choices above are settled. SN-B10 and SN-B14 translate them into exact requests/responses, examples, schema/migration mappings and test fixtures. They are bounded contract work, not a second interview about framework, privacy policy or storage strategy. The owner is Dev 1; one owner approval covers the contract and fixture handoff, with ticket checks establishing fixture completeness/consistency. New public-interface decisions not covered here require owner approval before dependent implementation. Future artifacts are explicitly named in those tickets rather than linked as existing files.
 
 SN-A09/A10 and SN-A12/A13 may pass frontend gates against approved contract fixtures; production cannot ship mock responses. SN-A11 and SN-A14 require real multi-user browser/API/media evidence through both images. SN-A07 still gates Phase 2 execution. Phase 3 execution starts after SN-A11. Shared runtime/CI extensions retain B's ownership under SN-B07; acceptance supplies scenarios through that harness rather than introducing another deployment design.
 

@@ -49,7 +49,7 @@ Reuse persisted notifications and the existing session-owned WebSocket. Invitati
 
 Membership changes invalidate affected open views; current permissions remain authoritative on every server read/write. Refetch on reconnect recovers missed signals. General notices remain distinct from message indicators. No new queue, socket, database or service is approved.
 
-SN-B17 translates these settled choices into planned `groups-contract.md`, `phase-4-data-plan.md` and reviewed fixtures. It records concrete routes, payloads, errors, pagination, duplicate-action rules, request identities, membership generations or equivalent stale-action protection, and migration/recovery mappings. These details require owner interface approval and Dev 1 fixture review before consumers start; the handoff does not reopen settled product/storage choices.
+SN-B17 translates these settled choices into planned `groups-contract.md`, `phase-4-data-plan.md` and reviewed fixtures. It records concrete routes, payloads, errors, pagination, duplicate-action rules, request identities, membership generations or equivalent stale-action protection, and migration/recovery mappings. These details require one owner approval of interfaces and fixture handoff, plus fixture completeness/consistency checks before consumers start; the handoff does not reopen settled product/storage choices.
 
 SN-B18 owns membership transitions and transactional invitation/request notices; SN-B19 applies membership across content, media and existing aggregate/notification consumers. SN-A15/A16 may finish against approved fixtures. SN-A17 requires real multi-user browser/API/media checks through both images. B retains shared runtime/CI ownership under SN-B07; A supplies browser scenarios and acceptance evidence.
 

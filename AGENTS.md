@@ -9,3 +9,5 @@ Use the caveman skill by default for coding tasks when it is available, as reque
 Do not launch Docker Desktop or start the Docker daemon automatically. If Docker is already running, Docker checks may run. Otherwise complete independent checks and report Docker-dependent verification as unverified. Start Docker only when the project owner explicitly asks.
 
 For active work, use the ticket's verification gate. Documentation-only tickets use link, anchor, status and scope checks; they do not claim application validation. Shared runtime setup and CI instructions belong to SN-B07.
+
+The project owner is Dev 1. Owner approval of a contract and its fixture handoff is the single human approval gate; do not ask for a second Dev 1 review or confirmation. Validate fixture completeness and consistency as part of the ticket. New material interface changes require owner approval; already-approved choices do not.

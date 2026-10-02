@@ -48,7 +48,7 @@ Work:
 
 Verification Gate:
 
-- Owner approves interfaces and session policy; Dev 1 confirms valid/invalid examples can drive independent UI fixtures.
+- Owner approves interfaces, session policy and fixture handoff once; valid/invalid examples support independent UI fixtures.
 - Required-only registration, optional fields, duplicate email, invalid upload, network failure and logout outcomes are unambiguous.
 - Record cookie/server persistence tests beyond the old 12-hour cutoff. Approval does not wait for schema design, migrations or real APIs.
 
@@ -73,7 +73,7 @@ Work:
 Verification Gate:
 
 - Owner approval and alternatives are recorded; chosen Go dependencies satisfy the assignment allowlist.
-- Schema and storage can represent every approved request/session state; Dev 1 reviews any client-visible consequence.
+- Schema and storage can represent every approved request/session state; new client-visible contract changes require owner approval.
 - Fresh, repeated, failed and legacy-startup cases have expected outcomes; no API change is hidden inside this decision.
 
 ## SN-B03 — Startup migrations and account schema
@@ -234,18 +234,18 @@ Depends on: SN-A07
 
 Blocks: SN-B11, SN-A09
 
-External gate: Owner approval of concrete new public-interface details; Dev 1 confirms independent fixtures. Settled product and architecture choices are not reopened.
+External gate: Owner approval of concrete new public-interface details and fixture handoff in one gate. Settled product and architecture choices are not reopened.
 
 Work:
 
-- Write planned `profiles-contract.md` with discovery, full/redacted profiles, avatar/list access, privacy writes, follow/cancel/unfollow and incoming-request decisions, including pagination, validation, errors and repeated/stale-action examples.
+- Write [profiles-contract.md](profiles-contract.md) with discovery, full/redacted profiles, avatar/list access, privacy writes, follow/cancel/unfollow and incoming-request decisions, including pagination, validation, errors and repeated/stale-action examples.
 - Map fields/transitions to the single follow model, notification extensions and versioned upgrades. Define request identity against stale actions and concurrent privacy/follow outcomes.
 - Define persisted notification/read actions, commit-before-signal delivery, reconnect/invalidation payloads and recipient filtering while retaining content notices. Map private-profile exposure through every inherited API and static-media route for SN-B13.
-- Supply reviewable fixtures and planned `phase-2-data-plan.md` covering defaults, backfills, media ownership/cleanup and recovery. Assign exact route/query/schema/static-path owners before implementation.
+- Supply [reviewable fixtures](fixtures/phase-2-contract.json) and [phase-2-data-plan.md](phase-2-data-plan.md) covering defaults, backfills, media ownership/cleanup and recovery. Assign exact route/query/schema/static-path owners before implementation.
 
 Verification Gate:
 
-- Owner-approved interfaces and Dev 1 fixture review are recorded; all profile fields, name-only teasers, follow transitions and notification actions have valid/invalid examples.
+- Owner-approved interfaces and fixture completeness/consistency checks are recorded; all profile fields, name-only teasers, follow transitions and notification actions have valid/invalid examples.
 - Schema/transition mappings cover uniqueness, no self-follow, retries, stale requests, both privacy switches and preserved Phase 1 data; concrete migrations consume existing tooling.
 - Assign inherited notification exposure to SN-B12 and remaining content/media bypasses to SN-B13, without waiting for Phase 3 or chat redesign.
 - Links, contract consistency and handoff checks pass. No API implementation, database migration or live socket delivery is claimed.
@@ -340,7 +340,7 @@ Depends on: SN-A11
 
 Blocks: SN-B15, SN-A12
 
-External gate: Owner approval of concrete new public-interface details; Dev 1 confirms independent fixtures. Existing policy approvals remain binding.
+External gate: Owner approval of concrete new public-interface details and fixture handoff in one gate. Existing policy approvals remain binding.
 
 Work:
 
@@ -351,7 +351,7 @@ Work:
 
 Verification Gate:
 
-- Concrete interfaces and fixture handoff receive recorded review/approval; every matrix cell and follow/privacy/audience transition has observable allow/deny examples for content and attachments.
+- Concrete interfaces and fixture handoff receive one recorded owner approval and pass consistency checks; every matrix cell and follow/privacy/audience transition has observable allow/deny examples for content and attachments.
 - Migration mappings preserve prior data and encode selection removal on unfollow without automatic restoration; no schema reset, new service or group/chat model is introduced.
 - Drafts, reactions, categories, nested-comment support, navigation, owner activity, editing/deletion and image-only flows each have a named implementation/verification owner.
 - References and contract/schema consistency checks pass; no application validation or future acceptance result is required to complete this handoff.
@@ -420,7 +420,7 @@ Depends on: SN-A14
 
 Blocks: SN-B18, SN-A15
 
-External gate: Owner approval of concrete new public-interface details; Dev 1 confirms independent fixtures. Approved product/storage choices remain settled.
+External gate: Owner approval of concrete new public-interface details and fixture handoff in one gate. Approved product/storage choices remain settled.
 
 Work:
 
@@ -431,7 +431,7 @@ Work:
 
 Verification Gate:
 
-- Concrete interfaces and fixtures receive recorded approval/review; both tracks can implement from matching schemas, examples and error outcomes without reopening approved architecture.
+- Concrete interfaces and fixtures receive one recorded owner approval and pass consistency checks; both tracks can implement from matching schemas, examples and error outcomes without reopening approved architecture.
 - Every admission/departure path identifies its decision-maker and atomic state/notice effects; removal is not a ban, and stale actions cannot recreate revoked access.
 - Matrices cover private authors, nonmember followers, departed authors, drafts, existing interactions and aggregate/media routes. Personal-post policy and group membership cannot accidentally broaden each other.
 - Links and contract/data consistency checks pass. Events/chat and new moderator/transfer workflows remain outside this handoff; no application validation is claimed.

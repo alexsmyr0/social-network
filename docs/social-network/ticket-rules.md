@@ -30,6 +30,7 @@ Retain that structure, not the old project's constraints or four-developer alloc
 - A producer must not wait for its consumer's implementation. Order decisions explicitly: baseline → frontend constraints → auth contract → storage design. Later incompatibilities reopen the upstream decision instead of adding a backward edge.
 - State when fixtures/mocks allow independent frontend work. Separate frontend verification from the later gate that must exercise real services.
 - Put owner approval and external services in explicit gates. Name external blockers and who resolves them; do not bury Git publishing/hosted CI inside an unrelated implementation task.
+- The project owner is Dev 1. Owner approval of a contract and its fixture handoff is the single human approval gate; do not ask for a second Dev 1 review or confirmation. Validate fixture completeness and consistency as part of the ticket. New material interface changes require owner approval; already-approved choices do not.
 - Assign shared files a merge owner and record the handoff. Two tickets must not each claim ownership of the same change.
 
 ## Verification must prove the goal
