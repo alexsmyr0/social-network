@@ -1,0 +1,4089 @@
+{
+	"schema_version": 1,
+	"review_status": "draft; owner approval and Dev 1 fixture confirmation pending",
+	"clock": "2026-10-02T12:00:00Z",
+	"actors": [
+		{
+			"id": 7,
+			"email": "ada@example.com",
+			"first_name": "Ada",
+			"last_name": "Lovelace",
+			"date_of_birth": "1998-03-14",
+			"nickname": null,
+			"about_me": null,
+			"display_name": "Ada Lovelace",
+			"avatar_url": null,
+			"visibility": "public",
+			"version": 1
+		},
+		{
+			"id": 42,
+			"email": "alex@example.com",
+			"first_name": "Alex",
+			"last_name": "Example",
+			"date_of_birth": "1998-03-14",
+			"nickname": null,
+			"about_me": null,
+			"display_name": "Alex Example",
+			"avatar_url": "/api/v1/users/42/avatar",
+			"visibility": "private",
+			"version": 1
+		},
+		{
+			"id": 99,
+			"email": "outsider@example.com",
+			"first_name": "Robin",
+			"last_name": "Example",
+			"date_of_birth": "2000-02-29",
+			"nickname": "Robin",
+			"about_me": "Plain text\nSecond line",
+			"display_name": "Robin",
+			"avatar_url": null,
+			"visibility": "private",
+			"version": 1
+		}
+	],
+	"defaults": {
+		"session": "valid unless case overrides; viewer_id null means no session",
+		"headers": {
+			"Origin": "http://localhost:3000",
+			"X-Requested-With": "XMLHttpRequest",
+			"Accept": "application/json",
+			"Content-Type": "application/json"
+		},
+		"header_override": "null removes header; case headers merge with defaults",
+		"given_semantics": "reset each case to actors with no follows/notices, then apply case overrides; notice fixture id 501 defaults recipient_id 42; stored_notifications are raw rows, notifications are readable shapes with known recipient",
+		"body_semantics": "JSON and raw JSON requests use application/json; empty DELETE/read action requests omit Content-Type; 204 responses empty; error messages illustrative except fixed STALE_FOLLOW"
+	},
+	"cases": [
+		{
+			"name": "owner-private-full",
+			"viewer_id": 42,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/42/profile"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"id": 42,
+						"display_name": "Alex Example",
+						"access": "full",
+						"relationship": {
+							"state": "self",
+							"follow_id": null
+						},
+						"profile": {
+							"email": "alex@example.com",
+							"first_name": "Alex",
+							"last_name": "Example",
+							"date_of_birth": "1998-03-14",
+							"nickname": null,
+							"about_me": null,
+							"avatar_url": "/api/v1/users/42/avatar",
+							"visibility": "private",
+							"followers_count": 0,
+							"following_count": 0,
+							"version": 1
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "public-outsider-full",
+			"viewer_id": 99,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/7/profile"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"id": 7,
+						"display_name": "Ada Lovelace",
+						"access": "full",
+						"relationship": {
+							"state": "none",
+							"follow_id": null
+						},
+						"profile": {
+							"email": "ada@example.com",
+							"first_name": "Ada",
+							"last_name": "Lovelace",
+							"date_of_birth": "1998-03-14",
+							"nickname": null,
+							"about_me": null,
+							"avatar_url": null,
+							"visibility": "public",
+							"followers_count": 0,
+							"following_count": 0
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "private-accepted-follower-full",
+			"viewer_id": 7,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				]
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/42/profile"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"id": 42,
+						"display_name": "Alex Example",
+						"access": "full",
+						"relationship": {
+							"state": "accepted",
+							"follow_id": 201
+						},
+						"profile": {
+							"email": "alex@example.com",
+							"first_name": "Alex",
+							"last_name": "Example",
+							"date_of_birth": "1998-03-14",
+							"nickname": null,
+							"about_me": null,
+							"avatar_url": "/api/v1/users/42/avatar",
+							"visibility": "private",
+							"followers_count": 1,
+							"following_count": 0
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "private-outsider-teaser",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/42/profile"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"id": 42,
+						"display_name": "Alex Example",
+						"access": "teaser",
+						"relationship": {
+							"state": "none",
+							"follow_id": null
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "private-pending-teaser",
+			"viewer_id": 7,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				]
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/42/profile"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"id": 42,
+						"display_name": "Alex Example",
+						"access": "teaser",
+						"relationship": {
+							"state": "pending",
+							"follow_id": 201
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "optional-text-and-nickname-roundtrip",
+			"viewer_id": 99,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/99/profile"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"id": 99,
+						"display_name": "Robin",
+						"access": "full",
+						"relationship": {
+							"state": "self",
+							"follow_id": null
+						},
+						"profile": {
+							"email": "outsider@example.com",
+							"first_name": "Robin",
+							"last_name": "Example",
+							"date_of_birth": "2000-02-29",
+							"nickname": "Robin",
+							"about_me": "Plain text\nSecond line",
+							"avatar_url": null,
+							"visibility": "private",
+							"followers_count": 0,
+							"following_count": 0,
+							"version": 1
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "people-name-search-redaction",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users?q=alex"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": [
+						{
+							"id": 42,
+							"display_name": "Alex Example",
+							"access": "teaser",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							}
+						}
+					],
+					"meta": {
+						"pagination": {
+							"page": 1,
+							"per_page": 20,
+							"total": 1,
+							"total_pages": 1
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "people-email-not-searchable",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users?q=alex%40example.com"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": [],
+					"meta": {
+						"pagination": {
+							"page": 1,
+							"per_page": 20,
+							"total": 0,
+							"total_pages": 0
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "people-literal-patterns",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users?q=%25_%5C"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": [],
+					"meta": {
+						"pagination": {
+							"page": 1,
+							"per_page": 20,
+							"total": 0,
+							"total_pages": 0
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "people-name-search-case-insensitive",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users?q=%20ALEX%20"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": [
+						{
+							"id": 42,
+							"display_name": "Alex Example",
+							"access": "teaser",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							}
+						}
+					],
+					"meta": {
+						"pagination": {
+							"page": 1,
+							"per_page": 20,
+							"total": 1,
+							"total_pages": 1
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "people-out-of-range-page",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users?page=2&per_page=20"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": [],
+					"meta": {
+						"pagination": {
+							"page": 2,
+							"per_page": 20,
+							"total": 3,
+							"total_pages": 1
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "people-invalid-page",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users?page=0"
+			},
+			"response": {
+				"status": 400,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "BAD_REQUEST",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "people-invalid-limit",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users?per_page=51"
+			},
+			"response": {
+				"status": 400,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "BAD_REQUEST",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "people-repeated-query",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users?q=ada&q=alex"
+			},
+			"response": {
+				"status": 400,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "BAD_REQUEST",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "people-unknown-query",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users?email=alex"
+			},
+			"response": {
+				"status": 400,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "BAD_REQUEST",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "people-query-too-long",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users?q=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+			},
+			"response": {
+				"status": 400,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "VALIDATION_ERROR",
+						"message": "Fixture error; clients branch on code",
+						"fields": {
+							"q": "TOO_LONG"
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "people-query-control",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users?q=%00"
+			},
+			"response": {
+				"status": 400,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "VALIDATION_ERROR",
+						"message": "Fixture error; clients branch on code",
+						"fields": {
+							"q": "INVALID_TEXT"
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "inactive-profile-not-found",
+			"viewer_id": 7,
+			"given": {
+				"inactive_user_ids": [42]
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/42/profile"
+			},
+			"response": {
+				"status": 404,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "NOT_FOUND",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "inactive-directory-excluded",
+			"viewer_id": 7,
+			"given": {
+				"inactive_user_ids": [42]
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users?q=alex"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": [],
+					"meta": {
+						"pagination": {
+							"page": 1,
+							"per_page": 20,
+							"total": 0,
+							"total_pages": 0
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "invalid-user-id",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/-1/profile"
+			},
+			"response": {
+				"status": 400,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "BAD_REQUEST",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "profile-missing-session",
+			"viewer_id": null,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/42/profile"
+			},
+			"response": {
+				"status": 401,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "UNAUTHORIZED",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "profile-revoked-session",
+			"viewer_id": 7,
+			"given": {
+				"session": "revoked"
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/42/profile"
+			},
+			"response": {
+				"status": 401,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "UNAUTHORIZED",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "profile-session-lookup-unavailable",
+			"viewer_id": 7,
+			"given": {
+				"failure": "session lookup"
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/42/profile"
+			},
+			"response": {
+				"status": 503,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "SERVICE_UNAVAILABLE",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "avatar-follower-allowed",
+			"viewer_id": 7,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				]
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/42/avatar",
+				"headers": {}
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store",
+					"Content-Type": "image/png",
+					"X-Content-Type-Options": "nosniff"
+				},
+				"binary_fixture": "SPA/tests/fixtures/a07/avatar.png"
+			},
+			"expect": {
+				"bytes": "exact stored PNG"
+			}
+		},
+		{
+			"name": "avatar-owner-allowed",
+			"viewer_id": 42,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/42/avatar"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store",
+					"Content-Type": "image/png",
+					"X-Content-Type-Options": "nosniff"
+				},
+				"binary_fixture": "SPA/tests/fixtures/a07/avatar.png"
+			},
+			"expect": {
+				"bytes": "exact stored PNG"
+			}
+		},
+		{
+			"name": "avatar-outsider-denied",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/42/avatar"
+			},
+			"response": {
+				"status": 404,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "NOT_FOUND",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "avatar-pending-denied",
+			"viewer_id": 7,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				]
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/42/avatar"
+			},
+			"response": {
+				"status": 404,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "NOT_FOUND",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "avatar-absent",
+			"viewer_id": 42,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/7/avatar"
+			},
+			"response": {
+				"status": 404,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "NOT_FOUND",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "followers-private-denied",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/42/followers"
+			},
+			"response": {
+				"status": 404,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "NOT_FOUND",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "following-private-denied",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/42/following"
+			},
+			"response": {
+				"status": 404,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "NOT_FOUND",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "followers-owner-list",
+			"viewer_id": 42,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				]
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/42/followers"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": [
+						{
+							"id": 7,
+							"display_name": "Ada Lovelace",
+							"access": "full",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							},
+							"avatar_url": null
+						}
+					],
+					"meta": {
+						"pagination": {
+							"page": 1,
+							"per_page": 20,
+							"total": 1,
+							"total_pages": 1
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "following-authorized-list-redacts-private-member",
+			"viewer_id": 42,
+			"given": {
+				"follows": [
+					{
+						"id": 301,
+						"follower_id": 7,
+						"followed_id": 99,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				]
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/7/following"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": [
+						{
+							"id": 99,
+							"display_name": "Robin",
+							"access": "teaser",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							}
+						}
+					],
+					"meta": {
+						"pagination": {
+							"page": 1,
+							"per_page": 20,
+							"total": 1,
+							"total_pages": 1
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "pending-incoming-list",
+			"viewer_id": 42,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				]
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/me/follow-requests"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": [
+						{
+							"id": 201,
+							"created_at": "2026-10-02T12:00:00Z",
+							"requester": {
+								"id": 7,
+								"display_name": "Ada Lovelace",
+								"access": "full",
+								"relationship": {
+									"state": "none",
+									"follow_id": null
+								},
+								"avatar_url": null
+							}
+						}
+					],
+					"meta": {
+						"pagination": {
+							"page": 1,
+							"per_page": 20,
+							"total": 1,
+							"total_pages": 1
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "pending-incoming-private-requester-teaser",
+			"viewer_id": 42,
+			"given": {
+				"follows": [
+					{
+						"id": 302,
+						"follower_id": 99,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				]
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/users/me/follow-requests"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": [
+						{
+							"id": 302,
+							"created_at": "2026-10-02T12:00:00Z",
+							"requester": {
+								"id": 99,
+								"display_name": "Robin",
+								"access": "teaser",
+								"relationship": {
+									"state": "none",
+									"follow_id": null
+								}
+							}
+						}
+					],
+					"meta": {
+						"pagination": {
+							"page": 1,
+							"per_page": 20,
+							"total": 1,
+							"total_pages": 1
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "public-follow-immediate",
+			"viewer_id": 42,
+			"given": {},
+			"request": {
+				"method": "POST",
+				"path": "/api/v1/follows",
+				"json": {
+					"user_id": 7
+				}
+			},
+			"response": {
+				"status": 201,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"id": 201,
+						"follower_id": 42,
+						"followed_id": 7,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				}
+			},
+			"expect": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 42,
+						"followed_id": 7,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				],
+				"new_notices": 0
+			}
+		},
+		{
+			"name": "private-follow-pending",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "POST",
+				"path": "/api/v1/follows",
+				"json": {
+					"user_id": 42
+				}
+			},
+			"response": {
+				"status": 201,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				}
+			},
+			"expect": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				],
+				"new_notice_recipient": 42,
+				"notice": {
+					"id": 501,
+					"type": "follow_request",
+					"created_at": "2026-10-02T12:00:00Z",
+					"is_read": false,
+					"actor": {
+						"id": 7,
+						"display_name": "Ada Lovelace",
+						"access": "full",
+						"relationship": {
+							"state": "none",
+							"follow_id": null
+						},
+						"avatar_url": null
+					},
+					"target": {
+						"kind": "follow_request",
+						"follow_id": 201,
+						"state": "pending"
+					},
+					"actions": ["accept", "decline"]
+				}
+			}
+		},
+		{
+			"name": "duplicate-pending-no-new-notice",
+			"viewer_id": 7,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				],
+				"notifications": [
+					{
+						"id": 501,
+						"type": "follow_request",
+						"created_at": "2026-10-02T12:00:00Z",
+						"is_read": false,
+						"actor": {
+							"id": 7,
+							"display_name": "Ada Lovelace",
+							"access": "full",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							},
+							"avatar_url": null
+						},
+						"target": {
+							"kind": "follow_request",
+							"follow_id": 201,
+							"state": "pending"
+						},
+						"actions": ["accept", "decline"]
+					}
+				]
+			},
+			"request": {
+				"method": "POST",
+				"path": "/api/v1/follows",
+				"json": {
+					"user_id": 42
+				}
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				}
+			},
+			"expect": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				],
+				"new_notices": 0
+			}
+		},
+		{
+			"name": "duplicate-accepted-no-new-notice",
+			"viewer_id": 7,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				]
+			},
+			"request": {
+				"method": "POST",
+				"path": "/api/v1/follows",
+				"json": {
+					"user_id": 42
+				}
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				}
+			},
+			"expect": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				],
+				"new_notices": 0
+			}
+		},
+		{
+			"name": "self-follow",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "POST",
+				"path": "/api/v1/follows",
+				"json": {
+					"user_id": 7
+				}
+			},
+			"response": {
+				"status": 400,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "SELF_FOLLOW",
+						"message": "Fixture error; clients branch on code",
+						"fields": {
+							"user_id": "SELF_FOLLOW"
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "follow-missing-target",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "POST",
+				"path": "/api/v1/follows",
+				"json": {}
+			},
+			"response": {
+				"status": 400,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "VALIDATION_ERROR",
+						"message": "Fixture error; clients branch on code",
+						"fields": {
+							"user_id": "REQUIRED"
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "follow-invalid-target",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "POST",
+				"path": "/api/v1/follows",
+				"json": {
+					"user_id": 0
+				}
+			},
+			"response": {
+				"status": 400,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "VALIDATION_ERROR",
+						"message": "Fixture error; clients branch on code",
+						"fields": {
+							"user_id": "INVALID_ID"
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "follow-unknown-field",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "POST",
+				"path": "/api/v1/follows",
+				"json": {
+					"user_id": 42,
+					"follower_id": 99
+				}
+			},
+			"response": {
+				"status": 400,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "BAD_REQUEST",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "follow-unknown-user",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "POST",
+				"path": "/api/v1/follows",
+				"json": {
+					"user_id": 404
+				}
+			},
+			"response": {
+				"status": 404,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "NOT_FOUND",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "follow-wrong-origin",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "POST",
+				"path": "/api/v1/follows",
+				"json": {
+					"user_id": 42
+				},
+				"headers": {
+					"Origin": "https://evil.example",
+					"X-Requested-With": "XMLHttpRequest"
+				}
+			},
+			"response": {
+				"status": 403,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "ORIGIN_FORBIDDEN",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "follow-missing-write-header",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "POST",
+				"path": "/api/v1/follows",
+				"json": {
+					"user_id": 42
+				},
+				"headers": {
+					"Origin": "http://localhost:3000",
+					"X-Requested-With": null
+				}
+			},
+			"response": {
+				"status": 403,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "CSRF_CHECK_FAILED",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "follow-wrong-content-type",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "POST",
+				"path": "/api/v1/follows",
+				"raw_body": "user_id=42",
+				"headers": {
+					"Content-Type": "text/plain"
+				}
+			},
+			"response": {
+				"status": 415,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "UNSUPPORTED_MEDIA_TYPE",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "follow-malformed-json",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "POST",
+				"path": "/api/v1/follows",
+				"raw_body": "{"
+			},
+			"response": {
+				"status": 400,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "BAD_REQUEST",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "follow-duplicate-json-key",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "POST",
+				"path": "/api/v1/follows",
+				"raw_body": "{\"user_id\":42,\"user_id\":99}"
+			},
+			"response": {
+				"status": 400,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "BAD_REQUEST",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "follow-body-too-large",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "POST",
+				"path": "/api/v1/follows",
+				"raw_body": "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 "
+			},
+			"response": {
+				"status": 413,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "PAYLOAD_TOO_LARGE",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "accept-request",
+			"viewer_id": 42,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				],
+				"notifications": [
+					{
+						"id": 501,
+						"type": "follow_request",
+						"created_at": "2026-10-02T12:00:00Z",
+						"is_read": false,
+						"actor": {
+							"id": 7,
+							"display_name": "Ada Lovelace",
+							"access": "full",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							},
+							"avatar_url": null
+						},
+						"target": {
+							"kind": "follow_request",
+							"follow_id": 201,
+							"state": "pending"
+						},
+						"actions": ["accept", "decline"]
+					}
+				]
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/follow-requests/201",
+				"json": {
+					"decision": "accept"
+				}
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				}
+			},
+			"expect": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				],
+				"notice": {
+					"id": 501,
+					"type": "follow_request",
+					"created_at": "2026-10-02T12:00:00Z",
+					"is_read": true,
+					"actor": {
+						"id": 7,
+						"display_name": "Ada Lovelace",
+						"access": "full",
+						"relationship": {
+							"state": "none",
+							"follow_id": null
+						},
+						"avatar_url": null
+					},
+					"target": {
+						"kind": "follow_request",
+						"follow_id": 201,
+						"state": "accepted"
+					},
+					"actions": []
+				},
+				"new_notices": 0
+			}
+		},
+		{
+			"name": "accept-repeat-same-id",
+			"viewer_id": 42,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				]
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/follow-requests/201",
+				"json": {
+					"decision": "accept"
+				}
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				}
+			},
+			"expect": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				],
+				"new_notices": 0
+			}
+		},
+		{
+			"name": "decline-request",
+			"viewer_id": 42,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				]
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/follow-requests/201",
+				"json": {
+					"decision": "decline"
+				}
+			},
+			"response": {
+				"status": 204,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": null
+			},
+			"expect": {
+				"follows": [],
+				"notice": {
+					"id": 501,
+					"type": "follow_request",
+					"created_at": "2026-10-02T12:00:00Z",
+					"is_read": true,
+					"actor": {
+						"id": 7,
+						"display_name": "Ada Lovelace",
+						"access": "full",
+						"relationship": {
+							"state": "none",
+							"follow_id": null
+						},
+						"avatar_url": null
+					},
+					"target": {
+						"kind": "follow_request",
+						"follow_id": 201,
+						"state": "declined"
+					},
+					"actions": []
+				}
+			}
+		},
+		{
+			"name": "cancel-request",
+			"viewer_id": 7,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				]
+			},
+			"request": {
+				"method": "DELETE",
+				"path": "/api/v1/follows/201"
+			},
+			"response": {
+				"status": 204,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": null
+			},
+			"expect": {
+				"follows": [],
+				"notice": {
+					"id": 501,
+					"type": "follow_request",
+					"created_at": "2026-10-02T12:00:00Z",
+					"is_read": true,
+					"actor": {
+						"id": 7,
+						"display_name": "Ada Lovelace",
+						"access": "full",
+						"relationship": {
+							"state": "none",
+							"follow_id": null
+						},
+						"avatar_url": null
+					},
+					"target": {
+						"kind": "follow_request",
+						"follow_id": 201,
+						"state": "cancelled"
+					},
+					"actions": []
+				}
+			}
+		},
+		{
+			"name": "unfollow",
+			"viewer_id": 7,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				],
+				"notifications": [
+					{
+						"id": 501,
+						"type": "follow_request",
+						"created_at": "2026-10-02T12:00:00Z",
+						"is_read": true,
+						"actor": {
+							"id": 7,
+							"display_name": "Ada Lovelace",
+							"access": "full",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							},
+							"avatar_url": null
+						},
+						"target": {
+							"kind": "follow_request",
+							"follow_id": 201,
+							"state": "accepted"
+						},
+						"actions": []
+					}
+				]
+			},
+			"request": {
+				"method": "DELETE",
+				"path": "/api/v1/follows/201"
+			},
+			"response": {
+				"status": 204,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": null
+			},
+			"expect": {
+				"follows": [],
+				"notice": {
+					"id": 501,
+					"type": "follow_request",
+					"created_at": "2026-10-02T12:00:00Z",
+					"is_read": true,
+					"actor": {
+						"id": 7,
+						"display_name": "Ada Lovelace",
+						"access": "full",
+						"relationship": {
+							"state": "none",
+							"follow_id": null
+						},
+						"avatar_url": null
+					},
+					"target": {
+						"kind": "follow_request",
+						"follow_id": 201,
+						"state": "unfollowed"
+					},
+					"actions": []
+				},
+				"selected_post_associations": "removed when Phase 3 table exists"
+			}
+		},
+		{
+			"name": "cancel-by-recipient-denied",
+			"viewer_id": 42,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				]
+			},
+			"request": {
+				"method": "DELETE",
+				"path": "/api/v1/follows/201"
+			},
+			"response": {
+				"status": 404,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "NOT_FOUND",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "accept-by-sender-denied",
+			"viewer_id": 7,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				]
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/follow-requests/201",
+				"json": {
+					"decision": "accept"
+				}
+			},
+			"response": {
+				"status": 404,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "NOT_FOUND",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "decision-by-outsider-denied",
+			"viewer_id": 99,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				]
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/follow-requests/201",
+				"json": {
+					"decision": "accept"
+				}
+			},
+			"response": {
+				"status": 404,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "NOT_FOUND",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "decision-invalid",
+			"viewer_id": 42,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				]
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/follow-requests/201",
+				"json": {
+					"decision": "approve"
+				}
+			},
+			"response": {
+				"status": 400,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "VALIDATION_ERROR",
+						"message": "Fixture error; clients branch on code",
+						"fields": {
+							"decision": "INVALID_CHOICE"
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "old-id-accept-cannot-affect-retry",
+			"viewer_id": 42,
+			"given": {
+				"removed_follow_ids": [201],
+				"follows": [
+					{
+						"id": 202,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				]
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/follow-requests/201",
+				"json": {
+					"decision": "accept"
+				}
+			},
+			"response": {
+				"status": 409,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "STALE_FOLLOW",
+						"message": "Relationship changed; refresh before acting"
+					}
+				}
+			},
+			"expect": {
+				"follows": [
+					{
+						"id": 202,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				]
+			}
+		},
+		{
+			"name": "old-id-decline-cannot-affect-retry",
+			"viewer_id": 42,
+			"given": {
+				"removed_follow_ids": [201],
+				"follows": [
+					{
+						"id": 202,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				]
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/follow-requests/201",
+				"json": {
+					"decision": "decline"
+				}
+			},
+			"response": {
+				"status": 409,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "STALE_FOLLOW",
+						"message": "Relationship changed; refresh before acting"
+					}
+				}
+			},
+			"expect": {
+				"follows": [
+					{
+						"id": 202,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				]
+			}
+		},
+		{
+			"name": "old-id-cancel-cannot-affect-retry",
+			"viewer_id": 7,
+			"given": {
+				"removed_follow_ids": [201],
+				"follows": [
+					{
+						"id": 202,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				]
+			},
+			"request": {
+				"method": "DELETE",
+				"path": "/api/v1/follows/201"
+			},
+			"response": {
+				"status": 409,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "STALE_FOLLOW",
+						"message": "Relationship changed; refresh before acting"
+					}
+				}
+			},
+			"expect": {
+				"follows": [
+					{
+						"id": 202,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				]
+			}
+		},
+		{
+			"name": "repeat-decline-stale",
+			"viewer_id": 42,
+			"given": {
+				"removed_follow_ids": [201]
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/follow-requests/201",
+				"json": {
+					"decision": "decline"
+				}
+			},
+			"response": {
+				"status": 409,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "STALE_FOLLOW",
+						"message": "Relationship changed; refresh before acting"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "repeat-delete-stale",
+			"viewer_id": 7,
+			"given": {
+				"removed_follow_ids": [201]
+			},
+			"request": {
+				"method": "DELETE",
+				"path": "/api/v1/follows/201"
+			},
+			"response": {
+				"status": 409,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "STALE_FOLLOW",
+						"message": "Relationship changed; refresh before acting"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "decline-already-accepted-stale",
+			"viewer_id": 42,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				]
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/follow-requests/201",
+				"json": {
+					"decision": "decline"
+				}
+			},
+			"response": {
+				"status": 409,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "STALE_FOLLOW",
+						"message": "Relationship changed; refresh before acting"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "explicit-retry-after-decline-fresh-id",
+			"viewer_id": 7,
+			"given": {
+				"removed_follow_ids": [201]
+			},
+			"request": {
+				"method": "POST",
+				"path": "/api/v1/follows",
+				"json": {
+					"user_id": 42
+				}
+			},
+			"response": {
+				"status": 201,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"id": 202,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				}
+			},
+			"expect": {
+				"follows": [
+					{
+						"id": 202,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				],
+				"notice": {
+					"id": 502,
+					"type": "follow_request",
+					"created_at": "2026-10-02T12:00:00Z",
+					"is_read": false,
+					"actor": {
+						"id": 7,
+						"display_name": "Ada Lovelace",
+						"access": "full",
+						"relationship": {
+							"state": "none",
+							"follow_id": null
+						},
+						"avatar_url": null
+					},
+					"target": {
+						"kind": "follow_request",
+						"follow_id": 202,
+						"state": "pending"
+					},
+					"actions": ["accept", "decline"]
+				}
+			}
+		},
+		{
+			"name": "privacy-private-to-public-auto-accept",
+			"viewer_id": 42,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				],
+				"notifications": [
+					{
+						"id": 501,
+						"type": "follow_request",
+						"created_at": "2026-10-02T12:00:00Z",
+						"is_read": false,
+						"actor": {
+							"id": 7,
+							"display_name": "Ada Lovelace",
+							"access": "full",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							},
+							"avatar_url": null
+						},
+						"target": {
+							"kind": "follow_request",
+							"follow_id": 201,
+							"state": "pending"
+						},
+						"actions": ["accept", "decline"]
+					}
+				]
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/users/me/privacy",
+				"json": {
+					"visibility": "public",
+					"expected_version": 1
+				}
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"id": 42,
+						"display_name": "Alex Example",
+						"access": "full",
+						"relationship": {
+							"state": "self",
+							"follow_id": null
+						},
+						"profile": {
+							"email": "alex@example.com",
+							"first_name": "Alex",
+							"last_name": "Example",
+							"date_of_birth": "1998-03-14",
+							"nickname": null,
+							"about_me": null,
+							"avatar_url": "/api/v1/users/42/avatar",
+							"visibility": "public",
+							"followers_count": 1,
+							"following_count": 0,
+							"version": 2
+						}
+					}
+				}
+			},
+			"expect": {
+				"profile_visibility": "public",
+				"profile_version": 2,
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				],
+				"notice": {
+					"id": 501,
+					"type": "follow_request",
+					"created_at": "2026-10-02T12:00:00Z",
+					"is_read": true,
+					"actor": {
+						"id": 7,
+						"display_name": "Ada Lovelace",
+						"access": "full",
+						"relationship": {
+							"state": "none",
+							"follow_id": null
+						},
+						"avatar_url": null
+					},
+					"target": {
+						"kind": "follow_request",
+						"follow_id": 201,
+						"state": "accepted"
+					},
+					"actions": []
+				}
+			}
+		},
+		{
+			"name": "privacy-public-to-private-preserves-followers",
+			"viewer_id": 7,
+			"given": {
+				"follows": [
+					{
+						"id": 301,
+						"follower_id": 42,
+						"followed_id": 7,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				]
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/users/me/privacy",
+				"json": {
+					"visibility": "private",
+					"expected_version": 1
+				}
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"id": 7,
+						"display_name": "Ada Lovelace",
+						"access": "full",
+						"relationship": {
+							"state": "self",
+							"follow_id": null
+						},
+						"profile": {
+							"email": "ada@example.com",
+							"first_name": "Ada",
+							"last_name": "Lovelace",
+							"date_of_birth": "1998-03-14",
+							"nickname": null,
+							"about_me": null,
+							"avatar_url": null,
+							"visibility": "private",
+							"followers_count": 1,
+							"following_count": 0,
+							"version": 2
+						}
+					}
+				}
+			},
+			"expect": {
+				"profile_visibility": "private",
+				"profile_version": 2,
+				"follows": [
+					{
+						"id": 301,
+						"follower_id": 42,
+						"followed_id": 7,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				]
+			}
+		},
+		{
+			"name": "privacy-same-value-no-op",
+			"viewer_id": 42,
+			"given": {},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/users/me/privacy",
+				"json": {
+					"visibility": "private",
+					"expected_version": 1
+				}
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"id": 42,
+						"display_name": "Alex Example",
+						"access": "full",
+						"relationship": {
+							"state": "self",
+							"follow_id": null
+						},
+						"profile": {
+							"email": "alex@example.com",
+							"first_name": "Alex",
+							"last_name": "Example",
+							"date_of_birth": "1998-03-14",
+							"nickname": null,
+							"about_me": null,
+							"avatar_url": "/api/v1/users/42/avatar",
+							"visibility": "private",
+							"followers_count": 0,
+							"following_count": 0,
+							"version": 1
+						}
+					}
+				}
+			},
+			"expect": {
+				"profile_version": 1,
+				"signals": []
+			}
+		},
+		{
+			"name": "privacy-stale-version",
+			"viewer_id": 42,
+			"given": {
+				"profile_version": 2
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/users/me/privacy",
+				"json": {
+					"visibility": "public",
+					"expected_version": 1
+				}
+			},
+			"response": {
+				"status": 409,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "STALE_PROFILE",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "privacy-invalid-choice",
+			"viewer_id": 42,
+			"given": {},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/users/me/privacy",
+				"json": {
+					"visibility": "friends",
+					"expected_version": 1
+				}
+			},
+			"response": {
+				"status": 400,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "VALIDATION_ERROR",
+						"message": "Fixture error; clients branch on code",
+						"fields": {
+							"visibility": "INVALID_CHOICE"
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "privacy-missing-version",
+			"viewer_id": 42,
+			"given": {},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/users/me/privacy",
+				"json": {
+					"visibility": "public"
+				}
+			},
+			"response": {
+				"status": 400,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "VALIDATION_ERROR",
+						"message": "Fixture error; clients branch on code",
+						"fields": {
+							"expected_version": "REQUIRED"
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "privacy-invalid-version",
+			"viewer_id": 42,
+			"given": {},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/users/me/privacy",
+				"json": {
+					"visibility": "public",
+					"expected_version": 0
+				}
+			},
+			"response": {
+				"status": 400,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "VALIDATION_ERROR",
+						"message": "Fixture error; clients branch on code",
+						"fields": {
+							"expected_version": "INVALID_VERSION"
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "pending-notice-actionable",
+			"viewer_id": 42,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				],
+				"notifications": [
+					{
+						"id": 501,
+						"type": "follow_request",
+						"created_at": "2026-10-02T12:00:00Z",
+						"is_read": false,
+						"actor": {
+							"id": 7,
+							"display_name": "Ada Lovelace",
+							"access": "full",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							},
+							"avatar_url": null
+						},
+						"target": {
+							"kind": "follow_request",
+							"follow_id": 201,
+							"state": "pending"
+						},
+						"actions": ["accept", "decline"]
+					}
+				]
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/notifications"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"notifications": [
+							{
+								"id": 501,
+								"type": "follow_request",
+								"created_at": "2026-10-02T12:00:00Z",
+								"is_read": false,
+								"actor": {
+									"id": 7,
+									"display_name": "Ada Lovelace",
+									"access": "full",
+									"relationship": {
+										"state": "none",
+										"follow_id": null
+									},
+									"avatar_url": null
+								},
+								"target": {
+									"kind": "follow_request",
+									"follow_id": 201,
+									"state": "pending"
+								},
+								"actions": ["accept", "decline"]
+							}
+						],
+						"unread_count": 1
+					},
+					"meta": {
+						"pagination": {
+							"page": 1,
+							"per_page": 20,
+							"total": 1,
+							"total_pages": 1
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "notice-read-does-not-accept",
+			"viewer_id": 42,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				],
+				"notifications": [
+					{
+						"id": 501,
+						"type": "follow_request",
+						"created_at": "2026-10-02T12:00:00Z",
+						"is_read": false,
+						"actor": {
+							"id": 7,
+							"display_name": "Ada Lovelace",
+							"access": "full",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							},
+							"avatar_url": null
+						},
+						"target": {
+							"kind": "follow_request",
+							"follow_id": 201,
+							"state": "pending"
+						},
+						"actions": ["accept", "decline"]
+					}
+				]
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/notifications/501/read"
+			},
+			"response": {
+				"status": 204,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": null
+			},
+			"expect": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				],
+				"notice": {
+					"id": 501,
+					"type": "follow_request",
+					"created_at": "2026-10-02T12:00:00Z",
+					"is_read": true,
+					"actor": {
+						"id": 7,
+						"display_name": "Ada Lovelace",
+						"access": "full",
+						"relationship": {
+							"state": "none",
+							"follow_id": null
+						},
+						"avatar_url": null
+					},
+					"target": {
+						"kind": "follow_request",
+						"follow_id": 201,
+						"state": "pending"
+					},
+					"actions": ["accept", "decline"]
+				}
+			}
+		},
+		{
+			"name": "notice-repeat-read-idempotent",
+			"viewer_id": 42,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				],
+				"notifications": [
+					{
+						"id": 501,
+						"type": "follow_request",
+						"created_at": "2026-10-02T12:00:00Z",
+						"is_read": true,
+						"actor": {
+							"id": 7,
+							"display_name": "Ada Lovelace",
+							"access": "full",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							},
+							"avatar_url": null
+						},
+						"target": {
+							"kind": "follow_request",
+							"follow_id": 201,
+							"state": "pending"
+						},
+						"actions": ["accept", "decline"]
+					}
+				]
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/notifications/501/read"
+			},
+			"response": {
+				"status": 204,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": null
+			},
+			"expect": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				],
+				"notice": {
+					"id": 501,
+					"type": "follow_request",
+					"created_at": "2026-10-02T12:00:00Z",
+					"is_read": true,
+					"actor": {
+						"id": 7,
+						"display_name": "Ada Lovelace",
+						"access": "full",
+						"relationship": {
+							"state": "none",
+							"follow_id": null
+						},
+						"avatar_url": null
+					},
+					"target": {
+						"kind": "follow_request",
+						"follow_id": 201,
+						"state": "pending"
+					},
+					"actions": ["accept", "decline"]
+				}
+			}
+		},
+		{
+			"name": "foreign-notice-read-denied",
+			"viewer_id": 99,
+			"given": {
+				"notifications": [
+					{
+						"id": 501,
+						"type": "follow_request",
+						"created_at": "2026-10-02T12:00:00Z",
+						"is_read": false,
+						"actor": {
+							"id": 7,
+							"display_name": "Ada Lovelace",
+							"access": "full",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							},
+							"avatar_url": null
+						},
+						"target": {
+							"kind": "follow_request",
+							"follow_id": 201,
+							"state": "pending"
+						},
+						"actions": ["accept", "decline"]
+					}
+				]
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/notifications/501/read"
+			},
+			"response": {
+				"status": 404,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "NOT_FOUND",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "other-recipient-no-notices",
+			"viewer_id": 99,
+			"given": {
+				"notifications": [
+					{
+						"id": 501,
+						"type": "follow_request",
+						"created_at": "2026-10-02T12:00:00Z",
+						"is_read": false,
+						"actor": {
+							"id": 7,
+							"display_name": "Ada Lovelace",
+							"access": "full",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							},
+							"avatar_url": null
+						},
+						"target": {
+							"kind": "follow_request",
+							"follow_id": 201,
+							"state": "pending"
+						},
+						"actions": ["accept", "decline"]
+					}
+				]
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/notifications"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"notifications": [],
+						"unread_count": 0
+					},
+					"meta": {
+						"pagination": {
+							"page": 1,
+							"per_page": 20,
+							"total": 0,
+							"total_pages": 0
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "resolved-notice-accepted-read-no-actions",
+			"viewer_id": 42,
+			"given": {
+				"notifications": [
+					{
+						"id": 501,
+						"type": "follow_request",
+						"created_at": "2026-10-02T12:00:00Z",
+						"is_read": true,
+						"actor": {
+							"id": 7,
+							"display_name": "Ada Lovelace",
+							"access": "full",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							},
+							"avatar_url": null
+						},
+						"target": {
+							"kind": "follow_request",
+							"follow_id": 201,
+							"state": "accepted"
+						},
+						"actions": []
+					}
+				],
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "accepted",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": "2026-10-02T12:00:00Z"
+					}
+				]
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/notifications"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"notifications": [
+							{
+								"id": 501,
+								"type": "follow_request",
+								"created_at": "2026-10-02T12:00:00Z",
+								"is_read": true,
+								"actor": {
+									"id": 7,
+									"display_name": "Ada Lovelace",
+									"access": "full",
+									"relationship": {
+										"state": "none",
+										"follow_id": null
+									},
+									"avatar_url": null
+								},
+								"target": {
+									"kind": "follow_request",
+									"follow_id": 201,
+									"state": "accepted"
+								},
+								"actions": []
+							}
+						],
+						"unread_count": 0
+					},
+					"meta": {
+						"pagination": {
+							"page": 1,
+							"per_page": 20,
+							"total": 1,
+							"total_pages": 1
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "resolved-notice-declined-read-no-actions",
+			"viewer_id": 42,
+			"given": {
+				"notifications": [
+					{
+						"id": 501,
+						"type": "follow_request",
+						"created_at": "2026-10-02T12:00:00Z",
+						"is_read": true,
+						"actor": {
+							"id": 7,
+							"display_name": "Ada Lovelace",
+							"access": "full",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							},
+							"avatar_url": null
+						},
+						"target": {
+							"kind": "follow_request",
+							"follow_id": 201,
+							"state": "declined"
+						},
+						"actions": []
+					}
+				],
+				"follows": []
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/notifications"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"notifications": [
+							{
+								"id": 501,
+								"type": "follow_request",
+								"created_at": "2026-10-02T12:00:00Z",
+								"is_read": true,
+								"actor": {
+									"id": 7,
+									"display_name": "Ada Lovelace",
+									"access": "full",
+									"relationship": {
+										"state": "none",
+										"follow_id": null
+									},
+									"avatar_url": null
+								},
+								"target": {
+									"kind": "follow_request",
+									"follow_id": 201,
+									"state": "declined"
+								},
+								"actions": []
+							}
+						],
+						"unread_count": 0
+					},
+					"meta": {
+						"pagination": {
+							"page": 1,
+							"per_page": 20,
+							"total": 1,
+							"total_pages": 1
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "resolved-notice-cancelled-read-no-actions",
+			"viewer_id": 42,
+			"given": {
+				"notifications": [
+					{
+						"id": 501,
+						"type": "follow_request",
+						"created_at": "2026-10-02T12:00:00Z",
+						"is_read": true,
+						"actor": {
+							"id": 7,
+							"display_name": "Ada Lovelace",
+							"access": "full",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							},
+							"avatar_url": null
+						},
+						"target": {
+							"kind": "follow_request",
+							"follow_id": 201,
+							"state": "cancelled"
+						},
+						"actions": []
+					}
+				],
+				"follows": []
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/notifications"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"notifications": [
+							{
+								"id": 501,
+								"type": "follow_request",
+								"created_at": "2026-10-02T12:00:00Z",
+								"is_read": true,
+								"actor": {
+									"id": 7,
+									"display_name": "Ada Lovelace",
+									"access": "full",
+									"relationship": {
+										"state": "none",
+										"follow_id": null
+									},
+									"avatar_url": null
+								},
+								"target": {
+									"kind": "follow_request",
+									"follow_id": 201,
+									"state": "cancelled"
+								},
+								"actions": []
+							}
+						],
+						"unread_count": 0
+					},
+					"meta": {
+						"pagination": {
+							"page": 1,
+							"per_page": 20,
+							"total": 1,
+							"total_pages": 1
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "resolved-notice-unfollowed-read-no-actions",
+			"viewer_id": 42,
+			"given": {
+				"notifications": [
+					{
+						"id": 501,
+						"type": "follow_request",
+						"created_at": "2026-10-02T12:00:00Z",
+						"is_read": true,
+						"actor": {
+							"id": 7,
+							"display_name": "Ada Lovelace",
+							"access": "full",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							},
+							"avatar_url": null
+						},
+						"target": {
+							"kind": "follow_request",
+							"follow_id": 201,
+							"state": "unfollowed"
+						},
+						"actions": []
+					}
+				],
+				"follows": []
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/notifications"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"notifications": [
+							{
+								"id": 501,
+								"type": "follow_request",
+								"created_at": "2026-10-02T12:00:00Z",
+								"is_read": true,
+								"actor": {
+									"id": 7,
+									"display_name": "Ada Lovelace",
+									"access": "full",
+									"relationship": {
+										"state": "none",
+										"follow_id": null
+									},
+									"avatar_url": null
+								},
+								"target": {
+									"kind": "follow_request",
+									"follow_id": 201,
+									"state": "unfollowed"
+								},
+								"actions": []
+							}
+						],
+						"unread_count": 0
+					},
+					"meta": {
+						"pagination": {
+							"page": 1,
+							"per_page": 20,
+							"total": 1,
+							"total_pages": 1
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "notice-private-requester-name-only",
+			"viewer_id": 42,
+			"given": {
+				"notifications": [
+					{
+						"id": 501,
+						"type": "follow_request",
+						"created_at": "2026-10-02T12:00:00Z",
+						"is_read": false,
+						"actor": {
+							"id": 99,
+							"display_name": "Robin",
+							"access": "teaser",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							}
+						},
+						"target": {
+							"kind": "follow_request",
+							"follow_id": 302,
+							"state": "pending"
+						},
+						"actions": ["accept", "decline"],
+						"recipient_id": 42
+					}
+				],
+				"follows": [
+					{
+						"id": 302,
+						"follower_id": 99,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				]
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/notifications"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"notifications": [
+							{
+								"id": 501,
+								"type": "follow_request",
+								"created_at": "2026-10-02T12:00:00Z",
+								"is_read": false,
+								"actor": {
+									"id": 99,
+									"display_name": "Robin",
+									"access": "teaser",
+									"relationship": {
+										"state": "none",
+										"follow_id": null
+									}
+								},
+								"target": {
+									"kind": "follow_request",
+									"follow_id": 302,
+									"state": "pending"
+								},
+								"actions": ["accept", "decline"]
+							}
+						],
+						"unread_count": 1
+					},
+					"meta": {
+						"pagination": {
+							"page": 1,
+							"per_page": 20,
+							"total": 1,
+							"total_pages": 1
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "content-notice-private-actor-redacted",
+			"viewer_id": 7,
+			"given": {
+				"posts": [
+					{
+						"id": 81,
+						"author_id": 7,
+						"status": "published",
+						"title": "Permitted post"
+					}
+				],
+				"notifications": [
+					{
+						"id": 601,
+						"type": "post_like",
+						"created_at": "2026-10-02T12:00:00Z",
+						"is_read": false,
+						"actor": {
+							"id": 99,
+							"display_name": "Robin",
+							"access": "teaser",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							}
+						},
+						"target": {
+							"kind": "post",
+							"post_id": 81,
+							"title": "Permitted post"
+						},
+						"actions": [],
+						"recipient_id": 7
+					}
+				]
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/notifications"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"notifications": [
+							{
+								"id": 601,
+								"type": "post_like",
+								"created_at": "2026-10-02T12:00:00Z",
+								"is_read": false,
+								"actor": {
+									"id": 99,
+									"display_name": "Robin",
+									"access": "teaser",
+									"relationship": {
+										"state": "none",
+										"follow_id": null
+									}
+								},
+								"target": {
+									"kind": "post",
+									"post_id": 81,
+									"title": "Permitted post"
+								},
+								"actions": []
+							}
+						],
+						"unread_count": 1
+					},
+					"meta": {
+						"pagination": {
+							"page": 1,
+							"per_page": 20,
+							"total": 1,
+							"total_pages": 1
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "hidden-content-notice-excluded-from-badge",
+			"viewer_id": 99,
+			"given": {
+				"posts": [
+					{
+						"id": 81,
+						"author_id": 42,
+						"status": "published"
+					}
+				],
+				"stored_notifications": [
+					{
+						"id": 601,
+						"type": "post_like",
+						"recipient_id": 99,
+						"actor_id": 7,
+						"post_id": 81,
+						"is_read": false
+					}
+				]
+			},
+			"request": {
+				"method": "GET",
+				"path": "/api/v1/notifications"
+			},
+			"response": {
+				"status": 200,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"data": {
+						"notifications": [],
+						"unread_count": 0
+					},
+					"meta": {
+						"pagination": {
+							"page": 1,
+							"per_page": 20,
+							"total": 0,
+							"total_pages": 0
+						}
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "hidden-content-notice-read-denied",
+			"viewer_id": 99,
+			"given": {
+				"posts": [
+					{
+						"id": 81,
+						"author_id": 42,
+						"status": "published"
+					}
+				],
+				"stored_notifications": [
+					{
+						"id": 601,
+						"recipient_id": 99,
+						"post_id": 81,
+						"is_read": false
+					}
+				]
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/notifications/601/read"
+			},
+			"response": {
+				"status": 404,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "NOT_FOUND",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "mark-all-preserves-hidden-read-state",
+			"viewer_id": 99,
+			"given": {
+				"visible_notice_ids": [701],
+				"hidden_notice_ids": [601]
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/notifications/read-all"
+			},
+			"response": {
+				"status": 204,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": null
+			},
+			"expect": {
+				"read_notice_ids": [701],
+				"unchanged_hidden_notice_ids": [601]
+			}
+		},
+		{
+			"name": "read-all-repeat",
+			"viewer_id": 42,
+			"given": {
+				"notifications": [
+					{
+						"id": 501,
+						"type": "follow_request",
+						"created_at": "2026-10-02T12:00:00Z",
+						"is_read": true,
+						"actor": {
+							"id": 7,
+							"display_name": "Ada Lovelace",
+							"access": "full",
+							"relationship": {
+								"state": "none",
+								"follow_id": null
+							},
+							"avatar_url": null
+						},
+						"target": {
+							"kind": "follow_request",
+							"follow_id": 201,
+							"state": "pending"
+						},
+						"actions": ["accept", "decline"]
+					}
+				]
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/notifications/read-all"
+			},
+			"response": {
+				"status": 204,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": null
+			},
+			"expect": {
+				"notice": {
+					"id": 501,
+					"type": "follow_request",
+					"created_at": "2026-10-02T12:00:00Z",
+					"is_read": true,
+					"actor": {
+						"id": 7,
+						"display_name": "Ada Lovelace",
+						"access": "full",
+						"relationship": {
+							"state": "none",
+							"follow_id": null
+						},
+						"avatar_url": null
+					},
+					"target": {
+						"kind": "follow_request",
+						"follow_id": 201,
+						"state": "pending"
+					},
+					"actions": ["accept", "decline"]
+				}
+			}
+		},
+		{
+			"name": "follow-response-lost-after-commit",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "POST",
+				"path": "/api/v1/follows",
+				"json": {
+					"user_id": 42
+				}
+			},
+			"response": {
+				"transport_error": "response lost",
+				"status": null
+			},
+			"expect": {
+				"outcome": "unknown to client; server may have committed",
+				"recovery": "GET target profile; no blind replay after relationship ends"
+			}
+		},
+		{
+			"name": "privacy-transaction-failure",
+			"viewer_id": 42,
+			"given": {
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				],
+				"failure": "commit"
+			},
+			"request": {
+				"method": "PATCH",
+				"path": "/api/v1/users/me/privacy",
+				"json": {
+					"visibility": "public",
+					"expected_version": 1
+				}
+			},
+			"response": {
+				"status": 500,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "INTERNAL_SERVER_ERROR",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"profile_visibility": "private",
+				"profile_version": 1,
+				"follows": [
+					{
+						"id": 201,
+						"follower_id": 7,
+						"followed_id": 42,
+						"state": "pending",
+						"created_at": "2026-10-02T12:00:00Z",
+						"accepted_at": null
+					}
+				],
+				"signals": []
+			}
+		},
+		{
+			"name": "follow-unavailable",
+			"viewer_id": 7,
+			"given": {
+				"failure": "database busy timeout"
+			},
+			"request": {
+				"method": "POST",
+				"path": "/api/v1/follows",
+				"json": {
+					"user_id": 42
+				}
+			},
+			"response": {
+				"status": 503,
+				"headers": {
+					"Cache-Control": "no-store"
+				},
+				"body": {
+					"error": {
+						"code": "SERVICE_UNAVAILABLE",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		},
+		{
+			"name": "wrong-method",
+			"viewer_id": 7,
+			"given": {},
+			"request": {
+				"method": "PUT",
+				"path": "/api/v1/follows"
+			},
+			"response": {
+				"status": 405,
+				"headers": {
+					"Cache-Control": "no-store",
+					"Allow": "POST"
+				},
+				"body": {
+					"error": {
+						"code": "METHOD_NOT_ALLOWED",
+						"message": "Fixture error; clients branch on code"
+					}
+				}
+			},
+			"expect": {
+				"writes": "none"
+			}
+		}
+	],
+	"signals": [
+		{
+			"name": "new-pending-request-after-commit",
+			"frame": {
+				"type": "notification.new"
+			},
+			"recipient_ids": [42],
+			"never": ["protected payload", "before commit"]
+		},
+		{
+			"name": "relationship-invalidation",
+			"frame": {
+				"type": "social.invalidate"
+			},
+			"recipient_ids": [7, 42]
+		},
+		{
+			"name": "privacy-switch-invalidation",
+			"frame": {
+				"type": "social.invalidate"
+			},
+			"recipient_scope": "all authenticated valid-session sockets"
+		},
+		{
+			"name": "rollback",
+			"frames": []
+		},
+		{
+			"name": "reconnect",
+			"client_actions": [
+				"discard protected cached details",
+				"refetch displayed profile/lists/incoming requests/notifications",
+				"restore authorized unread count"
+			],
+			"server_replay": false
+		}
+	],
+	"races": [
+		{
+			"name": "public-to-private-versus-create",
+			"allowed": ["create commits first: accepted retained", "privacy commits first: pending"]
+		},
+		{
+			"name": "private-to-public-versus-create",
+			"allowed": ["pending first: auto-accepted same ID", "privacy first: immediate accepted"]
+		},
+		{
+			"name": "accept-versus-cancel",
+			"allowed": [
+				"accept first: sender removes accepted same ID",
+				"cancel first: accept 409 STALE_FOLLOW"
+			]
+		},
+		{
+			"name": "parallel-create",
+			"allowed": ["one 201; other 200 same ID; one notice"]
+		},
+		{
+			"name": "old-notice-versus-retry",
+			"allowed": ["old ID 409; new pending ID unchanged"]
+		}
+	]
+}

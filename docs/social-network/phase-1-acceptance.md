@@ -1,6 +1,6 @@
 # Phase 1 integrated acceptance — SN-A07
 
-Status: implementation, local and hosted verification complete on `chbaikas/A07`; Dev 2 evidence review remains open. Ticket status is maintained in the [tracker](ticket-tracker.md).
+Status: implementation, local and hosted verification complete on `chbaikas/A07`; owner confirmed Dev 2 evidence review passed on 2026-10-02. Ticket status is maintained in the [tracker](ticket-tracker.md).
 
 ## Scope and setup
 
@@ -41,6 +41,6 @@ On 2026-10-01, review commit `541d1ad` strengthened the browser assertions: uppe
 
 From a fresh checkout with Docker already running, execute `make deps` and `make check`. To inspect the UI directly, run `make stack-up`, open `http://localhost:3000/register`, and register once with only required fields and once with nickname, about-me and one of the avatar fixtures. Confirm home access, logout and denied direct entry after logout. Repeat in a 360px viewport, using Tab to move from email to password and checking that Sign out remains visible. For browser persistence, close and reopen the same non-private browser profile before logging out; `make stack-down` preserves the development volume. The automated suite performs these checks against disposable storage, including backend recreation.
 
-## Remaining gate
+## Dev 2 review confirmation
 
-Dev 2 must review the local and hosted evidence and any backend findings. Until that review is recorded, SN-A07 remains in progress and Phase 1 acceptance is not claimed complete. The separately authorized Phase 2–4 backlog is already merged in [PR #18](https://github.com/alexsmyr0/social-network/pull/18); completing A07 unlocks Phase 2 execution through SN-B10. Writing or implementing later-phase tickets remains outside A07.
+On 2026-10-02, the project owner explicitly confirmed in chat that Dev 2 evidence review passed and instructed the agent to update the records. This records the completed external review gate based on that report; it does not claim a new test run or infer review from the merge. SN-A07 merged as `408d1bc`; the local/hosted evidence above remains tied to its tested revisions. Phase 1 acceptance is complete in the [tracker](ticket-tracker.md), unlocking SN-B10. The separately authorized Phase 2–4 backlog merged in [PR #18](https://github.com/alexsmyr0/social-network/pull/18); later ticket implementation remains its own scope.

@@ -1,6 +1,6 @@
 # Social Network — Ticket Progress Tracker
 
-Execution checkpoint: **Phase 1 — Foundations and account access**. Ticketed scope: **Phases 1–4**; the owner authorized larger tickets following the [Phase 2–3 interview](phase-2-3-decisions.md) and [Phase 4 interview](phase-4-decisions.md). **Phase 5 is pending** at the owner's request; Phase 6 remains roadmap-only. Full scope: [roadmap](roadmap.md). Authority: [Zone01 assignment](requirements.md). The [forum tracker](../ticket-tracker.md) is historical.
+Execution checkpoint: **Phase 2 — Profiles and following**. Ticketed scope: **Phases 1–4**; the owner authorized larger tickets following the [Phase 2–3 interview](phase-2-3-decisions.md) and [Phase 4 interview](phase-4-decisions.md). **Phase 5 is pending** at the owner's request; Phase 6 remains roadmap-only. Full scope: [roadmap](roadmap.md). Authority: [Zone01 assignment](requirements.md). The [forum tracker](../ticket-tracker.md) is historical.
 
 ## Team and ownership
 
@@ -25,12 +25,12 @@ Follow the [ticket-writing rules](ticket-rules.md). The [Phase 1 audit](ticket-a
 
 ## Summary
 
-36 tickets: 17 in A, 19 in B. Done: 16. In progress: 1. Blocked: 0. Not started: 19. SN-A07 awaits Dev 2 evidence review. All 19 new Phase 2–4 tickets are unstarted.
+36 tickets: 17 in A, 19 in B. Done: 17. In progress: 1. Blocked: 0. Not started: 18. Owner confirmed SN-A07 Dev 2 review passed on 2026-10-02. SN-B10 contract drafting is in progress; concrete interface approval and Dev 1 fixture review remain open.
 
 | Phase | A | B | Total | Done | In progress | Not started | Exit |
 |---|---|---|---|---|---|---|---|
-| 1 | 8 | 9 | 17 | 16 | 1 | 0 | SN-A07 |
-| 2 | 3 | 4 | 7 | 0 | 0 | 7 | SN-A11 |
+| 1 | 8 | 9 | 17 | 17 | 0 | 0 | SN-A07 |
+| 2 | 3 | 4 | 7 | 0 | 1 | 6 | SN-A11 |
 | 3 | 3 | 3 | 6 | 0 | 0 | 6 | SN-A14 |
 | 4 | 3 | 3 | 6 | 0 | 0 | 6 | SN-A17 |
 
@@ -56,13 +56,13 @@ Phase 5 has no tickets or approved messaging/event model yet; unanswered proposa
 | [x] | [SN-A06](track-a.md#sn-a06--frontend-image-and-runtime-handoff) | Frontend image and runtime handoff | SN-A04, SN-A05 | SN-B07 | [Frontend image handoff](frontend-setup.md#frontend-container-handoff). No-cache image build; health/auth/deep-link/JS/CSS smoke; runtime target and JSON `502` outage checks; non-root/distinct-image inspection; `make test` exit 0 with Vitest 540/540 and Playwright 13/13. |
 | [x] | [SN-B06](track-b.md#sn-b06--backend-image-and-persistent-storage) | Backend image and persistent storage | SN-B09 | SN-B07 | [Backend image and run instructions](backend-image.md). `docker build -q -t social-network-backend .` and `scripts/smoke-backend-image.sh social-network-backend` exit 0: clean migration, account/avatar/login/logout, retained session and media after container recreation, invalid DB/media readiness refusal. `make test` exit 0. |
 | [x] | [SN-B07](track-b.md#sn-b07--shared-run-and-quality-gate) | Shared run and quality gate | SN-A06, SN-B06 | SN-A07 | [Shared runtime and verification record](shared-runtime.md#verification-record). [Hosted `make check`](https://github.com/alexsmyr0/social-network/actions/runs/36574650827) passed on `c771a6f`; owner-reported local `make test-images` passed on PR #15 merge `e34874b`: both image builds, backend persistence smoke, Playwright transport 2/2, stopped-backend outage and cleanup. Reverted in `53fb158` for resubmission; fresh HEAD checks are recorded separately in the resubmission PR. |
-| [-] | [SN-A07](track-a.md#sn-a07--phase-1-integrated-acceptance) | Phase 1 integrated acceptance | SN-B07, SN-A08 | SN-B10 | [Local acceptance record](phase-1-acceptance.md) on `chbaikas/A07`: reviewed local `make check` exited 0 on `541d1ad`; A07 real-service journeys 7/7, image browser suite 9/9, native Playwright 15/15, Vitest 540/540, backend smoke and outage checks passed. [Hosted `make check`](https://github.com/alexsmyr0/social-network/actions/runs/36782718815) passed on reviewed `f230451` with image browser 9/9; Dev 2 evidence review remains. |
+| [x] | [SN-A07](track-a.md#sn-a07--phase-1-integrated-acceptance) | Phase 1 integrated acceptance | SN-B07, SN-A08 | SN-B10 | [Local acceptance record](phase-1-acceptance.md) on `chbaikas/A07`: reviewed local `make check` exited 0 on `541d1ad`; A07 real-service journeys 7/7, image browser suite 9/9, native Playwright 15/15, Vitest 540/540, backend smoke and outage checks passed. [Hosted `make check`](https://github.com/alexsmyr0/social-network/actions/runs/36782718815) passed on reviewed `f230451` with image browser 9/9; Owner confirmed Dev 2 evidence review passed on 2026-10-02; [review record](phase-1-acceptance.md#dev-2-review-confirmation). |
 
 ## Phase 2 — Profiles and following
 
 | Status | Ticket | Description | Depends on | Blocks | Evidence / external gate |
 |---|---|---|---|---|---|
-| [ ] | [SN-B10](track-b.md#sn-b10--publish-profile-follow-and-notification-contracts) | Publish profile, follow and notification contracts | SN-A07 | SN-B11, SN-A09 | Owner approval of concrete interfaces; Dev 1 fixture review. Approved product/architecture choices remain settled. |
+| [-] | [SN-B10](track-b.md#sn-b10--publish-profile-follow-and-notification-contracts) | Publish profile, follow and notification contracts | SN-A07 | SN-B11, SN-A09 | [Draft contracts](profiles-contract.md), [data/privacy handoff](phase-2-data-plan.md) and [fixture pack](fixtures/phase-2-contract.json) on `asmyrogl/B10`. Owner approval of concrete interfaces and Dev 1 fixture review pending. Approved product/architecture choices remain settled. |
 | [ ] | [SN-A09](track-a.md#sn-a09--build-people-profiles-and-follow-controls) | Build people, profiles and follow controls | SN-B10 | SN-A10 | Frontend fixture gate; real services in SN-A11. |
 | [ ] | [SN-B11](track-b.md#sn-b11--implement-profiles-and-the-follow-lifecycle) | Implement profiles and the follow lifecycle | SN-B10 | SN-B12, SN-B13 | — |
 | [ ] | [SN-A10](track-a.md#sn-a10--deliver-global-notifications-and-request-review) | Deliver global notifications and request review | SN-A09 | SN-A11 | Frontend fixture gate; real delivery in SN-A11. |

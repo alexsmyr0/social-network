@@ -238,10 +238,10 @@ External gate: Owner approval of concrete new public-interface details; Dev 1 co
 
 Work:
 
-- Write planned `profiles-contract.md` with discovery, full/redacted profiles, avatar/list access, privacy writes, follow/cancel/unfollow and incoming-request decisions, including pagination, validation, errors and repeated/stale-action examples.
+- Write [profiles-contract.md](profiles-contract.md) with discovery, full/redacted profiles, avatar/list access, privacy writes, follow/cancel/unfollow and incoming-request decisions, including pagination, validation, errors and repeated/stale-action examples.
 - Map fields/transitions to the single follow model, notification extensions and versioned upgrades. Define request identity against stale actions and concurrent privacy/follow outcomes.
 - Define persisted notification/read actions, commit-before-signal delivery, reconnect/invalidation payloads and recipient filtering while retaining content notices. Map private-profile exposure through every inherited API and static-media route for SN-B13.
-- Supply reviewable fixtures and planned `phase-2-data-plan.md` covering defaults, backfills, media ownership/cleanup and recovery. Assign exact route/query/schema/static-path owners before implementation.
+- Supply [reviewable fixtures](fixtures/phase-2-contract.json) and [phase-2-data-plan.md](phase-2-data-plan.md) covering defaults, backfills, media ownership/cleanup and recovery. Assign exact route/query/schema/static-path owners before implementation.
 
 Verification Gate:
 
