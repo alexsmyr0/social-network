@@ -1,6 +1,6 @@
 {
 	"schema_version": 1,
-	"review_status": "draft; owner approval and Dev 1 fixture confirmation pending",
+	"review_status": "owner-approved 2026-10-02; fixture completeness/consistency checked",
 	"clock": "2026-10-02T12:00:00Z",
 	"actors": [
 		{
@@ -4085,5 +4085,16 @@
 			"name": "old-notice-versus-retry",
 			"allowed": ["old ID 409; new pending ID unchanged"]
 		}
-	]
+	],
+	"owner_approval": {
+		"date": "2026-10-02",
+		"source": "owner conversation after explanation of both choice sets",
+		"quote": "I agree with all implement",
+		"scope": ["HTTP choices", "notification/media handoff", "fixture handoff"]
+	},
+	"approval_policy": {
+		"owner_is_dev_1": true,
+		"human_approval_gates": 1,
+		"fixture_checks": "completeness and consistency; not a second human approval"
+	}
 }

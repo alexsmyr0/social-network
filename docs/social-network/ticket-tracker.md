@@ -9,7 +9,7 @@ Execution checkpoint: **Phase 2 — Profiles and following**. Ticketed scope: **
 | A | Dev 1 | Frontend/app/UI/image, profiles/content/groups/notifications, active docs, phase acceptance | [Track A](track-a.md) |
 | B | Dev 2 | Contracts/data/APIs/media/notifications, backend image, shared run/CI | [Track B](track-b.md) |
 
-A owns frontend source/config and frontend setup docs. B owns Go/data files and shared Makefile/CI/orchestration edits, including final runtime setup instructions. A supplies frontend commands; coordinate shared README/ignore-file edits before work. B owns SN-B13 changes to shared frontend Go static/proxy routes, with A review. Both review contracts. Track counts do not imply equal effort.
+A owns frontend source/config and frontend setup docs. B owns Go/data files and shared Makefile/CI/orchestration edits, including final runtime setup instructions. A supplies frontend commands; coordinate shared README/ignore-file edits before work. B owns SN-B13 changes to shared frontend Go static/proxy routes, with A review. Contract and fixture handoffs use one owner approval; fixture completeness/consistency remains a ticket check. Track counts do not imply equal effort.
 
 ## Status and execution rules
 
@@ -18,19 +18,19 @@ Follow the [ticket-writing rules](ticket-rules.md). The [Phase 1 audit](ticket-a
 - `[ ]` not started; `[-]` in progress; `[x]` verified complete; `[!]` blocked with a concrete reason.
 - Status lives here only. Start scoped implementation after direct prerequisites are `[x]`; decision completion includes owner approval. `Blocks` lists direct consumers only.
 - SN-A04/SN-A05 may finish against approved contract fixtures. SN-A07 must exercise real services. SN-B07 supplies the harness without depending on SN-A07's future acceptance tests.
-- SN-A07 unlocks Phase 2 through SN-B10; SN-A11 unlocks Phase 3 through SN-B14; SN-A14 unlocks Phase 4 through SN-B17. SN-A09/A10, SN-A12/A13 and SN-A15/A16 may finish against reviewed contract fixtures; SN-A11/A14/A17 require real services. Contract handoffs translate approved policy and obtain approval for concrete new interface details before consumers start.
+- SN-A07 unlocks Phase 2 through SN-B10; SN-A11 unlocks Phase 3 through SN-B14; SN-A14 unlocks Phase 4 through SN-B17. SN-A09/A10, SN-A12/A13 and SN-A15/A16 may finish against owner-approved contract fixtures; SN-A11/A14/A17 require real services. Contract handoffs translate approved policy and obtain approval for concrete new interface details before consumers start. The owner is Dev 1; do not request a second Dev 1 fixture sign-off after owner approval.
 - All inherited features remain assigned to their relevant phase; no feature is marked complete merely because old files remain.
 - Link each completed change and verification evidence. Keep failures/skips visible; do not inherit completion from the old forum.
 - SN-B07 has successful hosted and local verification recorded in the [shared runtime guide](shared-runtime.md#verification-record). Keep historical evidence tied to its tested revision; resubmission PRs must report checks on their own HEAD separately.
 
 ## Summary
 
-36 tickets: 17 in A, 19 in B. Done: 17. In progress: 1. Blocked: 0. Not started: 18. Owner confirmed SN-A07 Dev 2 review passed on 2026-10-02. SN-B10 contract drafting is in progress; concrete interface approval and Dev 1 fixture review remain open.
+36 tickets: 17 in A, 19 in B. Done: 18. In progress: 0. Blocked: 0. Not started: 18. Owner confirmed SN-A07 Dev 2 review passed on 2026-10-02. SN-B10 is complete: owner approved interfaces/fixture handoff on 2026-10-02; documentation/fixture checks passed. The owner removed duplicate Dev 1 sign-off because they are Dev 1.
 
 | Phase | A | B | Total | Done | In progress | Not started | Exit |
 |---|---|---|---|---|---|---|---|
 | 1 | 8 | 9 | 17 | 17 | 0 | 0 | SN-A07 |
-| 2 | 3 | 4 | 7 | 0 | 1 | 6 | SN-A11 |
+| 2 | 3 | 4 | 7 | 1 | 0 | 6 | SN-A11 |
 | 3 | 3 | 3 | 6 | 0 | 0 | 6 | SN-A14 |
 | 4 | 3 | 3 | 6 | 0 | 0 | 6 | SN-A17 |
 
@@ -62,7 +62,7 @@ Phase 5 has no tickets or approved messaging/event model yet; unanswered proposa
 
 | Status | Ticket | Description | Depends on | Blocks | Evidence / external gate |
 |---|---|---|---|---|---|
-| [-] | [SN-B10](track-b.md#sn-b10--publish-profile-follow-and-notification-contracts) | Publish profile, follow and notification contracts | SN-A07 | SN-B11, SN-A09 | [Draft contracts](profiles-contract.md), [data/privacy handoff](phase-2-data-plan.md) and [fixture pack](fixtures/phase-2-contract.json) on `asmyrogl/B10`. Owner approval of concrete interfaces and Dev 1 fixture review pending. Approved product/architecture choices remain settled. |
+| [x] | [SN-B10](track-b.md#sn-b10--publish-profile-follow-and-notification-contracts) | Publish profile, follow and notification contracts | SN-A07 | SN-B11, SN-A09 | [Owner-approved contracts](profiles-contract.md), [data/privacy handoff](phase-2-data-plan.md) and [fixture pack](fixtures/phase-2-contract.json) on `asmyrogl/B10`. Owner approved both HTTP and notification/media choices on 2026-10-02; owner is Dev 1 and removed separate fixture sign-off; one approval covers this handoff. Document/fixture checks and docs tests 10/10 passed; [verification record](profiles-contract.md#verification-record). Approved product/architecture choices remain settled. |
 | [ ] | [SN-A09](track-a.md#sn-a09--build-people-profiles-and-follow-controls) | Build people, profiles and follow controls | SN-B10 | SN-A10 | Frontend fixture gate; real services in SN-A11. |
 | [ ] | [SN-B11](track-b.md#sn-b11--implement-profiles-and-the-follow-lifecycle) | Implement profiles and the follow lifecycle | SN-B10 | SN-B12, SN-B13 | — |
 | [ ] | [SN-A10](track-a.md#sn-a10--deliver-global-notifications-and-request-review) | Deliver global notifications and request review | SN-A09 | SN-A11 | Frontend fixture gate; real delivery in SN-A11. |
@@ -74,7 +74,7 @@ Phase 5 has no tickets or approved messaging/event model yet; unanswered proposa
 
 | Status | Ticket | Description | Depends on | Blocks | Evidence / external gate |
 |---|---|---|---|---|---|
-| [ ] | [SN-B14](track-b.md#sn-b14--publish-content-audience-and-lifecycle-contracts) | Publish content, audience and lifecycle contracts | SN-A11 | SN-B15, SN-A12 | Owner approval of concrete interfaces; Dev 1 fixture review. Approved policies remain settled. |
+| [ ] | [SN-B14](track-b.md#sn-b14--publish-content-audience-and-lifecycle-contracts) | Publish content, audience and lifecycle contracts | SN-A11 | SN-B15, SN-A12 | One owner approval of concrete interfaces and fixture handoff; fixture completeness/consistency checks. Approved policies remain settled. |
 | [ ] | [SN-A12](track-a.md#sn-a12--build-audience-aware-feeds-and-publishing) | Build audience-aware feeds and publishing | SN-B14 | SN-A13 | Frontend fixture gate; real services in SN-A14. |
 | [ ] | [SN-B15](track-b.md#sn-b15--implement-audience-aware-publishing-and-feeds) | Implement audience-aware publishing and feeds | SN-B14 | SN-B16 | — |
 | [ ] | [SN-A13](track-a.md#sn-a13--restore-discussions-and-private-activity) | Restore discussions and private activity | SN-A12 | SN-A14 | Frontend fixture gate; real services in SN-A14. |
@@ -85,7 +85,7 @@ Phase 5 has no tickets or approved messaging/event model yet; unanswered proposa
 
 | Status | Ticket | Description | Depends on | Blocks | Evidence / external gate |
 |---|---|---|---|---|---|
-| [ ] | [SN-B17](track-b.md#sn-b17--publish-group-and-membership-contracts) | Publish group and membership contracts | SN-A14 | SN-B18, SN-A15 | Owner approval of concrete interfaces; Dev 1 fixture review. Approved group policies remain settled. |
+| [ ] | [SN-B17](track-b.md#sn-b17--publish-group-and-membership-contracts) | Publish group and membership contracts | SN-A14 | SN-B18, SN-A15 | One owner approval of concrete interfaces and fixture handoff; fixture completeness/consistency checks. Approved group policies remain settled. |
 | [ ] | [SN-A15](track-a.md#sn-a15--build-group-discovery-and-membership-journeys) | Build group discovery and membership journeys | SN-B17 | SN-A16 | Frontend fixture gate; real services in SN-A17. |
 | [ ] | [SN-B18](track-b.md#sn-b18--implement-groups-and-membership-transitions) | Implement groups and membership transitions | SN-B17 | SN-B19 | — |
 | [ ] | [SN-A16](track-a.md#sn-a16--extend-publishing-and-discussions-into-groups) | Extend publishing and discussions into groups | SN-A15 | SN-A17 | Frontend fixture gate; real services in SN-A17. |
@@ -104,15 +104,15 @@ Phase 5 has no tickets or approved messaging/event model yet; unanswered proposa
 | 6 | SN-A08, then SN-A06 | SN-B09, then SN-B06 | Align docs; deliver image handoffs |
 | 7 | Review integration setup | SN-B07 | Shared local/hosted gate; record any actual access blocker |
 | 8 | SN-A07 | Review acceptance and resolve backend findings | Complete Phase 1; unlock the already-authored Phase 2 backlog |
-| 9 | Review Phase 2 contract fixtures | SN-B10 | Record concrete interface approval and data/media handoffs |
+| 9 | Use Phase 2 contract fixtures | SN-B10 | Record one owner approval and checked fixture/data/media handoffs |
 | 10 | SN-A09 | SN-B11 | UI can use approved fixtures independently of backend completion |
 | 11 | SN-A10 | SN-B12, then SN-B13 | Complete notification delivery and inherited privacy/media boundary |
 | 12 | SN-A11 | Support real-service acceptance; own shared harness changes | Complete Phase 2 before Phase 3 execution |
-| 13 | Review Phase 3 contract fixtures | SN-B14 | Record content interfaces and upgrade/feature-parity handoffs |
+| 13 | Use Phase 3 contract fixtures | SN-B14 | Record one owner approval and checked content/upgrade/feature-parity handoffs |
 | 14 | SN-A12 | SN-B15 | Independent fixture UI and real audience-aware publishing |
 | 15 | SN-A13 | SN-B16 | Finish discussions, private/profile activity and preserved bonuses |
 | 16 | SN-A14 | Support acceptance; own shared harness changes | Complete Phase 3 before Phase 4 execution |
-| 17 | Review Phase 4 contract fixtures | SN-B17 | Record group interfaces, membership transitions and content/upgrade handoffs |
+| 17 | Use Phase 4 contract fixtures | SN-B17 | Record one owner approval and checked group/membership/content/upgrade handoffs |
 | 18 | SN-A15 | SN-B18 | Independent fixture UI and real membership/notification transactions |
 | 19 | SN-A16 | SN-B19 | Reuse publishing/discussions with membership enforcement across every surface |
 | 20 | SN-A17 | Support acceptance; own shared harness changes | Complete Phase 4; Phase 5 stays pending its own interview/ticketing |

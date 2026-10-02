@@ -1,6 +1,6 @@
 # Account Storage and Migration Decision
 
-Approved decision for [SN-B08](track-b.md#sn-b08--approve-account-storage-and-migration-design), based on the [approved account contract](auth-contract.md) and [backend baseline](backend-baseline.md). The owner approved the recommended fresh-database policy, embedded numbered SQL migrations using the allowed `golang-migrate` package, and private backend avatar files with a database key in chat on 2026-09-26. SN-B02's fixture-review gate was confirmed by the owner the same day. Implementation belongs to SN-B03/B04/B05/B09.
+Approved decision for [SN-B08](track-b.md#sn-b08--approve-account-storage-and-migration-design), based on the [approved account contract](auth-contract.md) and [backend baseline](backend-baseline.md). The owner approved the recommended fresh-database policy, embedded numbered SQL migrations using the allowed `golang-migrate` package, and private backend avatar files with a database key in chat on 2026-09-26. Historical fixture feedback for SN-B02 was reported by the owner the same day. Implementation belongs to SN-B03/B04/B05/B09.
 
 ## Approved choices and alternatives
 
@@ -26,6 +26,6 @@ Approved decision for [SN-B08](track-b.md#sn-b08--approve-account-storage-and-mi
 
 ## Client-contract review and completion evidence
 
-The storage choices change no browser request or response: the Account fields, nullable optionals, opaque relative avatar URL, cookie behavior, and failure codes remain as approved in SN-B02. The fresh-database policy is an operator startup rule; it does not reinterpret a legacy account as a valid social-network Account. There is no additional client-visible contract for Dev 1 to review. If B03/B04 exposes one, reopen this decision and request Dev 1 review before shipping it.
+The storage choices change no browser request or response: the Account fields, nullable optionals, opaque relative avatar URL, cookie behavior, and failure codes remain as approved in SN-B02. The fresh-database policy is an operator startup rule; it does not reinterpret a legacy account as a valid social-network Account. There is no additional client-visible contract requiring approval. If B03/B04 exposes one, reopen this decision and obtain owner approval for that new interface before shipping it.
 
 Owner approval was received in chat on 2026-09-26. The alternatives, all SN-B02 account/session fields, avatar attachment mapping, and fresh/repeated/failed/legacy startup outcomes are recorded above. This decision adds no runtime behavior; B03 owns migration and schema tests. The approval makes SN-B03 eligible to start once the ticket tracker records SN-B08 complete.

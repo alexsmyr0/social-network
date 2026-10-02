@@ -1,14 +1,14 @@
 # Profiles, Following and Notifications — SN-B10
 
-Prepared on 2026-10-02 from `408d1bc` on `asmyrogl/B10`. **Draft for owner approval and Dev 1 fixture review.** The [approved Phase 2–3 policies](phase-2-3-decisions.md) remain settled. This document proposes concrete interfaces; it does not implement them. Status lives in the [tracker](ticket-tracker.md). The [data plan](phase-2-data-plan.md) assigns migrations and inherited-route protection. [Machine-readable examples](fixtures/phase-2-contract.json) support independent A09/A10 fixtures.
+Prepared on 2026-10-02 from `408d1bc` on `asmyrogl/B10`. **Owner-approved contract and fixture handoff; B10 verification gate satisfied.** The [approved Phase 2–3 policies](phase-2-3-decisions.md) remain settled. This document defines approved concrete interfaces; runtime implementation belongs to its consumer tickets. Status lives in the [tracker](ticket-tracker.md). The [data plan](phase-2-data-plan.md) assigns migrations and inherited-route protection. [Machine-readable examples](fixtures/phase-2-contract.json) support independent A09/A10 fixtures.
 
-## Scope and review choices
+## Scope and approved choices
 
 SN-B10 publishes contracts only. SN-B11 implements profiles/follows, SN-B12 notifications/realtime, and SN-B13 retained content/media protection. SN-A09/A10 consume approved fixtures; SN-A11 exercises real services. The owner confirmed A07's Dev 2 review passed on 2026-10-02; the [acceptance record](phase-1-acceptance.md#dev-2-review-confirmation) unlocks this contract work.
 
-The owner is asked to approve these concrete choices together or request changes:
+On 2026-10-02, after a plain-language explanation of both proposed choice sets, the owner approved them in chat with “I agree with all implement”. Approval covers the HTTP choices and notification/media handoff: separate social profile routes, page/per_page lists, display-name substring search, fresh follow IDs and stale-action errors, version-checked privacy writes, resolved request history, authorized notification/badge filtering, payload-free socket signals, privacy-switch invalidation and shared image limits. The owner is Dev 1. On 2026-10-02 the owner removed the separate Dev 1 fixture-confirmation rule: this approval covers the contract and fixture handoff once, with fixture completeness/consistency checked by the ticket.
 
-| Proposed choice | Reason | Alternative / tradeoff |
+| Approved choice | Reason | Alternative / tradeoff |
 |---|---|---|
 | Keep `/users/{id}/profile`, add `/users` discovery and `/follows` mutations | Separate social profile from unchanged Phase 1 Account; explicit relationship resource | Nest every mutation below `/users/{id}`; equivalent policy, different client routes |
 | Existing `page`/`per_page` envelope; display-name substring search | Matches retained pagination; simple People search | Cursor pagination avoids shifting pages under concurrent changes, but introduces another API convention |
@@ -23,7 +23,7 @@ All HTTP paths below use `/api/v1`. Reuse the [auth contract](auth-contract.md#c
 
 The complete code set is inherited `UNAUTHORIZED`, `ORIGIN_FORBIDDEN`, `CSRF_CHECK_FAILED`, `BAD_REQUEST`, `VALIDATION_ERROR`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `PAYLOAD_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `INTERNAL_SERVER_ERROR`, `SERVICE_UNAVAILABLE`, plus `SELF_FOLLOW`, `STALE_FOLLOW` and `STALE_PROFILE` below. Retained content upload validation adds `INVALID_IMAGE` in B13; avatar errors remain `INVALID_AVATAR`.
 
-JSON write bodies have the existing 16 KiB limit and strict single-object, valid UTF-8, no unknown/repeated keys or trailing value rules. POST/PATCH require `application/json`; DELETE and read actions require an empty body. Numeric IDs are positive decimal integers no greater than `9007199254740991` (JavaScript's exact integer limit); signs, exponent notation, whitespace and overflow fail `400 BAD_REQUEST`. Unknown/repeated query parameters fail `400 BAD_REQUEST` on these new/extended routes. Unsupported method is `405 METHOD_NOT_ALLOWED` with `Allow`.
+JSON write bodies have the existing 16 KiB limit and strict single-object, valid UTF-8, no unknown/repeated keys or trailing value rules. POST and JSON PATCH actions require `application/json`; DELETE and notification read actions require an empty body without requiring Content-Type. Numeric IDs are positive decimal integers no greater than `9007199254740991` (JavaScript's exact integer limit); signs, exponent notation, whitespace and overflow fail `400 BAD_REQUEST`. Unknown/repeated query parameters fail `400 BAD_REQUEST` on these new/extended routes. Unsupported method is `405 METHOD_NOT_ALLOWED` with `Allow`.
 
 Validation order: method → write Origin/header → session → body/query structure → field validation → resource/participant/privacy checks → transaction. Missing/revoked session is `401 UNAUTHORIZED`; lookup failure is 500/503, never a false logout. Missing/inactive user, forbidden list/avatar and nonparticipant follow/notice access are `404 NOT_FOUND`. A private profile itself returns its permitted teaser with 200. A hidden object must not leak through error fields or counts.
 
@@ -151,8 +151,14 @@ The [JSON fixture pack](fixtures/phase-2-contract.json) contains exact HTTP bodi
 | Notice history/read-one/read-all, private actor redaction, hidden-content badge filtering, cross-recipient denial, post-commit signals, offline/reconnect/multiple sessions | A10 / B12 |
 | Retained feed/detail/discussion/activity/categories/navigation/chat identities and all raw/protected media access; preserved versioned data and recoverable media | B13 / A11 |
 
-Owner approval: **pending**. Dev 1 fixture confirmation: **pending**. A07 prerequisite: **complete**, based on the owner's recorded Dev 2 review confirmation. Document/fixture checks are recorded after execution; runtime migrations, API behavior and socket tests remain future consumers' gates.
+Owner approval: **recorded on 2026-10-02** for both choice sets above. Fixture completeness/consistency: **checked**. A07 prerequisite: **complete**, based on the owner's recorded Dev 2 review confirmation. Document/fixture checks are recorded after execution; runtime migrations, API behavior and socket tests remain future consumers' gates.
 
-## Draft verification record
+## Verification record
 
-On 2026-10-02, working tree on `asmyrogl/B10` based on `408d1bc`: local Markdown link/anchor checks, inline JSON parsing, 91 HTTP fixture envelope/redaction/follow-state checks, five signal/recovery examples, five race examples, and tracker totals passed. `bun x vitest run SPA/tests/unit/docs-consistency.test.js` passed 10/10. Fixture formatting was normalized with Biome, then checked; whitespace checks include new artifacts. These are documentation/fixture checks only, not API, migration, browser, image or socket validation. Owner interface approval and Dev 1 fixture confirmation remain pending.
+On 2026-10-02, working tree on `asmyrogl/B10` based on `408d1bc`: local Markdown link/anchor checks, inline JSON parsing, 91 HTTP fixture envelope/redaction/follow-state checks, five signal/recovery examples, five race examples, and tracker totals passed. `bun x vitest run SPA/tests/unit/docs-consistency.test.js` passed 10/10. Fixture formatting was normalized with Biome, then checked; whitespace checks include new artifacts. These are documentation/fixture checks only, not API, migration, browser, image or socket validation. Owner interface approval is recorded above; fixture completeness/consistency checks passed.
+
+Approval finalization on 2026-10-02, working tree based on B10 draft commit `28685a7`: 675 local links/anchors, fixture envelope/redaction/follow-state and tracker checks passed; `bun x biome check docs/social-network/fixtures/phase-2-contract.json`, `git diff --check`, and docs-consistency Vitest 10/10 passed. Owner approval metadata agrees across contract, data plan, fixture pack, context and tracker. The subsequently removed separate Dev 1 confirmation gate is recorded below.
+
+On 2026-10-02 the owner identified themselves as Dev 1 and instructed removal of the duplicate fixture-approval gate across active guidance and future contracts. Existing owner approval plus documentation/fixture checks satisfies B10. No separate Dev 1 review is claimed. The tracker marks B10 complete; B11 and A09 are now eligible to start.
+
+Single-approval policy recheck on 2026-10-02: 677 local links/anchors, 91 HTTP fixtures, tracker totals (18 complete, 0 in progress, 18 unstarted), 36-ticket dependency/reverse-edge checks, fixture Biome and whitespace checks passed; docs-consistency Vitest passed 10/10.

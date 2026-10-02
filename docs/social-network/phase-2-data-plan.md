@@ -1,6 +1,6 @@
 # Phase 2 Data and Privacy Handoff — SN-B10
 
-Prepared on 2026-10-02 against `408d1bc`. **Proposed mappings for review; no migration or runtime change.** Public interfaces are in the [profile/follow/notification contract](profiles-contract.md); policy is already [owner-approved](phase-2-3-decisions.md). Preserve the [Phase 1 account/session contract](auth-contract.md) and [versioned upgrade/recovery tooling](backend-migrations.md).
+Prepared on 2026-10-02 against `408d1bc`. **Owner-approved handoff; documentation/fixture checks passed. No migration or runtime change.** Public interfaces are in the [profile/follow/notification contract](profiles-contract.md); policy is already [owner-approved](phase-2-3-decisions.md). Preserve the [Phase 1 account/session contract](auth-contract.md) and [versioned upgrade/recovery tooling](backend-migrations.md).
 
 ## Migration sequence and ownership
 
@@ -89,4 +89,4 @@ Numbered SQL migrations use existing `golang-migrate` startup; dirty/failed vers
 | A09/A10 | Owner-approved HTTP/signal examples and [JSON fixture pack](fixtures/phase-2-contract.json), including stale/network/401/5xx paths; no production mocks |
 | A11 | Real multi-user profile/follow/notification/media browser journeys, privacy transitions and retained Phase 1 regression through shared local/hosted gates |
 
-Review records: owner interface approval pending; Dev 1 fixture review pending. B10's checks cover links/anchors, JSON examples, transition consistency, status and ownership/scope only. No database migration, file move, application validation or live delivery is claimed.
+Review records: owner approved the HTTP and notification/media handoff on 2026-10-02, as recorded in the [contract](profiles-contract.md#scope-and-approved-choices); fixture completeness/consistency checks passed. Owner and Dev 1 are the same person; one approval covers this handoff. B10's checks cover links/anchors, JSON examples, transition consistency, status and ownership/scope only. No database migration, file move, application validation or live delivery is claimed.

@@ -2,7 +2,7 @@
 
 Owner-approved decision for [SN-B02](track-b.md#sn-b02--approve-auth-contracts), based on the [assignment](requirements.md#authentication), [approved frontend boundary](frontend-decision.md) and [backend baseline](backend-baseline.md). Prepared on 2026-09-24 against merged SN-A02 at `525b19e`.
 
-The project owner approved this contract in chat on 2026-09-24 with “Approve proposed contract”. Approval covers the interfaces, validation, avatar flow/access, independent sessions, current-session logout, and the renewable 400-day cookie with its browser-retention limitation. On 2026-09-26, the owner confirmed in chat that Dev 1 had reviewed the examples and found them usable for independent A04/A05 UI fixtures. This records the remaining review gate; it does not claim implemented endpoints. Ticket status lives in the [tracker](ticket-tracker.md).
+The project owner approved this contract in chat on 2026-09-24 with “Approve proposed contract”. Approval covers the interfaces, validation, avatar flow/access, independent sessions, current-session logout, and the renewable 400-day cookie with its browser-retention limitation. On 2026-09-26, the owner confirmed in chat that Dev 1 had reviewed the examples and found them usable for independent A04/A05 UI fixtures. This preserves historical fixture feedback; current contract handoffs use one owner approval plus fixture checks under the [ticket rules](ticket-rules.md). It does not claim implemented endpoints. Ticket status lives in the [tracker](ticket-tracker.md).
 
 ## Owner-approved decisions
 
@@ -151,7 +151,7 @@ For deterministic fixtures, process method/origin/custom-header checks before bo
 
 ## Fixture and verification handoff
 
-These are required future checks, not results from B02. Dev 1 reviews the examples and matrix for A04/A05 fixtures; B04/B05/B09 exercise real APIs; A07 exercises browsers and both images. Use a fixed validation clock of `2026-09-24T12:00:00Z` in date examples.
+These are required future checks, not results from B02. The approved examples and matrix drive A04/A05 fixtures; B04/B05/B09 exercise real APIs; A07 exercises browsers and both images. Use a fixed validation clock of `2026-09-24T12:00:00Z` in date examples.
 
 | Case / action | Expected result | Verification owner |
 |---|---|---|
