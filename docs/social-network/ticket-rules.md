@@ -16,11 +16,11 @@ Retain that structure, not the old project's constraints or four-developer alloc
 ## One outcome, bounded scope
 
 1. State one observable goal. Name what the ticket changes, its output, and the nearest excluded work.
-2. Aim for one focused review/PR. Split independently verifiable outcomes: decisions versus cleanup, account API versus uploads, infrastructure versus end-to-end acceptance.
-3. Target **120–220 content words**, excluding title/source/dependency metadata; review anything above 250 for a split or a linked supporting document. Use 2–4 work bullets and 2–4 gate bullets, without nested checklists.
+2. Aim for one focused review/PR. Split unrelated outcomes: decisions versus cleanup, infrastructure versus end-to-end acceptance. For the owner-authorized Phase 2–4 backlog, combine about **2–3 Phase 1-sized work slices, leaning toward 3**, around one observable outcome. A feature ticket may combine its migrations, API and tests, or related UI journeys; do not create an unbounded phase-sized ticket.
+3. Target **120–220 content words**, excluding title/source/dependency metadata; review anything above 250 for a split or a linked supporting document. Use 2–4 work bullets and 2–4 gate bullets, without nested checklists. The Phase 2–4 size increase means implementation scope, not three times the prose; keep detailed decisions/contracts in their owning records.
 4. Include enough contract detail to implement and verify, but put full API examples, schemas and design rationale in linked context files. Clearly label planned artifacts that do not exist yet.
 5. Do not repeat repository-wide conventions, the full requirement text or implementation history in every ticket. Avoid vague goals such as “modern,” “production ready,” or “works correctly.”
-6. Only ticket the agreed next phase. Future phases stay as roadmap work packages. Ticket counts are not workload estimates; do not invent tickets to equalize tracks.
+6. Only ticket owner-authorized phases. The owner requested **Phases 2 and 3 together** in the [2026-10-01 record](phase-2-3-decisions.md), then approved [Phase 4 decisions and ticket publishing](phase-4-decisions.md). This supersedes the earlier next-phase-only restriction. **Phase 5 is explicitly pending**; Phase 6 remains roadmap-only. Authoring a backlog does not waive preceding acceptance gates. Ticket counts are not workload estimates; do not invent tickets to equalize tracks.
 
 ## Dependencies must match actual work
 

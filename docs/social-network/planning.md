@@ -1,8 +1,8 @@
 # Social Network — Planning Context
 
-The [Zone01 assignment](requirements.md) is authoritative. The [inherited baseline](inherited-context.md) describes a previous project, not completed social-network requirements. This document records adaptation areas, approved Phase 1 decisions and questions for later phases. It does not approve new architecture choices or removal work.
+The [Zone01 assignment](requirements.md) is authoritative. The [inherited baseline](inherited-context.md) describes a previous project, not completed social-network requirements. This document records adaptation areas, approved decisions and questions for later phases. Approved choices are recorded for [Phase 2–3](phase-2-3-decisions.md) and [Phase 4](phase-4-decisions.md); feature removal is not authorized.
 
-The [delivery roadmap](roadmap.md) breaks the full assignment into six phases. The [active tracker](ticket-tracker.md) and [track A](track-a.md) / [track B](track-b.md) define Phase 1 only. Use those files for execution order and status; the open questions below remain decision context for later phases.
+The [delivery roadmap](roadmap.md) breaks the full assignment into six phases. The [active tracker](ticket-tracker.md) and [track A](track-a.md) / [track B](track-b.md) now define Phases 1–4. The owner requested larger work packages and approved their product/architecture direction before authoring. **Phase 5 stays pending** at the owner's request; Phase 6 remains roadmap-only. Use the tracker for execution order and status; remaining questions concern deferred phases or concrete interface handoffs.
 
 ## Adaptation areas
 
@@ -29,19 +29,21 @@ The [delivery roadmap](roadmap.md) breaks the full assignment into six phases. T
 Resolve these when their implementation phase begins; none blocks documentation capture:
 
 1. **Resolved — framework and migration scope:** [SN-A02](frontend-decision.md) records the owner-approved Vue stack, vertical port, route transition and runtime boundary.
-2. **Resolved for Phase 1 — storage and migration policy:** [SN-B08](data-decision.md) approved `golang-migrate`, a fresh database and refusal of legacy forum data. Follower requests, post audiences, group membership, events and chat still need models before their phases. Do not infer date of birth from age.
-3. **Chat authorization:** the source first requires a follow relationship in either direction, then describes instant delivery when the recipient follows the sender or has a public profile. Clarify treatment when only the sender follows a private recipient, and how offline delivery should work; do not silently broaden permissions or inherit the forum's online-only rule.
-4. **Profile/post visibility interaction:** clarify how a public post behaves when its author has a private profile. The assignment states both rules without explaining their precedence.
+2. **Resolved through Phase 4 — storage direction:** [SN-B08](data-decision.md) approved `golang-migrate`, a fresh initial database and refusal of unversioned forum data. Later approved extensions add one follow-state table, profile visibility, post audiences/selections, separate group/membership/invitation/request tables and optional post `group_id`. Upgrades preserve existing data; SN-B10/B14/B17 produce exact mappings. Events/chat models remain pending.
+3. **Phase 5 pending — chat authorization:** the source first requires a follow relationship in either direction, then describes instant delivery when the recipient follows the sender or has a public profile. Clarify treatment when only the sender follows a private recipient, offline sending, and history/attachment access after both users unfollow. The last proposals were unanswered, not approved; do not broaden permissions or inherit the forum's online-only rule silently.
+4. **Resolved — profile/post visibility:** the owner chose private-profile restrictions to override a public post audience. The [access matrix](phase-2-3-decisions.md#posts-audiences-and-activity) also records dynamic follower access and per-post selections cleared on unfollow. This is an owner interpretation of ambiguous source wording, not an official audit ruling.
 5. **Resolved for Phase 1 — session lifecycle:** [SN-B02](auth-contract.md) and [SN-B05](backend-sessions.md) define persistent login, renewal, expiry and revocation. SN-A07 must verify the full browser journey.
-6. **Optional inherited features:** categories, reactions, drafts, DM images, presence UI, and other forum extras need explicit keep/adapt/remove decisions. They are not automatically required by this assignment.
+6. **Resolved — inherited features:** preserve all existing capabilities. Categories, reactions, drafts, editing/deletion, private activity and content notices are included in Phase 3; media/privacy prerequisites ship in Phase 2. DM images, presence and other existing chat behavior remain for Phase 5 adaptation. General profile editing and other unimplemented extras were not added by this decision.
+7. **Resolved — groups:** [Phase 4](phase-4-decisions.md) records browsable metadata, current-membership content access, creator-only request decisions/removal, ordinary-member departure, preserved contributions, departed-inviter cancellation and fresh return without a ban. Reuse existing posts/content features; events/chat remain pending.
 
 ## Next steps
 
 1. **Done:** import all 302 tracked real-time-forum files, preserve the social-network context, add root context pointers, and switch baseline links to imported local files.
-2. **Planning complete:** a six-phase roadmap and 17 Phase 1 tickets now exist; none is marked implemented by this planning work.
+2. **Planning extended:** a six-phase roadmap and 36 tickets for Phases 1–4 now exist: 17 original, 7 Phase 2, 6 Phase 3 and 6 Phase 4. New tickets combine roughly three earlier-sized slices per outcome. This authoring pass marks none implemented.
 3. **Done:** SN-A01 and SN-B01 verified the frontend/backend baseline and inventoried documentation for cleanup.
 4. **Done:** SN-A02, SN-B02 and SN-B08 approved the frontend, auth and storage decisions. SN-A08 aligned the active entry points and archived forum guidance.
-5. **Next:** SN-B07 must prove combined startup and hosted CI. SN-A07 then verifies real-service browser journeys. After Phase 1 acceptance, reassess the roadmap and scope Phase 2 tickets.
+5. **Next execution:** SN-B07 evidence is recorded in the tracker; SN-A07 remains the Phase 1 real-service acceptance gate. It unlocks SN-B10 and Phase 2; SN-A11 unlocks Phase 3, and SN-A14 unlocks Phase 4.
+6. **Deferred planning:** leave Phase 5 pending and resume events/chat decisions when requested; discuss final delivery before Phase 6 tickets. Current authorization is ticket writing and branch publishing, not application implementation.
 
 The planning pass itself approved no deletion list. SN-A02 now supplies the approved frontend architecture and documentation dispositions. The separate social-network audit checklist has not been supplied; do not substitute the forum audit for it.
 
