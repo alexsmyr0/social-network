@@ -37,6 +37,27 @@ bun run test:e2e
 
 The focused Playwright configuration runs the active A03 shell journeys. The inherited forum E2E files remain in `SPA/tests/e2e/` as historical migration evidence, but are outside the active match because A02 intentionally retired their forum-only routes. Unit coverage continues to exercise the reusable inherited modules until later feature tickets port or retire them.
 
+## People, profiles and follow controls (SN-A09)
+
+Frontend-only work against the [approved contract](profiles-contract.md) and its [fixture pack](fixtures/phase-2-contract.json). Production code never imports fixtures; the stateful contract model lives in `SPA/tests/fixtures/phase2/fixture-backend.js` and a policy test enforces the boundary.
+
+```bash
+bun run test:a09
+bun x playwright test a09-people   # via: make test-e2e PLAYWRIGHT_ARGS=a09-people
+```
+
+Ownership for later tickets:
+
+| Area | Files | Consumers |
+|---|---|---|
+| HTTP client and response normalization (name-only entries are cut to four keys, avatar URLs are validated) | `SPA/src/api/social.js` | A10 adds notification and request-review calls here |
+| Shared relationship/privacy actions, per-person duplicate guard, refetch-after-write, 401 handling | `SPA/src/features/social/social-state.js` (`socialKey`) | A10 calls `invalidate()` from `social.invalidate` socket frames and reuses `follow`/`cancel`/`unfollow` |
+| Protected read lifecycle (stale-response discard, hard/quiet reloads, focus and 60-second refetch) | `SPA/src/features/social/use-social-resource.js` | Every later protected view |
+| Pages | `PeoplePage.vue`, `ProfilePage.vue`, `FollowListPage.vue` | A13 adds profile activity inside `ProfilePage.vue` |
+| Routes | `/people`, `/users/:id`, `/users/:id/followers`, `/users/:id/following` | |
+
+Evidence is fixture-backed; real authorization and persistence remain SN-A11.
+
 ## Frontend container handoff
 
 SN-A06 packages the browser bundle and its Go same-origin proxy in a frontend-only image named `social-network-frontend`. The build is self-contained: it installs locked Bun dependencies, builds `SPA/dist`, compiles the frontend server and does not consume local `node_modules`, binaries or generated assets.
