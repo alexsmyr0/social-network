@@ -62,6 +62,7 @@ func Start() {
 	// SPA does not have to poll GET /notifications every few seconds to find
 	// out that nothing has happened.
 	db.SetNotificationHook(hub.NotifyNotification)
+	db.SetSocialInvalidationHook(hub.InvalidateSocial)
 
 	/* ----------------------------
 	   HTTP server

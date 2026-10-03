@@ -221,16 +221,34 @@ func (h *WsHandler) writePump(c *ws.Client) {
 				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-			if err := c.Conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+			if !h.writeSessionMessage(c, websocket.TextMessage, msg) {
 				return
 			}
 		case <-ticker.C:
 			c.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+			if !h.writeSessionMessage(c, websocket.PingMessage, nil) {
 				return
 			}
 		}
 	}
+}
+
+// Revalidate outbound work too: an idle revoked/inactive social socket must not
+// receive queued frames. The session gate orders delivery against logout.
+func (h *WsHandler) writeSessionMessage(c *ws.Client, kind int, data []byte) bool {
+	if !h.socialSchema {
+		return c.Conn.WriteMessage(kind, data) == nil
+	}
+	delivered := false
+	h.hub.WithSessionAdmission(c.Token, func() {
+		ctx, cancel := context.WithTimeout(context.Background(), dmDBTimeout)
+		defer cancel()
+		if _, err := db.GetSessionByToken(ctx, h.db, c.Token); err != nil {
+			return
+		}
+		delivered = c.Conn.WriteMessage(kind, data) == nil
+	})
+	return delivered
 }
 
 /*--------------------------

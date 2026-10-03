@@ -1,6 +1,6 @@
 # Backend profiles and follows — SN-B11
 
-Implementation on `asmyrogl/B11`, branched from B10 commit `09562ab`. The [approved contract](profiles-contract.md) owns public interfaces; the [tracker](ticket-tracker.md) owns ticket status. This delivers profiles, discovery, follower lists, avatar permissions and follow/privacy writes. B12 adds notification transactions/signals; B13 applies these permissions to inherited content and attachment routes. Profile privacy is not yet a complete application-wide boundary.
+Implementation on `asmyrogl/B11`, branched from B10 commit `09562ab`. The [approved contract](profiles-contract.md) owns public interfaces; the [tracker](ticket-tracker.md) owns ticket status. This delivers profiles, discovery, follower lists, avatar permissions and follow/privacy writes. [B12 now provides notification transactions/signals](backend-notifications.md); B13 applies these permissions to inherited content and attachment routes. Profile privacy is not yet a complete application-wide boundary.
 
 ## Storage and upgrade
 
@@ -20,7 +20,7 @@ Public follow is immediately accepted; private follow is pending. Duplicate crea
 
 ## Transaction handoff to B12 and B13
 
-[Follows](../../internal/db/follows.go) exposes `BeginSocialWrite` plus `CreateFollowTx`, `RemoveFollowTx`, `DecideFollowTx` and `ChangePrivacyTx`. The caller owns commit/rollback. The transaction starts with a zero-row UPDATE to acquire SQLite's writer lock before inspecting privacy or relationship state; it changes no rows and keeps unrelated reads as deferred snapshots. This follows [SQLite's transaction rules](https://www.sqlite.org/lang_transaction.html). Returned follow identities and auto-accepted follow lists let B12 reconcile notices inside the same transaction, then signal after commit. The current wrappers commit relationship state only; no B12 schema or live delivery is introduced.
+[Follows](../../internal/db/follows.go) exposes `BeginSocialWrite` plus `CreateFollowTx`, `RemoveFollowTx`, `DecideFollowTx` and `ChangePrivacyTx`. The caller owns commit/rollback. The transaction starts with a zero-row UPDATE to acquire SQLite's writer lock before inspecting privacy or relationship state; it changes no rows and keeps unrelated reads as deferred snapshots. This follows [SQLite's transaction rules](https://www.sqlite.org/lang_transaction.html). Returned follow identities and auto-accepted follow lists let B12 reconcile notices inside the same transaction, then signal after commit. At the B11 boundary, wrappers committed relationship state only. B12 now inserts/reconciles notices within these transactions and publishes signals after the wrappers commit; see the [notification record](backend-notifications.md#storage-and-transactions).
 
 B13 can reuse `CanViewProfile` with a database or caller-owned transaction/snapshot. Avatar key lookup checks permission and resource reference in one snapshot; every subsequent request re-evaluates access. B15 later extends unfollow transactions to remove selected-post associations when that table exists. B11 never references future tables.
 

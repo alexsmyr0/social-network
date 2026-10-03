@@ -237,7 +237,7 @@ func NewRouter(database *sql.DB, hub *ws.Hub) http.Handler {
 	/*---------------
 	  NOTIFICATIONS (AUTH REQUIRED)
 	---------------*/
-	notifications := handlers.NewNotificationsHandler(database)
+	notifications := handlers.NewNotificationsHandler(database, socialSchema)
 
 	// GET collection
 	mux.Handle(
@@ -320,7 +320,7 @@ func addMiddlewares(handler http.Handler, frontendOrigin string, socialSchema bo
 	if socialSchema {
 		next := handler
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if strings.HasPrefix(r.URL.Path, apiPrefix+"/users/") || r.URL.Path == apiPrefix+"/users" || strings.HasPrefix(r.URL.Path, apiPrefix+"/follows") || strings.HasPrefix(r.URL.Path, apiPrefix+"/follow-requests/") {
+			if strings.HasPrefix(r.URL.Path, apiPrefix+"/users/") || r.URL.Path == apiPrefix+"/users" || strings.HasPrefix(r.URL.Path, apiPrefix+"/notifications") || strings.HasPrefix(r.URL.Path, apiPrefix+"/follows") || strings.HasPrefix(r.URL.Path, apiPrefix+"/follow-requests/") {
 				w.Header().Set("Cache-Control", "no-store")
 			}
 			if method := socialContractMethod(r.URL.Path); method != "" && r.Method != method {
@@ -353,12 +353,15 @@ func addMiddlewares(handler http.Handler, frontendOrigin string, socialSchema bo
 // The contract validates methods before Origin/header checks on its new routes.
 func socialContractMethod(path string) string {
 	switch path {
-	case apiPrefix + "/users", apiPrefix + "/users/me/follow-requests":
+	case apiPrefix + "/users", apiPrefix + "/users/me/follow-requests", apiPrefix + "/notifications":
 		return http.MethodGet
 	case apiPrefix + "/users/me/privacy":
 		return http.MethodPatch
 	case apiPrefix + "/follows":
 		return http.MethodPost
+	}
+	if strings.HasPrefix(path, apiPrefix+"/notifications/") {
+		return http.MethodPatch
 	}
 	if strings.HasPrefix(path, apiPrefix+"/follows/") {
 		return http.MethodDelete

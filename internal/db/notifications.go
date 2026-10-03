@@ -25,8 +25,9 @@ const notificationTimeout = 2 * time.Second
 // layer. cmd/backend wires it to ws.Hub.NotifyNotification at startup; it stays
 // nil in tests, where the call is a no-op.
 var (
-	notificationHookMu sync.RWMutex
-	notificationHook   func(recipientID int64)
+	notificationHookMu     sync.RWMutex
+	notificationHook       func(recipientID int64)
+	socialInvalidationHook func(userIDs []int64)
 )
 
 // SetNotificationHook registers the delivery hook. Pass nil to clear it.
@@ -34,6 +35,23 @@ func SetNotificationHook(hook func(recipientID int64)) {
 	notificationHookMu.Lock()
 	defer notificationHookMu.Unlock()
 	notificationHook = hook
+}
+
+// SetSocialInvalidationHook registers best-effort post-commit refresh delivery.
+// An empty recipient list means every authenticated socket (privacy switches).
+func SetSocialInvalidationHook(hook func([]int64)) {
+	notificationHookMu.Lock()
+	defer notificationHookMu.Unlock()
+	socialInvalidationHook = hook
+}
+
+func fireSocialInvalidation(userIDs ...int64) {
+	notificationHookMu.RLock()
+	hook := socialInvalidationHook
+	notificationHookMu.RUnlock()
+	if hook != nil {
+		hook(userIDs)
+	}
 }
 
 // fireNotificationHook notifies the registered hook, if any. Callers must only

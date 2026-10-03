@@ -13,6 +13,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"context"
+	"forum/internal/db"
 )
 
 type profileFixtureCase struct {
@@ -35,8 +38,8 @@ type profileFixtureCase struct {
 }
 
 // Exercise the owner-approved B10 HTTP fixtures against real SQLite/router services.
-// Notice writes, signals and infrastructure injection remain B12 or dedicated tests.
-func TestSocialProfilesContractFixtures(t *testing.T) {
+// Infrastructure injection and socket recovery have dedicated B12 tests.
+func TestSocialProfilesAndNotificationsContractFixtures(t *testing.T) {
 	raw, err := os.ReadFile("../../docs/social-network/fixtures/phase-2-contract.json")
 	if err != nil {
 		t.Fatal(err)
@@ -61,7 +64,7 @@ func TestSocialProfilesContractFixtures(t *testing.T) {
 	}
 	ran := 0
 	for _, c := range pack.Cases {
-		if c.Response.Status == nil || strings.Contains(c.Request.Path, "/notifications") || len(c.State["failure"]) > 0 {
+		if c.Response.Status == nil || len(c.State["failure"]) > 0 {
 			continue
 		}
 		ran++
@@ -118,6 +121,7 @@ func TestSocialProfilesContractFixtures(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
+			beforeNotices := seedNotificationContractState(t, conn, c, pack.Clock)
 			// Historical deleted IDs still advance AUTOINCREMENT, so retry fixtures get fresh IDs.
 			high := int64(200)
 			var removed []int64
@@ -173,6 +177,62 @@ func TestSocialProfilesContractFixtures(t *testing.T) {
 			for k, v := range c.Response.Headers {
 				if rec.Header().Get(k) != v {
 					t.Fatalf("header %s=%q want %q", k, rec.Header().Get(k), v)
+				}
+			}
+			if expected, ok := c.Expected["notice"]; ok {
+				var want db.SocialNotice
+				if err := json.Unmarshal(expected, &want); err != nil {
+					t.Fatal(err)
+				}
+				var recipient int64
+				if err := conn.QueryRow(`SELECT recipient_id FROM notifications WHERE id=?`, want.ID).Scan(&recipient); err != nil {
+					t.Fatal(err)
+				}
+				page, err := db.ListSocialNotifications(context.Background(), conn, recipient, 1, 50)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var found any
+				for _, n := range page.Notifications {
+					if n.ID == want.ID {
+						if err := json.Unmarshal([]byte(mustJSON(n)), &found); err != nil {
+							t.Fatal(err)
+						}
+					}
+				}
+				var expectedObject any
+				if err := json.Unmarshal(expected, &expectedObject); err != nil {
+					t.Fatal(err)
+				}
+				normalizeFixture(found, pack.Clock)
+				normalizeFixture(expectedObject, pack.Clock)
+				if !reflect.DeepEqual(found, expectedObject) {
+					t.Fatalf("notice postcondition got %s want %s", mustJSON(found), mustJSON(expectedObject))
+				}
+			}
+			if expected, ok := c.Expected["new_notices"]; ok {
+				var want, after int
+				if err := json.Unmarshal(expected, &want); err != nil {
+					t.Fatal(err)
+				}
+				if err := conn.QueryRow(`SELECT COUNT(*) FROM notifications`).Scan(&after); err != nil {
+					t.Fatal(err)
+				}
+				if after-beforeNotices != want {
+					t.Fatalf("new notices %d want %d", after-beforeNotices, want)
+				}
+			}
+			for _, key := range []string{"read_notice_ids", "unchanged_hidden_notice_ids"} {
+				var ids []int64
+				_ = json.Unmarshal(c.Expected[key], &ids)
+				for _, id := range ids {
+					var read bool
+					if err := conn.QueryRow(`SELECT is_read FROM notifications WHERE id=?`, id).Scan(&read); err != nil {
+						t.Fatal(err)
+					}
+					if read != (key == "read_notice_ids") {
+						t.Fatalf("%s notice %d read=%v", key, id, read)
+					}
 				}
 			}
 
@@ -253,8 +313,8 @@ func TestSocialProfilesContractFixtures(t *testing.T) {
 			}
 		})
 	}
-	if ran < 60 {
-		t.Fatalf("only %d B11 fixture cases selected", ran)
+	if ran != 87 {
+		t.Fatalf("selected %d profile/notification fixtures, want 87", ran)
 	}
 }
 func normalizeFixture(v any, clock string) {
