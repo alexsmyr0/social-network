@@ -179,6 +179,67 @@ describe('session boundaries', () => {
 		expect(social.state.followMessages).toEqual({});
 	});
 
+	test.each([
+		'follow',
+		'privacy',
+	])('%s completions from a previous session cannot affect a pending action', async (kind) => {
+		const session = createSessionState();
+		session.acceptAccount({ id: 7 });
+		const oldResponse = deferred();
+		const newResponse = deferred();
+		const request = vi
+			.fn()
+			.mockImplementationOnce(() => oldResponse.promise)
+			.mockImplementationOnce(() => newResponse.promise);
+		const api = fakeApi(
+			kind === 'follow' ? { followUser: request } : { setProfileVisibility: request },
+		);
+		const social = createSocialState({ api, session });
+		const reload = vi.fn(async () => {});
+		social.registerResource({ reload });
+		const act = () =>
+			kind === 'follow'
+				? social.follow(42)
+				: social.changePrivacy({ visibility: 'public', expectedVersion: 1 });
+		const oldAction = act();
+		// No nextTick: even logout/login as the same account must invalidate
+		// the old action before Vue's usual batched watcher would run.
+		session.clearAuthenticatedState();
+		session.acceptAccount({ id: 7 });
+		const newAction = act();
+		oldResponse.release({ status: 'unavailable' });
+		expect(await oldAction).toEqual({ kind: 'superseded' });
+		expect(social.state.followMessages).toEqual(kind === 'follow' ? { 42: '' } : {});
+		expect(social.state.privacyMessage).toBe('');
+		expect(reload).not.toHaveBeenCalled();
+		expect(await act()).toEqual({ kind: 'busy' });
+		expect(request).toHaveBeenCalledTimes(2);
+		newResponse.release({ status: 'ok' });
+		expect(await newAction).toEqual({ kind: 'changed', message: '' });
+	});
+
+	test.each(['follow', 'privacy'])('old %s 401 cannot reset the new session', async (kind) => {
+		const session = createSessionState();
+		session.acceptAccount({ id: 7 });
+		const response = deferred();
+		const request = vi.fn(() => response.promise);
+		const api = fakeApi(
+			kind === 'follow' ? { followUser: request } : { setProfileVisibility: request },
+		);
+		const onUnauthenticated = vi.fn();
+		const social = createSocialState({ api, session, onUnauthenticated });
+		const oldAction =
+			kind === 'follow'
+				? social.follow(42)
+				: social.changePrivacy({ visibility: 'public', expectedVersion: 1 });
+		session.clearAuthenticatedState();
+		session.acceptAccount({ id: 99 });
+		response.release({ status: 'unauthenticated' });
+		expect(await oldAction).toEqual({ kind: 'superseded' });
+		expect(onUnauthenticated).not.toHaveBeenCalled();
+		expect(session.state.account.id).toBe(99);
+	});
+
 	test('an unconfirmed 401 reloads views instead of leaving them on a spinner', async () => {
 		const session = createSessionState({
 			fetchCurrent: async () => ({ status: 'authenticated', account: { id: 7 } }),

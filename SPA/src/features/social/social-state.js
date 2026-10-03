@@ -34,6 +34,7 @@ export function createSocialState({ api = socialApi, session, onUnauthenticated 
 		privacyMessage: '',
 	});
 	const resources = new Set();
+	let revision = 0;
 
 	function registerResource(resource) {
 		resources.add(resource);
@@ -44,12 +45,13 @@ export function createSocialState({ api = socialApi, session, onUnauthenticated 
 		await Promise.allSettled([...resources].map((resource) => resource.reload(mode)));
 	}
 
-	// Quiet: re-read after our own write. Hard: discard shown data first, for
-	// server signals or permission changes made elsewhere.
+	// Quiet reads preserve focus when access is unchanged. Hard reads discard
+	// data when signals or relationship removal may have revoked access.
 	const refresh = () => reloadAll('quiet');
 	const invalidate = () => reloadAll('hard');
 
 	function reset() {
+		revision += 1;
 		state.pendingFollows = {};
 		state.followMessages = {};
 		state.privacyPending = false;
@@ -66,7 +68,9 @@ export function createSocialState({ api = socialApi, session, onUnauthenticated 
 	}
 
 	if (session) {
-		watch(() => session.state.account?.id ?? null, reset);
+		// Observe logout/login immediately, including a same-account login in
+		// one tick, so old writes cannot affect the next session.
+		watch(() => session.state.account?.id ?? null, reset, { flush: 'sync' });
 	}
 
 	function followOutcome(result, subject) {
@@ -82,10 +86,12 @@ export function createSocialState({ api = socialApi, session, onUnauthenticated 
 
 	async function runFollowAction(userId, subject, request) {
 		if (state.pendingFollows[userId]) return { kind: 'busy' };
+		const startedAt = revision;
 		state.pendingFollows[userId] = true;
 		state.followMessages[userId] = '';
 		try {
 			const result = await request();
+			if (revision !== startedAt) return { kind: 'superseded' };
 			if (result.status === 'unauthenticated') {
 				await handleUnauthenticated();
 				return { kind: 'unauthenticated' };
@@ -93,11 +99,14 @@ export function createSocialState({ api = socialApi, session, onUnauthenticated 
 			const outcome = followOutcome(result, subject);
 			if (outcome.message) state.followMessages[userId] = outcome.message;
 			// Every non-401 outcome, including a lost response, re-reads current
-			// state. Old creation requests are never replayed automatically.
-			await refresh();
-			return outcome;
+			// state. Unfollow may revoke private-profile access even when the
+			// response is lost; discard cached details before revalidation.
+			// Old creation requests are never replayed automatically.
+			if (subject === 'unfollow') await invalidate();
+			else await refresh();
+			return revision === startedAt ? outcome : { kind: 'superseded' };
 		} finally {
-			delete state.pendingFollows[userId];
+			if (revision === startedAt) delete state.pendingFollows[userId];
 		}
 	}
 
@@ -119,10 +128,12 @@ export function createSocialState({ api = socialApi, session, onUnauthenticated 
 
 	async function changePrivacy({ visibility, expectedVersion }) {
 		if (state.privacyPending) return { kind: 'busy' };
+		const startedAt = revision;
 		state.privacyPending = true;
 		state.privacyMessage = '';
 		try {
 			const result = await api.setProfileVisibility({ visibility, expectedVersion });
+			if (revision !== startedAt) return { kind: 'superseded' };
 			if (result.status === 'unauthenticated') {
 				await handleUnauthenticated();
 				return { kind: 'unauthenticated' };
@@ -132,9 +143,9 @@ export function createSocialState({ api = socialApi, session, onUnauthenticated 
 			// Counts and access depend on the switch, so views re-read instead of
 			// patching; quietly, to keep the owner's focus and place on the page.
 			await refresh();
-			return outcome;
+			return revision === startedAt ? outcome : { kind: 'superseded' };
 		} finally {
-			state.privacyPending = false;
+			if (revision === startedAt) state.privacyPending = false;
 		}
 	}
 

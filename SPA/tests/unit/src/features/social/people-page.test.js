@@ -491,6 +491,55 @@ describe('stale data and session changes', () => {
 		expect(social.state.pendingFollows).toEqual({});
 	});
 
+	test('a delayed previous-account write cannot unlock the current account’s button', async () => {
+		const backend = new FixtureBackend();
+		const { wrapper, router, session, social, current, fetchRef } = await mountSocialApp(
+			'/people',
+			{ backend },
+		);
+		const oldGate = deferred();
+		const newGate = deferred();
+		let writes = 0;
+		vi.stubGlobal('fetch', async (url, init) => {
+			if (url !== '/api/v1/follows' || init?.method !== 'POST') return fetchRef(url, init);
+			const response = await fetchRef(url, init);
+			writes += 1;
+			if (writes === 1) {
+				await oldGate.promise;
+				throw new TypeError('old response lost after commit');
+			}
+			await newGate.promise;
+			return response;
+		});
+		const oldAction = social.follow(42);
+		await settle();
+		// The global logout handler uses this same session cleanup, then routes
+		// to login. The social state remains shared across route remounts.
+		session.clearAuthenticatedState();
+		current.viewerId = null;
+		await router.replace({ name: 'login' });
+		current.viewerId = 99;
+		session.acceptAccount(backend.account(backend.users.get(99)));
+		await router.replace({ name: 'people' });
+		await settle();
+		await rowFor(wrapper, 42).get('button').trigger('click');
+		await settle();
+		oldGate.release();
+		await oldAction;
+		await settle();
+		try {
+			expect(rowFor(wrapper, 42).get('button').attributes('aria-disabled')).toBe('true');
+			expect(social.state.followMessages[42] ?? '').toBe('');
+			await rowFor(wrapper, 42).get('button').trigger('click');
+			await settle();
+			expect(writes).toBe(2);
+		} finally {
+			newGate.release();
+			await settle();
+		}
+		expect(rowFor(wrapper, 42).get('button').text()).toBe('Cancel request');
+	});
+
 	test('the Profile and People links are in the authenticated shell', async () => {
 		const backend = new FixtureBackend();
 		const { wrapper } = await mountSocialApp('/people', { backend });

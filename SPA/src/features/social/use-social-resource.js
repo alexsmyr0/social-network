@@ -8,8 +8,8 @@ const MODE_RANK = { quiet: 0, hard: 1, clear: 2 };
 // supersedes an older one, so a slow response can never repaint obsolete or
 // since-denied data. Route/query changes, window focus and server
 // invalidations discard the shown data before refetching; the 60-second
-// fallback and our own writes refetch quietly. A failed read never leaves the
-// previous protected details on screen.
+// fallback and writes that retain access refetch quietly. A failed read never
+// leaves the previous protected details on screen.
 export function useSocialResource(load, { social, sources }) {
 	const status = ref('loading');
 	const result = shallowRef(null);

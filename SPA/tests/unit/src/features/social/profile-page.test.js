@@ -119,6 +119,39 @@ describe('full profiles', () => {
 		expect(wrapper.find('.profile-counts').exists()).toBe(false);
 	});
 
+	test.each([
+		'ok',
+		'lost-response',
+	])('unfollow %s clears private data before a delayed refetch', async (outcome) => {
+		const backend = new FixtureBackend({ follows: [accepted(201, 7, 42)] });
+		const gate = deferred();
+		let hold = false;
+		const { wrapper } = await mountSocialApp('/users/42', {
+			backend,
+			before: (request) => {
+				if (hold && request.url.endsWith('/profile')) return gate.promise;
+				if (outcome === 'lost-response' && request.method === 'DELETE') {
+					backend.request(7, 'DELETE', request.url);
+					throw new TypeError('response lost after commit');
+				}
+			},
+		});
+		expect(wrapper.find('.profile-details').exists()).toBe(true);
+		hold = true;
+		await wrapper.get('.follow-control button').trigger('click');
+		await settle();
+		try {
+			expect(backend.follows).toEqual([]);
+			expect(textOf(wrapper)).not.toContain('alex@example.com');
+			expect(wrapper.find('.avatar img').exists()).toBe(false);
+			expect(wrapper.find('.profile-counts').exists()).toBe(false);
+		} finally {
+			gate.release();
+			await settle();
+		}
+		expect(wrapper.find('[data-state="teaser"]').exists()).toBe(true);
+	});
+
 	test('falls back to initials when an avatar can no longer be loaded', async () => {
 		const backend = new FixtureBackend({ follows: [accepted(201, 7, 42)] });
 		const { wrapper } = await mountSocialApp('/users/42', { backend });
