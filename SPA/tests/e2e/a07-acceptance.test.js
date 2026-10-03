@@ -135,7 +135,7 @@ for (const [extension, contentType] of [
 		expect((await request.get(profile.avatar_url)).status()).toBe(401);
 		if (extension === 'png') {
 			await createAccount(page, account('other-owner'));
-			expect((await context.request.get(profile.avatar_url)).status()).toBe(404);
+			expect((await context.request.get(profile.avatar_url)).status()).toBe(200);
 		}
 	});
 }

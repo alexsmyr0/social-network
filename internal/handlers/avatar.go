@@ -187,12 +187,12 @@ func storeAvatar(root string, data []byte, mimeType string) (string, error) {
 
 func (u *UsersHandler) avatar(w http.ResponseWriter, r *http.Request, userID int64) {
 	ownerID, err := middleware.GetUserID(r.Context())
-	if err != nil || ownerID != userID {
+	if err != nil {
 		notFound(w, r)
 		return
 	}
-	key, err := db.AvatarKey(r.Context(), u.conn, userID)
-	if errors.Is(err, sql.ErrNoRows) {
+	key, err := db.ProfileAvatarKey(r.Context(), u.conn, ownerID, userID)
+	if errors.Is(err, sql.ErrNoRows) || errors.Is(err, db.ErrNotFound) {
 		notFound(w, r)
 		return
 	}

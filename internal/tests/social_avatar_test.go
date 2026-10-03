@@ -105,6 +105,13 @@ func TestSocialAvatarRoundTripAndAccess(t *testing.T) {
 				t.Fatalf("unauth avatar: %d", unauth.Code)
 			}
 			other := registerSocialUser(t, handler, "other-"+format+"@example.com")
+
+			public := socialRequest(t, handler, http.MethodGet, response.Data.AvatarURL, "", nil, other)
+			if public.Code != 200 || !bytes.Equal(public.Body.Bytes(), data) {
+				t.Fatalf("public avatar: %d", public.Code)
+			}
+			changed := socialRequest(t, handler, http.MethodPatch, "/api/v1/users/me/privacy", "application/json", []byte(`{"visibility":"private","expected_version":1}`), token)
+			assertSocialCode(t, changed, 200, "")
 			denied := socialRequest(t, handler, http.MethodGet, response.Data.AvatarURL, "", nil, other)
 			if denied.Code != 404 || bytes.Contains(denied.Body.Bytes(), data) {
 				t.Fatalf("other avatar: %d", denied.Code)

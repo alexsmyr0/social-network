@@ -153,6 +153,18 @@ func NewRouter(database *sql.DB, hub *ws.Hub) http.Handler {
 		),
 	)
 
+	if socialSchema {
+		socialRoute := func(path string, fn http.HandlerFunc, method string) {
+			mux.Handle(apiPrefix+path, middleware.AllowMethods(auth(fn), method))
+		}
+		socialRoute("/users", users.People, http.MethodGet)
+		socialRoute("/users/me/privacy", users.Privacy, http.MethodPatch)
+		socialRoute("/users/me/follow-requests", users.IncomingFollowRequests, http.MethodGet)
+		socialRoute("/follows", users.Follow, http.MethodPost)
+		socialRoute("/follows/", users.RemoveFollow, http.MethodDelete)
+		socialRoute("/follow-requests/", users.DecideFollow, http.MethodPatch)
+	}
+
 	/*---------
 	   USERS
 	---------*/
@@ -308,9 +320,15 @@ func addMiddlewares(handler http.Handler, frontendOrigin string, socialSchema bo
 	if socialSchema {
 		next := handler
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if strings.HasPrefix(r.URL.Path, apiPrefix+"/users/") {
+			if strings.HasPrefix(r.URL.Path, apiPrefix+"/users/") || r.URL.Path == apiPrefix+"/users" || strings.HasPrefix(r.URL.Path, apiPrefix+"/follows") || strings.HasPrefix(r.URL.Path, apiPrefix+"/follow-requests/") {
 				w.Header().Set("Cache-Control", "no-store")
 			}
+			if method := socialContractMethod(r.URL.Path); method != "" && r.Method != method {
+				w.Header().Set("Allow", method)
+				handlers.WriteError(w, r, handlers.NewError("METHOD_NOT_ALLOWED", "method not allowed", http.StatusMethodNotAllowed))
+				return
+			}
+
 			if strings.HasPrefix(r.URL.Path, apiPrefix+"/") &&
 				(r.Method == http.MethodPost || r.Method == http.MethodPut ||
 					r.Method == http.MethodPatch || r.Method == http.MethodDelete) {
@@ -330,4 +348,29 @@ func addMiddlewares(handler http.Handler, frontendOrigin string, socialSchema bo
 	handler = middleware.Logger(handler)
 	handler = middleware.Recoverer(handler)
 	return handler
+}
+
+// The contract validates methods before Origin/header checks on its new routes.
+func socialContractMethod(path string) string {
+	switch path {
+	case apiPrefix + "/users", apiPrefix + "/users/me/follow-requests":
+		return http.MethodGet
+	case apiPrefix + "/users/me/privacy":
+		return http.MethodPatch
+	case apiPrefix + "/follows":
+		return http.MethodPost
+	}
+	if strings.HasPrefix(path, apiPrefix+"/follows/") {
+		return http.MethodDelete
+	}
+	if strings.HasPrefix(path, apiPrefix+"/follow-requests/") {
+		return http.MethodPatch
+	}
+	if strings.HasPrefix(path, apiPrefix+"/users/") {
+		parts := strings.Split(strings.TrimPrefix(path, apiPrefix+"/users/"), "/")
+		if len(parts) == 2 && (parts[1] == "profile" || parts[1] == "followers" || parts[1] == "following" || parts[1] == "avatar") {
+			return http.MethodGet
+		}
+	}
+	return ""
 }

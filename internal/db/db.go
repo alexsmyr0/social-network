@@ -58,6 +58,11 @@ func initDBWithMigrations(ctx context.Context, dbPath string, files fs.FS) (*sql
 		return nil, err
 	}
 
+	if err := BackfillProfileSearch(ctx, db); err != nil {
+		db.Close()
+		return nil, WrapError("prepare profile search", err)
+	}
+
 	/*-----------------
 	  SEED CATEGORIES
 	-----------------*/
@@ -106,6 +111,10 @@ func ApplyQASeeds(ctx context.Context, db *sql.DB) error {
 		if _, err := tx.ExecContext(ctx, sqlText); err != nil {
 			return WrapError("apply "+seedFile, MapSQLError(err))
 		}
+	}
+
+	if err := backfillProfileSearchTx(ctx, tx); err != nil {
+		return WrapError("seed profile search", err)
 	}
 
 	if err := tx.Commit(); err != nil {
