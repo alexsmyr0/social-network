@@ -12,6 +12,7 @@
 		"test:a03": "vitest run SPA/tests/unit/src",
 		"test:a04": "vitest run SPA/tests/unit/src/api/registration.test.js SPA/tests/unit/src/api/session.test.js SPA/tests/unit/src/features/auth/register-page.test.js",
 		"test:a05": "vitest run SPA/tests/unit/src/api/session.test.js SPA/tests/unit/src/app/router.test.js SPA/tests/unit/src/app/app-shell.test.js SPA/tests/unit/src/features/auth/session-state.test.js SPA/tests/unit/src/features/auth/login-page.test.js",
+		"test:a09": "vitest run SPA/tests/unit/src/api/social.test.js SPA/tests/unit/src/features/social SPA/tests/unit/policy/no-fixtures-in-production.test.js",
 		"test:e2e": "make test-e2e",
 		"test:watch": "vitest",
 		"lint": "biome check .",

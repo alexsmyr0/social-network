@@ -5,6 +5,9 @@ import RegisterPage from '../features/auth/RegisterPage.vue';
 import { safeReturnPath } from '../features/auth/return-path.js';
 import NotFoundPage from '../features/migration/NotFoundPage.vue';
 import HomePage from '../features/shell/HomePage.vue';
+import FollowListPage from '../features/social/FollowListPage.vue';
+import PeoplePage from '../features/social/PeoplePage.vue';
+import ProfilePage from '../features/social/ProfilePage.vue';
 
 export const routes = [
 	{
@@ -12,6 +15,32 @@ export const routes = [
 		name: 'home',
 		component: HomePage,
 		meta: { title: 'Home', requiresAuth: true },
+	},
+	{
+		path: '/people',
+		name: 'people',
+		component: PeoplePage,
+		meta: { title: 'People', requiresAuth: true },
+	},
+	{
+		path: '/users/:id([1-9]\\d*)',
+		name: 'profile',
+		component: ProfilePage,
+		meta: { title: 'Profile', requiresAuth: true },
+	},
+	{
+		path: '/users/:id([1-9]\\d*)/followers',
+		name: 'followers',
+		component: FollowListPage,
+		props: { kind: 'followers' },
+		meta: { title: 'Followers', requiresAuth: true },
+	},
+	{
+		path: '/users/:id([1-9]\\d*)/following',
+		name: 'following',
+		component: FollowListPage,
+		props: { kind: 'following' },
+		meta: { title: 'Following', requiresAuth: true },
 	},
 	{
 		path: '/login',

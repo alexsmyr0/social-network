@@ -25,12 +25,12 @@ Follow the [ticket-writing rules](ticket-rules.md). The [Phase 1 audit](ticket-a
 
 ## Summary
 
-36 tickets: 17 in A, 19 in B. Done: 19. In progress: 0. Blocked: 0. Not started: 17. Owner confirmed SN-A07 Dev 2 review passed on 2026-10-02. SN-B10 is complete: owner approved interfaces/fixture handoff on 2026-10-02; documentation/fixture checks passed. The owner removed duplicate Dev 1 sign-off because they are Dev 1. SN-B11 profile/follow backend is verified complete; B12/B13 are eligible next.
+36 tickets: 17 in A, 19 in B. Done: 20. In progress: 0. Blocked: 0. Not started: 16. Owner confirmed SN-A07 Dev 2 review passed on 2026-10-02. SN-B10 is complete: owner approved interfaces/fixture handoff on 2026-10-02; documentation/fixture checks passed. The owner removed duplicate Dev 1 sign-off because they are Dev 1. SN-B11 profile/follow backend is verified complete; B12/B13 and SN-A09 are complete or eligible; SN-A10 is next on Track A.
 
 | Phase | A | B | Total | Done | In progress | Not started | Exit |
 |---|---|---|---|---|---|---|---|
 | 1 | 8 | 9 | 17 | 17 | 0 | 0 | SN-A07 |
-| 2 | 3 | 4 | 7 | 2 | 0 | 5 | SN-A11 |
+| 2 | 3 | 4 | 7 | 3 | 0 | 4 | SN-A11 |
 | 3 | 3 | 3 | 6 | 0 | 0 | 6 | SN-A14 |
 | 4 | 3 | 3 | 6 | 0 | 0 | 6 | SN-A17 |
 
@@ -63,7 +63,7 @@ Phase 5 has no tickets or approved messaging/event model yet; unanswered proposa
 | Status | Ticket | Description | Depends on | Blocks | Evidence / external gate |
 |---|---|---|---|---|---|
 | [x] | [SN-B10](track-b.md#sn-b10--publish-profile-follow-and-notification-contracts) | Publish profile, follow and notification contracts | SN-A07 | SN-B11, SN-A09 | [Owner-approved contracts](profiles-contract.md), [data/privacy handoff](phase-2-data-plan.md) and [fixture pack](fixtures/phase-2-contract.json) on `asmyrogl/B10`. Owner approved both HTTP and notification/media choices on 2026-10-02; owner is Dev 1 and removed separate fixture sign-off; one approval covers this handoff. Document/fixture checks and docs tests 10/10 passed; [verification record](profiles-contract.md#verification-record). Approved product/architecture choices remain settled. |
-| [ ] | [SN-A09](track-a.md#sn-a09--build-people-profiles-and-follow-controls) | Build people, profiles and follow controls | SN-B10 | SN-A10 | Frontend fixture gate; real services in SN-A11. |
+| [x] | [SN-A09](track-a.md#sn-a09--build-people-profiles-and-follow-controls) | Build people, profiles and follow controls | SN-B10 | SN-A10 | Frontend-only, fixture-backed on `chbaikas/A09`: [commands and component ownership](frontend-setup.md#people-profiles-and-follow-controls-sn-a09). `bun run test:a09` and `make test` exit 0 (Vitest 777/777, native Playwright incl. 9 A09 browser checks at desktop/360px with keyboard). Contract replay covers every profile, list, follow and privacy fixture; teasers verified to carry no avatar, counts or details. Production contains no fixtures. Real authorization remains SN-A11. |
 | [x] | [SN-B11](track-b.md#sn-b11--implement-profiles-and-the-follow-lifecycle) | Implement profiles and the follow lifecycle | SN-B10 | SN-B12, SN-B13 | [Implementation/verification record](backend-profiles.md#verification-record) on `asmyrogl/B11`, based on `09562ab`: 72 real-service contract fixtures, migration/backfill/constraint/concurrency/rollback tests and full `make test` passed, including Go/race checks, Vitest 540/540 and native Playwright 15/15. B12/B13 complete notifications/content privacy before A11. |
 | [ ] | [SN-A10](track-a.md#sn-a10--deliver-global-notifications-and-request-review) | Deliver global notifications and request review | SN-A09 | SN-A11 | Frontend fixture gate; real delivery in SN-A11. |
 | [ ] | [SN-B12](track-b.md#sn-b12--persist-and-deliver-relationship-notifications) | Persist and deliver relationship notifications | SN-B11 | SN-A11 | — |
