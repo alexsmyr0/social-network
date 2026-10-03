@@ -53,9 +53,9 @@ func CreateRegisteredAccount(ctx context.Context, database *sql.DB, input NewAcc
 		key = avatarKey
 	}
 	result, err := tx.ExecContext(ctx, `INSERT INTO users
-		(username, email, password_hash, first_name, last_name, date_of_birth, nickname, about_me, avatar_key)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, username, input.Email, hash, input.FirstName,
-		input.LastName, input.DateOfBirth, input.Nickname, input.AboutMe, key)
+		(username, email, password_hash, first_name, last_name, date_of_birth, nickname, about_me, avatar_key, display_name_search)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, username, input.Email, hash, input.FirstName,
+		input.LastName, input.DateOfBirth, input.Nickname, input.AboutMe, key, strings.ToLower(displayName(input.FirstName, input.LastName, input.Nickname)))
 	if err != nil {
 		var sqliteErr sqlite3.Error
 		if errors.As(err, &sqliteErr) && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {
@@ -116,10 +116,10 @@ func CreateAccount(ctx context.Context, database *sql.DB, input NewAccount) (Acc
 	username := "u" + strings.ReplaceAll(uuid.NewString(), "-", "")[:29]
 	result, err := database.ExecContext(ctx, `
 		INSERT INTO users (username, email, password_hash, first_name, last_name,
-			date_of_birth, nickname, about_me)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			date_of_birth, nickname, about_me, display_name_search)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		username, input.Email, hash, input.FirstName, input.LastName,
-		input.DateOfBirth, input.Nickname, input.AboutMe)
+		input.DateOfBirth, input.Nickname, input.AboutMe, strings.ToLower(displayName(input.FirstName, input.LastName, input.Nickname)))
 	if err != nil {
 		var sqliteErr sqlite3.Error
 		if errors.As(err, &sqliteErr) && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique {

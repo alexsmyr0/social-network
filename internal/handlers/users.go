@@ -33,6 +33,16 @@ func (u *UsersHandler) HandleUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if u.socialSchema {
+		if id, e := socialID(parts[0]); e != nil {
+			WriteError(w, r, e)
+			return
+		} else {
+			userID = id
+		}
+		if len(parts) == 2 && (parts[1] == "profile" || parts[1] == "followers" || parts[1] == "following" || parts[1] == "avatar") {
+			u.socialProfile(w, r, userID, parts[1])
+			return
+		}
 		ownerID, authErr := middleware.GetUserID(r.Context())
 		if authErr != nil || ownerID != userID {
 			notFound(w, r)
