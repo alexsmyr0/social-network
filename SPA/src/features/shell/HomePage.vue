@@ -16,6 +16,12 @@ const session = inject(sessionKey);
 				Your private session is restored. Profiles, groups and conversations will settle into
 				this protected space as the next phases arrive.
 			</p>
+			<p class="home-view__actions">
+				<RouterLink class="button button--primary" :to="{ name: 'people' }">Find people</RouterLink>
+				<RouterLink class="text-link" :to="{ name: 'profile', params: { id: session.state.account.id } }">
+					Your profile <span aria-hidden="true">↗</span>
+				</RouterLink>
+			</p>
 		</div>
 
 		<aside class="signal-board" aria-label="Product foundation">
