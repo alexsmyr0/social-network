@@ -6,7 +6,7 @@ Reviewed 2026-10-03. B12 baseline is commit `4d503d6`; B13 working tree branches
 |---|---|---|
 | B12 as originally committed (`4d503d6`) | **8/10** | Follow/request notices, reconciliation, dedup/backfill/read authorization and real session-scoped socket delivery are covered. Two inherited-content transaction gaps remained: comment creation committed independently of notification insertion; reaction insertion ignored notification errors. |
 | B12 behavior with corrections on B13 | **9/10** | Both gaps are corrected, with rollback/no-signal tests and preserved dedup/committed delivery. Existing migration/HTTP/socket/race suites rerun. Full Phase 2 UI acceptance stays with A11. B12 branch itself remains unchanged; corrections are part of the B13 diff. |
-| B13 current working tree | **8/10, provisional** | Content/query/mutation/media/identity boundary implemented and native/race tests pass. Required two-image evidence and A's shared frontend-route review must be recorded before the tracker can mark B13 verified complete. |
+| B13 after main merge and image verification | **9/10, provisional** | Content/query/mutation/media/identity boundary implemented; native/race and both-image gates pass. A's shared frontend-route review remains unrecorded before the tracker can mark B13 verified complete. |
 
 ## Findings corrected during implementation
 
@@ -34,7 +34,7 @@ Reviewed 2026-10-03. B12 baseline is commit `4d503d6`; B13 working tree branches
 | B13 all-owner cleanup, interrupted writes, conflicts, missing/degraded state | Media copy/replacement/interruption/source-restoration/orphan cases |
 | B13 direct/static/encoded/traversal/symlink denial; stale URLs | API matrix, `cmd/frontend/media_proxy_test.go`, real native proxy journey |
 | B13 chat display names, participant bytes and authorized refreshed presence | API history/roster and real `content_presence_test.go` sockets |
-| B13 authorized media through both built images | Journey included in `playwright.integration.config.ts`; execution pending while Docker is stopped |
+| B13 authorized media through both built images | `make test-images` passed on 2026-10-04: backend smoke, legacy-media two-image smoke and 10 integration browser tests |
 | A review of B-owned shared frontend routes | Concrete diff ready; no additional fixture sign-off requested or claimed |
 
 Final native `make test` passed again after streaming and staging-cleanup corrections: Vitest 540/540 and Playwright 16/16. The final reaction-count snapshot and waiting-writer checks also passed focused race/API/build validation; see the [implementation handoff](backend-content-media.md#verification-record) for commands and scope. Docker/hosted CI failures or missing evidence are never treated as passing. Tracker status is maintained only in [ticket-tracker.md](ticket-tracker.md).
@@ -46,3 +46,16 @@ Final checks on 2026-10-03 after the last code changes:
 - `go vet ./...` and `make build fmt-check lint` — passed.
 - `bun x vitest run SPA/tests/unit/docs-consistency.test.js` — 10/10 passed; 98 changed-document local links/anchors, 36 unique ticket/status rows and fixture JSON were also checked. `git diff --check` passed.
 - Final `docker info --format '{{.ServerVersion}}'` still reported an unavailable daemon. No Docker startup/image execution or hosted CI is claimed. No PR was created; changes remain uncommitted on `asmyrogl/B13`.
+
+
+## Main merge and both-image verification — 2026-10-04
+
+The owner authorized Docker Desktop startup and main conflict resolution. Implementation commit `08f345e` preserves B13, including B12 corrections; merge commit `ba3b78f` incorporates `origin/main` revision `d56d1a0`. No main changes were discarded. Tracker conflict combines A09/B12 completion with B13 in progress (21 complete, 1 in progress, 14 unstarted). Native browser configuration retains A09 and B13 tests together. `git merge-base --is-ancestor origin/main HEAD` passed after a final fetch.
+
+- `make test` passed on the merged implementation: builds, Biome, gofmt, vet, complete Go/configured race checks, Vitest **787/787**, native Playwright **25/25**.
+- `make test-images` passed after rebuilding both merged images: backend registration/avatar/session restart smoke, the new [legacy-media smoke](../../scripts/smoke-media-images.sh), container Playwright **10/10**, backend outage handling and isolated stack cleanup.
+- Legacy smoke mounts real recoverable files in both backend sources and frontend static storage, seeds historical post/comment/DM references with writers stopped, then checks copied bytes through both endpoints. Public post access, private stale-URL denial, participant DM access, anonymous/encoded/traversal denial and a further restart all pass. Retained source bytes remain identical. Only disposable test containers/networks/volumes are removed.
+- Initial legacy smoke failed because Docker reallocated an ephemeral host port after backend restart. The harness now refreshes port mappings for every readiness check; the full image gate passed afterward. This was a harness failure, not an application readiness failure.
+- Final tested image IDs: backend `sha256:01adcb797fd64c26db5f4d3cfab70199dab3f9f784c3c3d8602fa24082f82628`; frontend `sha256:71534151b146809d3cb08b9c2612b6bcd862f4ae0e0479af287b86d3e2c4f1c4`.
+
+A's review of shared frontend routes remains unrecorded; no new fixture approval or duplicate owner confirmation is requested. Hosted CI has not been run. Docker remains running as authorized. No PR or remote push is part of this work.
