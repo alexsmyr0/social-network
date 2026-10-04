@@ -15,6 +15,7 @@ export default defineConfig({
 	testMatch: [
 		'a03-shell.test.js',
 		'a05-session.test.js',
+		'a09-people.test.js',
 		'b07-transport.test.js',
 		'b13-media.test.js',
 	],
