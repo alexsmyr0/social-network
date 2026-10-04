@@ -210,7 +210,10 @@ func handleReactionNotificationTx(
 	}
 
 	affected, err := result.RowsAffected()
-	if err != nil || affected == 0 {
+	if err != nil {
+		return 0, err
+	}
+	if affected == 0 {
 		return 0, nil
 	}
 

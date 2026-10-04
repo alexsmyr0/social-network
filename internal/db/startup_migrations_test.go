@@ -38,7 +38,7 @@ func TestStartupMigrationsFreshAndRepeated(t *testing.T) {
 	if err := second.QueryRow(`SELECT version FROM schema_migrations WHERE dirty = 0`).Scan(&version); err != nil {
 		t.Fatal(err)
 	}
-	if users != 1 || categories != 5 || version != 3 {
+	if users != 1 || categories != 5 || version != 4 {
 		t.Fatalf("repeated startup: users=%d categories=%d version=%d", users, categories, version)
 	}
 }

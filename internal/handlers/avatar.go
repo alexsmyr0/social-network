@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"forum/internal/db"
@@ -202,6 +203,31 @@ func (u *UsersHandler) avatar(w http.ResponseWriter, r *http.Request, userID int
 	}
 	if filepath.Base(key) != key {
 		writeHandlerError(w, r, errors.New("invalid avatar key"), "failed to load avatar")
+		return
+	}
+	hasManifest, err := db.HasMediaSchema(r.Context(), u.conn)
+	if err != nil {
+		writeHandlerError(w, r, err, "failed to load avatar")
+		return
+	}
+	if hasManifest {
+		m, err := db.AvatarMedia(r.Context(), u.conn, ownerID, userID)
+		if err != nil {
+			writeHandlerError(w, r, err, "failed to load avatar")
+			return
+		}
+		file, err := db.OpenMediaFile(u.conn, m)
+		if err != nil {
+			notFound(w, r)
+			return
+		}
+		defer file.Close()
+		w.Header().Set("Content-Length", strconv.FormatInt(m.Bytes, 10))
+		w.Header().Set("Content-Type", m.MIME)
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.Copy(w, io.LimitReader(file, m.Bytes))
 		return
 	}
 	root, err := db.AvatarRoot(u.conn)

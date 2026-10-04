@@ -50,6 +50,9 @@ func Auth(database *sql.DB, hub *ws.Hub) func(http.Handler) http.Handler {
 				}
 
 				ctx := context.WithValue(r.Context(), UserIDKey, session.UserID)
+				if socialSchema {
+					ctx = db.WithSocialViewer(ctx, session.UserID)
+				}
 				next.ServeHTTP(w, r.WithContext(ctx))
 			}
 

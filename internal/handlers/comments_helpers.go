@@ -9,6 +9,10 @@ import (
 func resolveCommentRoute(w http.ResponseWriter, r *http.Request) (commentID int64, action string, ok bool) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/comments/")
 	parts := strings.Split(strings.Trim(path, "/"), "/")
+	if len(parts) > 2 {
+		notFound(w, r)
+		return 0, "", false
+	}
 	if len(parts) == 0 || parts[0] == "" {
 		notFound(w, r)
 		return 0, "", false

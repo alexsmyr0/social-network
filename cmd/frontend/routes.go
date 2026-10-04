@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // cspHeaderPolicy is the frontend's Content-Security-Policy (issue #57).
@@ -63,7 +64,7 @@ func NewMux() http.Handler {
 		"/static/",
 		http.StripPrefix(
 			"/static/",
-			http.FileServer(http.Dir("./web/static")),
+			http.FileServer(privateStaticFS{root: "./web/static"}),
 		),
 	)
 
@@ -136,7 +137,14 @@ func NewMux() http.Handler {
 		spaFileServer.ServeHTTP(w, r)
 	}))
 
-	return SecurityHeaders(mux)
+	guard := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if sensitiveMediaPath(r.URL.EscapedPath()) {
+			proxyHandler.ServeHTTP(w, r)
+			return
+		}
+		mux.ServeHTTP(w, r)
+	})
+	return SecurityHeaders(guard)
 }
 
 // setNoStoreHeaders prevents browsers from caching the SPA shell so auth-gated
@@ -145,4 +153,52 @@ func setNoStoreHeaders(w http.ResponseWriter) {
 	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 	w.Header().Set("Pragma", "no-cache")
 	w.Header().Set("Expires", "0")
+}
+
+// Intercept before ServeMux redirects encoded/dot-path aliases. Upload bytes are
+// owned by the backend, including legacy paths kept for existing references.
+func sensitiveMediaPath(raw string) bool {
+	decoded, err := url.PathUnescape(raw)
+	if err != nil {
+		decoded = raw
+	}
+	decoded = strings.ReplaceAll(decoded, "\\", "/")
+	cleaned := "/" + strings.TrimPrefix(filepath.ToSlash(filepath.Clean(decoded)), "/")
+	return strings.HasPrefix(cleaned, "/static/uploads") || strings.HasPrefix(cleaned, "/api/v1/media") || strings.Contains(decoded, "/static/uploads") || strings.Contains(decoded, "/api/v1/media")
+}
+
+type privateStaticFS struct{ root string }
+
+func (f privateStaticFS) Open(name string) (http.File, error) {
+	root, err := filepath.Abs(f.root)
+	if err != nil {
+		return nil, err
+	}
+	root, err = filepath.EvalSymlinks(root)
+	if err != nil {
+		return nil, err
+	}
+	clean := filepath.Join(root, filepath.FromSlash("/"+name))
+	resolved, err := filepath.EvalSymlinks(clean)
+	if err != nil {
+		return nil, err
+	}
+	rel, err := filepath.Rel(root, resolved)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return nil, os.ErrPermission
+	}
+	if rel == "uploads" || strings.HasPrefix(rel, "uploads"+string(filepath.Separator)) {
+		return nil, os.ErrPermission
+	}
+	// Reject directory browsing: no filename aliases can expose an upload listing.
+	file, err := os.Open(resolved)
+	if err != nil {
+		return nil, err
+	}
+	info, err := file.Stat()
+	if err != nil || info.IsDir() {
+		file.Close()
+		return nil, os.ErrPermission
+	}
+	return file, nil
 }

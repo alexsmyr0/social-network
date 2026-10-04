@@ -3,6 +3,7 @@ package handlers
 
 import (
 	"database/sql"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -31,7 +32,7 @@ func NewChatsHandler(database *sql.DB, hub *ws.Hub) *ChatsHandler {
 type rosterResponseEntry struct {
 	UserID             int64   `json:"user_id"`
 	Username           string  `json:"username"`
-	IsOnline           bool    `json:"is_online"`
+	IsOnline           *bool   `json:"is_online,omitempty"`
 	LastMessageAt      *string `json:"last_message_at"`
 	LastMessagePreview *string `json:"last_message_preview"`
 	LastSenderID       *int64  `json:"last_sender_id"`
@@ -55,7 +56,19 @@ func (h *ChatsHandler) HandleChatRoster(w http.ResponseWriter, r *http.Request) 
 		row := rosterResponseEntry{
 			UserID:   e.UserID,
 			Username: e.Username,
-			IsOnline: h.hub.IsUserOnline(e.UserID),
+		}
+		canSee := true
+		if _, social := db.SocialViewer(r.Context()); social {
+			var err error
+			canSee, err = db.CanViewProfile(r.Context(), h.conn, userID, e.UserID)
+			if err != nil {
+				writeHandlerError(w, r, err, "failed to load roster")
+				return
+			}
+		}
+		if canSee {
+			online := h.hub.IsUserOnline(e.UserID)
+			row.IsOnline = &online
 		}
 		if e.LastMessageAt != "" {
 			at := e.LastMessageAt
@@ -116,7 +129,8 @@ func (h *ChatsHandler) uploadDMImage(w http.ResponseWriter, r *http.Request) {
 
 	// Parse and validate the {userID} path segment so the endpoint honours its
 	// route contract; the recipient itself is validated again on dm.send.
-	if _, ok := parseChatTargetID(r.URL.Path, "/images"); !ok {
+	recipientID, validRecipient := parseChatTargetID(r.URL.Path, "/images")
+	if !validRecipient {
 		WriteError(w, r, NewError("BAD_REQUEST", "invalid recipient user ID", http.StatusBadRequest))
 		return
 	}
@@ -137,9 +151,19 @@ func (h *ChatsHandler) uploadDMImage(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	url, _, err := saveUploadedImageToSubdir(file, mime, "dm")
+	var url string
+	if _, social := db.SocialViewer(r.Context()); social {
+		data, readErr := io.ReadAll(io.LimitReader(file, avatarMaxBytes+1))
+		if readErr != nil {
+			writeHandlerError(w, r, readErr, "failed to read image")
+			return
+		}
+		url, _, err = db.StageMedia(r.Context(), h.conn, userID, recipientID, "dm", data, mime)
+	} else {
+		url, _, err = saveUploadedImageToSubdir(file, mime, "dm")
+	}
 	if err != nil {
-		WriteError(w, r, NewError("INTERNAL_SERVER_ERROR", "failed to save image", http.StatusInternalServerError))
+		writeHandlerError(w, r, err, "failed to save image")
 		return
 	}
 
@@ -227,6 +251,14 @@ func (h *ChatsHandler) getChatHistory(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, user := range users {
 			usersMap[user.ID] = user.Username
+		}
+		if _, social := db.SocialViewer(r.Context()); social {
+			names, err := db.DisplayNames(r.Context(), h.conn, senderIDs)
+			if err != nil {
+				writeHandlerError(w, r, err, "failed to load names")
+				return
+			}
+			usersMap = names
 		}
 		// Graceful fallback for orphaned senders (user deleted after sending).
 		for senderID := range uniqueSenders {

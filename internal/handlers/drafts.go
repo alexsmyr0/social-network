@@ -116,7 +116,8 @@ func (p *PostsHandler) HandleDraft(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if uploadFile != nil {
-			imageURL, imagePath, err := saveUploadedImage(uploadFile, uploadMime)
+			imageURL, imagePath, err := saveRequestImage(r, p.conn, uploadFile, uploadMime)
+			defer cleanupStagedImage(r, p.conn, &imageURL)
 			if err != nil {
 				log.Printf("failed to save image: %v", err)
 				WriteError(w, r, NewError(
@@ -256,7 +257,8 @@ func (p *PostsHandler) HandleDraftByID(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if uploadFile != nil {
-			imageURL, imagePath, err := saveUploadedImage(uploadFile, uploadMime)
+			imageURL, imagePath, err := saveRequestImage(r, p.conn, uploadFile, uploadMime)
+			defer cleanupStagedImage(r, p.conn, &imageURL)
 			if err != nil {
 				log.Printf("failed to save image: %v", err)
 				WriteError(w, r, NewError(

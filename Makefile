@@ -148,6 +148,7 @@ check: test test-images
 
 test-images: stack-build
 	@./scripts/smoke-backend-image.sh social-network-backend
+	@./scripts/smoke-media-images.sh social-network-backend social-network-frontend
 	@$(MAKE) test-browser
 
 

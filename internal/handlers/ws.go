@@ -121,6 +121,14 @@ func (h *WsHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		// failure the field stays "" and handleDMSend falls back to "unknown".
 		if users, err := db.GetUsersByIDs(r.Context(), h.db, []int64{session.UserID}); err == nil && len(users) > 0 {
 			client.Username = users[0].Username
+			if h.socialSchema {
+				names, err := db.DisplayNames(r.Context(), h.db, []int64{session.UserID})
+				if err == nil {
+					client.Username = names[session.UserID]
+				} else {
+					client.Username = ""
+				}
+			}
 		}
 
 		// Enqueue presence messages before starting goroutines. The Send channel is
@@ -243,10 +251,40 @@ func (h *WsHandler) writeSessionMessage(c *ws.Client, kind int, data []byte) boo
 	h.hub.WithSessionAdmission(c.Token, func() {
 		ctx, cancel := context.WithTimeout(context.Background(), dmDBTimeout)
 		defer cancel()
-		if _, err := db.GetSessionByToken(ctx, h.db, c.Token); err != nil {
+		session, err := db.GetSessionByToken(ctx, h.db, c.Token)
+		if err != nil {
 			return
 		}
+		if kind == websocket.TextMessage {
+			filtered, send, err := h.filterPresence(ctx, session.UserID, data)
+			if err != nil {
+				return
+			}
+			if !send {
+				delivered = true
+				return
+			}
+			data = filtered
+		}
 		delivered = c.Conn.WriteMessage(kind, data) == nil
+		if delivered && kind == websocket.TextMessage {
+			var frame ws.WSMessage
+			if json.Unmarshal(data, &frame) == nil && frame.Type == "social.invalidate" {
+				users := []map[string]any{}
+				for _, id := range h.hub.GetOnlineUserIDs() {
+					allowed, err := db.CanViewProfile(ctx, h.db, session.UserID, id)
+					if err != nil {
+						delivered = false
+						return
+					}
+					if allowed {
+						users = append(users, map[string]any{"user_id": id, "is_online": true})
+					}
+				}
+				snapshot := marshalEvent("presence.snapshot", map[string]any{"users": users})
+				delivered = c.Conn.WriteMessage(websocket.TextMessage, snapshot) == nil
+			}
+		}
 	})
 	return delivered
 }
@@ -346,7 +384,7 @@ func (h *WsHandler) handleDMSend(senderID int64, senderClient *ws.Client, payloa
 		h.sendChatError(senderClient, codeEmptyBody, "message must have a body or an image")
 		return
 	}
-	if p.ImageURL != "" && !isValidDMImageURL(p.ImageURL) {
+	if p.ImageURL != "" && ((!h.socialSchema && !isValidDMImageURL(p.ImageURL)) || (h.socialSchema && !db.IsPrivateMediaURL(p.ImageURL))) {
 		h.sendChatError(senderClient, codeInvalidImage, "invalid image_url")
 		return
 	}
@@ -358,6 +396,9 @@ func (h *WsHandler) handleDMSend(senderID int64, senderClient *ws.Client, payloa
 	ctx, cancel := context.WithTimeout(context.Background(), dmDBTimeout)
 	defer cancel()
 
+	if h.socialSchema {
+		ctx = db.WithSocialViewer(ctx, senderID)
+	}
 	msg, err := db.CreateMessage(ctx, h.db, db.CreateMessageRequest{
 		SenderID:    senderID,
 		RecipientID: p.RecipientID,
@@ -365,6 +406,10 @@ func (h *WsHandler) handleDMSend(senderID int64, senderClient *ws.Client, payloa
 		ImagePath:   p.ImageURL,
 	})
 	if err != nil {
+		if h.socialSchema && (errors.Is(err, sql.ErrNoRows) || errors.Is(err, db.ErrNotFound)) {
+			h.sendChatError(senderClient, codeInvalidImage, "invalid recipient or image")
+			return
+		}
 		// Surface a generic code; never echo the DB error string to the wire.
 		h.sendChatError(senderClient, codeInternalError, "failed to send message")
 		return
@@ -421,4 +466,47 @@ func marshalEvent(eventType string, payload any) []byte {
 		Payload: rawPayload,
 	})
 	return envelope
+}
+
+// Recheck presence at delivery, so queued global hub frames cannot reveal private
+// subjects. Invalidation remains payload-free; clients discard cached social data.
+func (h *WsHandler) filterPresence(ctx context.Context, viewer int64, data []byte) ([]byte, bool, error) {
+	var frame ws.WSMessage
+	if err := json.Unmarshal(data, &frame); err != nil {
+		return nil, false, err
+	}
+	type presence struct {
+		UserID   int64 `json:"user_id"`
+		IsOnline bool  `json:"is_online"`
+	}
+	switch frame.Type {
+	case "presence.update":
+		var p presence
+		if err := json.Unmarshal(frame.Payload, &p); err != nil {
+			return nil, false, err
+		}
+		allowed, err := db.CanViewProfile(ctx, h.db, viewer, p.UserID)
+		return data, allowed, err
+	case "presence.snapshot":
+		var p struct {
+			Users []presence `json:"users"`
+		}
+		if err := json.Unmarshal(frame.Payload, &p); err != nil {
+			return nil, false, err
+		}
+		filtered := []presence{}
+		for _, u := range p.Users {
+			allowed, err := db.CanViewProfile(ctx, h.db, viewer, u.UserID)
+			if err != nil {
+				return nil, false, err
+			}
+			if allowed {
+				filtered = append(filtered, u)
+			}
+		}
+		frame.Payload, _ = json.Marshal(map[string]any{"users": filtered})
+		out, err := json.Marshal(frame)
+		return out, true, err
+	}
+	return data, true, nil
 }

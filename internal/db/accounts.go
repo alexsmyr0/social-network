@@ -47,6 +47,14 @@ func CreateRegisteredAccount(ctx context.Context, database *sql.DB, input NewAcc
 		return Account{}, Session{}, fmt.Errorf("begin registration: %w", err)
 	}
 	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `UPDATE users SET id=id WHERE 0`); err != nil {
+		return Account{}, Session{}, err
+	}
+	if avatarKey != "" {
+		if err := registerAvatarMediaTx(ctx, tx, database, avatarKey); err != nil {
+			return Account{}, Session{}, err
+		}
+	}
 	username := "u" + strings.ReplaceAll(uuid.NewString(), "-", "")[:29]
 	var key any
 	if avatarKey != "" {

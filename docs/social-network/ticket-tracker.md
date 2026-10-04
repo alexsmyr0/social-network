@@ -25,12 +25,12 @@ Follow the [ticket-writing rules](ticket-rules.md). The [Phase 1 audit](ticket-a
 
 ## Summary
 
-36 tickets: 17 in A, 19 in B. Done: 21. In progress: 0. Blocked: 0. Not started: 15. Owner confirmed SN-A07 Dev 2 review passed on 2026-10-02. SN-B10 is complete: owner approved interfaces/fixture handoff on 2026-10-02; documentation/fixture checks passed. The owner removed duplicate Dev 1 sign-off because they are Dev 1. SN-A09 frontend and SN-B11 profile/follow and SN-B12 notification backends are verified complete; B13 is eligible next; SN-A10 is next on Track A.
+36 tickets: 17 in A, 19 in B. Done: 21. In progress: 1. Blocked: 0. Not started: 14. Owner confirmed SN-A07 Dev 2 review passed on 2026-10-02. SN-B10 is complete: owner approved interfaces/fixture handoff on 2026-10-02; documentation/fixture checks passed. The owner removed duplicate Dev 1 sign-off because they are Dev 1. SN-A09 frontend and SN-B11/B12 backends are verified complete. SN-B13 implementation is in progress on `asmyrogl/B13`; native evidence and the combined audit are recorded below. SN-A10 is next on Track A.
 
 | Phase | A | B | Total | Done | In progress | Not started | Exit |
 |---|---|---|---|---|---|---|---|
 | 1 | 8 | 9 | 17 | 17 | 0 | 0 | SN-A07 |
-| 2 | 3 | 4 | 7 | 4 | 0 | 3 | SN-A11 |
+| 2 | 3 | 4 | 7 | 4 | 1 | 2 | SN-A11 |
 | 3 | 3 | 3 | 6 | 0 | 0 | 6 | SN-A14 |
 | 4 | 3 | 3 | 6 | 0 | 0 | 6 | SN-A17 |
 
@@ -67,7 +67,7 @@ Phase 5 has no tickets or approved messaging/event model yet; unanswered proposa
 | [x] | [SN-B11](track-b.md#sn-b11--implement-profiles-and-the-follow-lifecycle) | Implement profiles and the follow lifecycle | SN-B10 | SN-B12, SN-B13 | [Implementation/verification record](backend-profiles.md#verification-record) on `asmyrogl/B11`, based on `09562ab`: 72 real-service contract fixtures, migration/backfill/constraint/concurrency/rollback tests and full `make test` passed, including Go/race checks, Vitest 540/540 and native Playwright 15/15. B12/B13 complete notifications/content privacy before A11. |
 | [ ] | [SN-A10](track-a.md#sn-a10--deliver-global-notifications-and-request-review) | Deliver global notifications and request review | SN-A09 | SN-A11 | Frontend fixture gate; real delivery in SN-A11. |
 | [x] | [SN-B12](track-b.md#sn-b12--persist-and-deliver-relationship-notifications) | Persist and deliver relationship notifications | SN-B11 | SN-A11 | [Implementation/verification record](backend-notifications.md#verification-record) on `asmyrogl/B12`, based on `6a650e9`: preserved upgrade/backfill/read state, atomic notice transitions and rollback/failed-commit silence, 87 approved HTTP fixtures, real multi-session/reconnect/restart/revocation sockets, focused race checks and native `make test` passed. Full Phase 2 browser/image acceptance remains A11 after B13. |
-| [ ] | [SN-B13](track-b.md#sn-b13--protect-inherited-content-and-migrate-media-access) | Protect inherited content and migrate media access | SN-B11 | SN-A11 | B owns shared static/proxy edits with A review; preserve all referenced media. |
+| [-] | [SN-B13](track-b.md#sn-b13--protect-inherited-content-and-migrate-media-access) | Protect inherited content and migrate media access | SN-B11 | SN-A11 | [Implementation/recovery handoff](backend-content-media.md) and [B12/B13 audit](b12-b13-audit.md), based on `4d503d6`: merged main `d56d1a0` via `ba3b78f`. `make test` passes (787 frontend/25 native browser tests); `make test-images` passes backend and legacy-media smoke plus 10 container browser tests. A review of shared frontend routes remains unrecorded. All referenced media owners are preserved. |
 | [ ] | [SN-A11](track-a.md#sn-a11--accept-profiles-following-and-privacy-end-to-end) | Accept profiles, following and privacy end to end | SN-A10, SN-B12, SN-B13 | SN-B14 | Local/hosted shared gates and both-developer review required. |
 
 ## Phase 3 — Posts, comments, and audiences

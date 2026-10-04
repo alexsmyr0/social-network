@@ -2,7 +2,9 @@
 package handlers
 
 import (
+	"database/sql"
 	"errors"
+	"forum/internal/db"
 	"net/http"
 )
 
@@ -22,6 +24,10 @@ func writeHandlerError(w http.ResponseWriter, r *http.Request, err error, fallba
 		return false
 	}
 
+	if errors.Is(err, sql.ErrNoRows) || errors.Is(err, db.ErrNotFound) {
+		notFound(w, r)
+		return true
+	}
 	var apiErr *APIError
 	if errors.As(err, &apiErr) {
 		WriteError(w, r, apiErr)

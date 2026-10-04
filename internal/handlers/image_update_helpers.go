@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"mime/multipart"
@@ -218,6 +219,7 @@ func resolveImageUpdateRequest(
 	r *http.Request,
 	update *imageUpdateRequest,
 	saveImageLogMessage string,
+	database *sql.DB,
 ) bool {
 	if update == nil {
 		return false
@@ -242,7 +244,7 @@ func resolveImageUpdateRequest(
 	}
 
 	if update.UploadFile != nil {
-		savedImageURL, imagePath, err := saveUploadedImage(update.UploadFile, update.UploadMime)
+		savedImageURL, imagePath, err := saveRequestImage(r, database, update.UploadFile, update.UploadMime)
 		if err != nil {
 			log.Printf("%s: %v", saveImageLogMessage, err)
 			WriteError(w, r, NewError(
