@@ -49,6 +49,9 @@ func ListCommentsByPost(
 	p ListCommentsParams,
 	viewerID int64,
 ) (ListCommentsResult, error) {
+	if viewer, ok := SocialViewer(ctx); ok {
+		return socialCommentPage(ctx, db, viewer, p.PostID, 0, p.Page, p.PerPage)
+	}
 
 	// use p not params
 	normalizeCommentsPagination(&p)
@@ -104,51 +107,73 @@ func CreateComment(
 
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-
-	if err := ensurePostExists(ctx, db, input.PostID); err != nil {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
 		return 0, err
 	}
-
-	const query = `
-		INSERT INTO comments (post_id, user_id, parent_comment_id, body, image_url, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%SZ','now'), strftime('%Y-%m-%dT%H:%M:%SZ','now'))
-	`
-
-	res, err := db.ExecContext(ctx, query,
-		input.PostID,
-		input.UserID,
-		input.ParentCommentID,
-		input.Body,
-		input.ImageURL,
-	)
+	defer tx.Rollback()
+	// Acquire the write lock before reading ownership or permissions.
+	if _, err := tx.ExecContext(ctx, `UPDATE posts SET id=id WHERE 0`); err != nil {
+		return 0, err
+	}
+	viewer, social := SocialViewer(ctx)
+	if social {
+		if viewer != input.UserID {
+			return 0, sql.ErrNoRows
+		}
+		if err := requirePostAccess(ctx, tx, viewer, input.PostID, false); err != nil {
+			return 0, err
+		}
+		if err := claimMediaTx(ctx, tx, viewer, "comment", 0, input.ImageURL, 0); err != nil {
+			return 0, err
+		}
+	}
+	var owner int64
+	if err := tx.QueryRowContext(ctx, `SELECT author_id FROM posts WHERE id=?`, input.PostID).Scan(&owner); err != nil {
+		return 0, err
+	}
+	if input.ParentCommentID != nil {
+		var parentPost int64
+		if err := tx.QueryRowContext(ctx, `SELECT post_id FROM comments WHERE id=?`, *input.ParentCommentID).Scan(&parentPost); err != nil {
+			return 0, err
+		}
+		if parentPost != input.PostID {
+			return 0, sql.ErrNoRows
+		}
+	}
+	res, err := tx.ExecContext(ctx, `INSERT INTO comments(post_id,user_id,parent_comment_id,body,image_url) VALUES(?,?,?,?,?)`, input.PostID, input.UserID, input.ParentCommentID, input.Body, input.ImageURL)
 	if err != nil {
-		return 0, fmt.Errorf("create comment: %w", err)
+		return 0, err
 	}
-
-	commentID, err := res.LastInsertId()
+	id, err := res.LastInsertId()
 	if err != nil {
-		return 0, fmt.Errorf("last insert id: %w", err)
+		return 0, err
 	}
-
-	/* =====================================================
-	   SEND NOTIFICATION TO POST OWNER
-	 ===================================================== */
-
-	postOwnerID, err := GetPostAuthorID(ctx, db, input.PostID)
-	if err == nil && postOwnerID != input.UserID {
-
-		_ = InsertNotification(
-			ctx,
-			db,
-			postOwnerID,   // recipient
-			input.UserID,  // actor
-			"comment",     // notification type
-			&input.PostID, // MUST provide postID
-			&commentID,    // also include commentID for redirect
-		)
+	if social {
+		if err := finishMediaClaimTx(ctx, tx, input.ImageURL); err != nil {
+			return 0, err
+		}
 	}
+	var announced bool
+	if owner != input.UserID {
+		res, err := tx.ExecContext(ctx, `INSERT INTO notifications(recipient_id,actor_id,type,post_id,comment_id) VALUES(?,?,'comment',?,NULL) ON CONFLICT DO NOTHING`, owner, input.UserID, input.PostID)
+		if err != nil {
+			return 0, err
+		}
+		n, err := res.RowsAffected()
+		if err != nil {
+			return 0, err
+		}
+		announced = n > 0
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	if announced {
+		fireNotificationHook(owner)
+	}
+	return id, nil
 
-	return commentID, nil
 }
 
 /*-------------
@@ -160,6 +185,9 @@ func GetCommentWithAuthor(
 	db *sql.DB,
 	id int64,
 ) (Comment, error) {
+	if viewer, ok := SocialViewer(ctx); ok {
+		return socialGetComment(ctx, db, viewer, id)
+	}
 
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
@@ -229,6 +257,9 @@ type UpdateCommentInput struct {
 }
 
 func UpdateComment(ctx context.Context, db *sql.DB, id int64, in UpdateCommentInput) error {
+	if viewer, ok := SocialViewer(ctx); ok {
+		return socialUpdateComment(ctx, db, viewer, id, in)
+	}
 
 	setParts := []string{}
 	args := []any{}
@@ -264,6 +295,9 @@ func UpdateComment(ctx context.Context, db *sql.DB, id int64, in UpdateCommentIn
 ----------------*/
 
 func DeleteComment(ctx context.Context, db *sql.DB, id int64) error {
+	if viewer, ok := SocialViewer(ctx); ok {
+		return socialDeleteContent(ctx, db, viewer, id, "comment", false)
+	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 

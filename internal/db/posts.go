@@ -52,6 +52,9 @@ type ListPostsResult struct {
 }
 
 func ListPosts(ctx context.Context, db *sql.DB, p ListPostsParams, userID int64) (ListPostsResult, error) {
+	if viewer, ok := SocialViewer(ctx); ok {
+		return socialPostPage(ctx, db, viewer, p.Page, p.PerPage, " AND p.status='published'")
+	}
 	p.Page, p.PerPage = normalizePagination(p.Page, p.PerPage)
 
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
@@ -82,6 +85,9 @@ func ListPosts(ctx context.Context, db *sql.DB, p ListPostsParams, userID int64)
 ----------*/
 
 func GetPost(ctx context.Context, db *sql.DB, id int64) (Post, error) {
+	if viewer, ok := SocialViewer(ctx); ok {
+		return socialGetPost(ctx, db, viewer, id)
+	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -161,6 +167,12 @@ func CreatePostWithCategories(
 	categoryIDs []int64,
 	imageURL *string,
 ) (int64, error) {
+	if viewer, ok := SocialViewer(ctx); ok {
+		if viewer != authorID {
+			return 0, sql.ErrNoRows
+		}
+		return socialCreatePost(ctx, db, viewer, title, body, status, categoryIDs, imageURL)
+	}
 
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
@@ -205,6 +217,7 @@ func CreatePostWithCategories(
 -------------*/
 
 type UpdatePostInput struct {
+	Status            *string
 	Title             *string
 	Body              *string
 	ImageURL          *string
@@ -214,6 +227,9 @@ type UpdatePostInput struct {
 }
 
 func UpdatePostContent(ctx context.Context, db *sql.DB, id int64, in UpdatePostInput) error {
+	if viewer, ok := SocialViewer(ctx); ok {
+		return socialUpdatePost(ctx, db, viewer, id, in, false)
+	}
 	if in.Title == nil && in.Body == nil && !in.HasImageUpdate && !in.HasCategoryUpdate {
 		return nil
 	}
@@ -283,6 +299,12 @@ func UpdatePostContent(ctx context.Context, db *sql.DB, id int64, in UpdatePostI
 }
 
 func UpdatePostStatus(ctx context.Context, db *sql.DB, postID, authorID int64, status string) error {
+	if viewer, ok := SocialViewer(ctx); ok {
+		if viewer != authorID {
+			return sql.ErrNoRows
+		}
+		return socialUpdatePost(ctx, db, viewer, postID, UpdatePostInput{Status: &status}, false)
+	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -312,6 +334,9 @@ func UpdatePostStatus(ctx context.Context, db *sql.DB, postID, authorID int64, s
 -----------------------------*/
 
 func DeletePost(ctx context.Context, db *sql.DB, id int64) error {
+	if viewer, ok := SocialViewer(ctx); ok {
+		return socialDeleteContent(ctx, db, viewer, id, "post", false)
+	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -363,6 +388,10 @@ func ListPostsByCategory(
 	p ListPostsByCategoryParams,
 	userID int64,
 ) (ListPostsByCategoryResult, error) {
+	if viewer, ok := SocialViewer(ctx); ok {
+		r, e := socialPostPage(ctx, db, viewer, p.Page, p.PerPage, " AND p.status='published' AND EXISTS(SELECT 1 FROM post_categories pc WHERE pc.post_id=p.id AND pc.category_id=?)", p.CategoryID)
+		return ListPostsByCategoryResult(r), e
+	}
 
 	p.Page, p.PerPage = normalizePagination(p.Page, p.PerPage)
 
@@ -457,6 +486,19 @@ func ListPostsByAuthor(
 	p ListPostsByAuthorParams,
 	userID int64,
 ) (ListPostsByAuthorResult, error) {
+	if viewer, ok := SocialViewer(ctx); ok {
+		if p.AuthorID != viewer {
+			return ListPostsByAuthorResult{}, sql.ErrNoRows
+		}
+		extra := " AND p.author_id=?"
+		args := []any{p.AuthorID}
+		if p.Status != nil {
+			extra += " AND p.status=?"
+			args = append(args, *p.Status)
+		}
+		r, e := socialPostPage(ctx, db, viewer, p.Page, p.PerPage, extra, args...)
+		return ListPostsByAuthorResult(r), e
+	}
 
 	p.Page, p.PerPage = normalizePagination(p.Page, p.PerPage)
 
@@ -564,6 +606,13 @@ func ListPostsByUserReaction(
 	p ListPostsByUserReactionParams,
 	userID int64,
 ) (ListPostsByUserReactionResult, error) {
+	if viewer, ok := SocialViewer(ctx); ok {
+		if p.UserID != viewer {
+			return ListPostsByUserReactionResult{}, sql.ErrNoRows
+		}
+		r, e := socialPostPage(ctx, db, viewer, p.Page, p.PerPage, " AND EXISTS(SELECT 1 FROM reactions r WHERE r.post_id=p.id AND r.user_id=? AND r.value=?)", viewer, p.Reaction)
+		return ListPostsByUserReactionResult(r), e
+	}
 
 	p.Page, p.PerPage = normalizePagination(p.Page, p.PerPage)
 

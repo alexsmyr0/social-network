@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -33,6 +34,10 @@ func resolvePostRoute(w http.ResponseWriter, r *http.Request) (postID int64, act
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/posts/")
 	parts := strings.Split(strings.Trim(path, "/"), "/")
 
+	if len(parts) > 2 {
+		notFound(w, r)
+		return 0, "", false
+	}
 	if len(parts) == 0 || parts[0] == "" {
 		notFound(w, r)
 		return 0, "", false
@@ -158,8 +163,12 @@ func multipartOptionalBool(form *multipart.Form, key string) (*bool, error) {
 }
 
 func parseMultipartForm(w http.ResponseWriter, r *http.Request) (func(), bool) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
-	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+	limit := maxUploadSize
+	if _, ok := repository.SocialViewer(r.Context()); ok {
+		limit = 10 << 20
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
+	if err := r.ParseMultipartForm(limit); err != nil {
 		var maxErr *http.MaxBytesError
 		if errors.As(err, &maxErr) {
 			WriteError(w, r, NewError("PAYLOAD_TOO_LARGE", "upload too large", http.StatusRequestEntityTooLarge))
@@ -181,6 +190,19 @@ func parseMultipartForm(w http.ResponseWriter, r *http.Request) (func(), bool) {
 func parseImageUpload(w http.ResponseWriter, r *http.Request) (file multipart.File, mime string, hasUpload bool, ok bool) {
 	file, fileHeader, err := r.FormFile("image")
 	if err == nil {
+		if _, social := repository.SocialViewer(r.Context()); social {
+			_ = file.Close()
+			data, kind, apiErr := readAvatar(fileHeader)
+			if apiErr != nil {
+				if apiErr.Code == "INVALID_AVATAR" {
+					apiErr = NewError("INVALID_IMAGE", "invalid image", http.StatusUnprocessableEntity)
+					apiErr.Fields = map[string]string{"image": "INVALID_IMAGE"}
+				}
+				WriteError(w, r, apiErr)
+				return nil, "", false, false
+			}
+			return memoryImage{bytes.NewReader(data)}, kind, true, true
+		}
 		mime, err = validateImageType(file, fileHeader.Filename)
 		if err != nil {
 			_ = file.Close()
@@ -308,6 +330,9 @@ func collectPostRelatedImageURLs(ctx context.Context, dbConn *sql.DB, postID int
 }
 
 func maybeDeleteUploadedImageByURL(ctx context.Context, dbConn *sql.DB, imageURL string) error {
+	if _, social := repository.SocialViewer(ctx); social {
+		return repository.CleanupMedia(ctx, dbConn, false)
+	}
 	normalizedURL, ok := repository.NormalizeUploadedImageURL(imageURL)
 	if !ok {
 		return nil
@@ -329,4 +354,39 @@ func maybeDeleteUploadedImageByURL(ctx context.Context, dbConn *sql.DB, imageURL
 		return err
 	}
 	return nil
+}
+
+type memoryImage struct{ *bytes.Reader }
+
+func (memoryImage) Close() error { return nil }
+func saveRequestImage(r *http.Request, database *sql.DB, file io.Reader, mime string) (string, string, error) {
+	if viewer, ok := repository.SocialViewer(r.Context()); ok {
+		data, err := io.ReadAll(io.LimitReader(file, avatarMaxBytes+1))
+		if err != nil {
+			return "", "", err
+		}
+		if len(data) > avatarMaxBytes {
+			return "", "", repository.ErrInvalidInput
+		}
+		return repository.StageMedia(r.Context(), database, viewer, 0, "content", data, mime)
+	}
+	return saveUploadedImage(file, mime)
+}
+func cleanupStagedImage(r *http.Request, database *sql.DB, image *string) {
+	if viewer, ok := repository.SocialViewer(r.Context()); ok && image != nil {
+		if err := repository.DiscardStagedMedia(context.Background(), database, *image, viewer); err != nil {
+			log.Printf("discard staged image: %v", err)
+		}
+	}
+}
+func (p *PostsHandler) guardContent(w http.ResponseWriter, r *http.Request, id int64, kind string, owner bool) bool {
+	viewer, social := repository.SocialViewer(r.Context())
+	if !social {
+		return true
+	}
+	if err := repository.ContentRequestAccess(r.Context(), p.conn, viewer, id, kind, owner); err != nil {
+		writeHandlerError(w, r, err, "failed to load content")
+		return false
+	}
+	return true
 }

@@ -216,7 +216,8 @@ func (p *PostsHandler) createPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if uploadFile != nil {
-		imageURL, imagePath, err := saveUploadedImage(uploadFile, uploadMime)
+		imageURL, imagePath, err := saveRequestImage(r, p.conn, uploadFile, uploadMime)
+		defer cleanupStagedImage(r, p.conn, &imageURL)
 		if err != nil {
 			log.Printf("failed to save image: %v", err)
 			WriteError(w, r, NewError(
@@ -243,6 +244,10 @@ func (p *PostsHandler) createPost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if uploadPath != "" {
 			_ = os.Remove(uploadPath)
+		}
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, repository.ErrNotFound) {
+			notFound(w, r)
+			return
 		}
 		log.Printf("failed to create post: %v", err)
 		WriteError(w, r, NewError(
@@ -274,6 +279,10 @@ func (p *PostsHandler) createPost(w http.ResponseWriter, r *http.Request) {
 func (p *PostsHandler) HandlePost(w http.ResponseWriter, r *http.Request) {
 	postID, action, ok := resolvePostRoute(w, r)
 	if !ok {
+		return
+	}
+
+	if !p.guardContent(w, r, postID, "post", action == "" && (r.Method == http.MethodPatch || r.Method == http.MethodDelete)) {
 		return
 	}
 
@@ -335,7 +344,7 @@ func (p *PostsHandler) getPost(w http.ResponseWriter, r *http.Request, postID in
 	post, err := repository.GetPost(r.Context(), p.conn, postID)
 	if err != nil {
 		log.Printf("failed to load post: %v", err)
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, repository.ErrNotFound) {
 			notFound(w, r)
 			return
 		}
@@ -365,7 +374,7 @@ func (p *PostsHandler) updatePost(w http.ResponseWriter, r *http.Request, postID
 
 	existingPost, err := repository.GetPost(r.Context(), p.conn, postID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, repository.ErrNotFound) {
 			notFound(w, r)
 			return
 		}
@@ -418,10 +427,15 @@ func (p *PostsHandler) updatePost(w http.ResponseWriter, r *http.Request, postID
 		}
 	}
 
-	if !resolveImageUpdateRequest(w, r, &updateReq.Image, "failed to save updated image") {
+	if !resolveImageUpdateRequest(w, r, &updateReq.Image, "failed to save updated image", p.conn) {
 		return
 	}
 
+	defer func() {
+		if updateReq.Image.HasImageUpload && updateReq.Image.UploadPath != "" {
+			cleanupStagedImage(r, p.conn, updateReq.Image.ImageURL)
+		}
+	}()
 	hasContentUpdate := updateReq.Title != nil || updateReq.Body != nil || updateReq.Image.HasImageUpdate || updateReq.HasCategoryUpdate
 	if !hasContentUpdate && updateReq.Status == nil {
 		WriteError(w, r, NewError("BAD_REQUEST", "nothing to update", http.StatusBadRequest))
@@ -474,12 +488,17 @@ func (p *PostsHandler) updatePost(w http.ResponseWriter, r *http.Request, postID
 		return
 	}
 
-	if hasContentUpdate {
+	_, socialUpdate := repository.SocialViewer(r.Context())
+	if socialUpdate && updateReq.Status != nil {
+		updateReq.Status = &normalizedStatus
+	}
+	if hasContentUpdate || (socialUpdate && updateReq.Status != nil) {
 		if err := repository.UpdatePostContent(
 			r.Context(),
 			p.conn,
 			postID,
 			repository.UpdatePostInput{
+				Status:            updateReq.Status,
 				Title:             updateReq.Title,
 				Body:              updateReq.Body,
 				ImageURL:          updateReq.Image.ImageURL,
@@ -489,7 +508,7 @@ func (p *PostsHandler) updatePost(w http.ResponseWriter, r *http.Request, postID
 			},
 		); err != nil {
 			cleanupUploadedPath(updateReq.Image.UploadPath)
-			if errors.Is(err, sql.ErrNoRows) {
+			if errors.Is(err, sql.ErrNoRows) || errors.Is(err, repository.ErrNotFound) {
 				WriteError(w, r, NewError("NOT_FOUND", "error updating post", http.StatusNotFound))
 				return
 			}
@@ -503,7 +522,7 @@ func (p *PostsHandler) updatePost(w http.ResponseWriter, r *http.Request, postID
 		}
 	}
 
-	if updateReq.Status != nil {
+	if updateReq.Status != nil && !socialUpdate {
 		if err := repository.UpdatePostStatus(
 			r.Context(),
 			p.conn,
@@ -511,7 +530,7 @@ func (p *PostsHandler) updatePost(w http.ResponseWriter, r *http.Request, postID
 			userID,
 			normalizedStatus,
 		); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
+			if errors.Is(err, sql.ErrNoRows) || errors.Is(err, repository.ErrNotFound) {
 				WriteError(w, r, NewError("NOT_FOUND", "error updating post", http.StatusNotFound))
 				return
 			}
@@ -552,7 +571,7 @@ func (p *PostsHandler) deletePost(w http.ResponseWriter, r *http.Request, postID
 
 	if err := repository.DeletePost(r.Context(), p.conn, postID); err != nil {
 		log.Printf("failed to delete post: %v", err)
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, repository.ErrNotFound) {
 			notFound(w, r)
 			return
 		}
@@ -773,7 +792,7 @@ func (p *PostsHandler) handleReaction(
 		targetReaction,
 		targetType,
 	)
-	if errors.Is(err, repository.ErrNotFound) {
+	if errors.Is(err, repository.ErrNotFound) || errors.Is(err, sql.ErrNoRows) {
 		WriteError(w, r, NewError("NOT_FOUND", "target not found", http.StatusNotFound))
 		return
 	}
@@ -783,6 +802,9 @@ func (p *PostsHandler) handleReaction(
 		return
 	}
 
+	if !p.guardContent(w, r, objectID, targetType, false) {
+		return
+	}
 	var likesCount, dislikesCount int
 
 	switch targetType {
@@ -796,6 +818,10 @@ func (p *PostsHandler) handleReaction(
 	}
 
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, repository.ErrNotFound) {
+			notFound(w, r)
+			return
+		}
 		log.Printf("failed to count reactions: %v", err)
 		WriteError(w, r, NewError("INTERNAL_SERVER_ERROR", "error counting reactions", http.StatusInternalServerError))
 		return
@@ -923,7 +949,8 @@ func (p *PostsHandler) createComment(w http.ResponseWriter, r *http.Request, pos
 	}
 
 	if uploadFile != nil {
-		imageURL, imagePath, err := saveUploadedImage(uploadFile, uploadMime)
+		imageURL, imagePath, err := saveRequestImage(r, p.conn, uploadFile, uploadMime)
+		defer cleanupStagedImage(r, p.conn, &imageURL)
 		if err != nil {
 			log.Printf("failed to save comment image: %v", err)
 			WriteError(w, r, NewError(
@@ -952,6 +979,10 @@ func (p *PostsHandler) createComment(w http.ResponseWriter, r *http.Request, pos
 	if err != nil {
 		if uploadPath != "" {
 			_ = os.Remove(uploadPath)
+		}
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, repository.ErrNotFound) {
+			notFound(w, r)
+			return
 		}
 		log.Printf("failed to create comment: %v", err)
 		WriteError(w, r, NewError("INTERNAL_SERVER_ERROR", "error creating comment", http.StatusInternalServerError))

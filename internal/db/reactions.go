@@ -34,6 +34,24 @@ func ToggleReaction(
 	}
 	defer tx.Rollback()
 
+	if _, err := tx.ExecContext(ctx, `UPDATE posts SET id=id WHERE 0`); err != nil {
+		return 0, err
+	}
+	if viewer, ok := SocialViewer(ctx); ok {
+		if viewer != userID {
+			return 0, sql.ErrNoRows
+		}
+		if targetType == "post" {
+			err = requirePostAccess(ctx, tx, viewer, objectID, false)
+		} else if targetType == "comment" {
+			_, err = requireCommentAccess(ctx, tx, viewer, objectID, false)
+		} else {
+			err = ErrInvalidInput
+		}
+		if err != nil {
+			return 0, err
+		}
+	}
 	// Find ownership (who gets notified)
 	ownerID, err := getReactionTargetOwnerTx(ctx, tx, objectID, targetType)
 	if err != nil {
@@ -63,7 +81,7 @@ func ToggleReaction(
 	// Do NOT send notification if reaction was removed (newValue = 0)
 	var notifiedUserID int64
 	if newValue != 0 {
-		notifiedUserID, _ = handleReactionNotificationTx(
+		notifiedUserID, err = handleReactionNotificationTx(
 			ctx,
 			tx,
 			ownerID,
@@ -72,6 +90,9 @@ func ToggleReaction(
 			newValue,
 			targetType,
 		)
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	if err := tx.Commit(); err != nil {

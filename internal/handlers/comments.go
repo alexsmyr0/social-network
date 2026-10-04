@@ -20,6 +20,10 @@ func (p *PostsHandler) HandleComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !p.guardContent(w, r, commentID, "comment", action == "" && (r.Method == http.MethodPatch || r.Method == http.MethodDelete)) {
+		return
+	}
+
 	switch action {
 
 	case "":
@@ -104,10 +108,15 @@ func (p *PostsHandler) updateComment(w http.ResponseWriter, r *http.Request, com
 	}
 	defer updateReq.Image.closeUploadFile()
 
-	if !resolveImageUpdateRequest(w, r, &updateReq.Image, "failed to save updated comment image") {
+	if !resolveImageUpdateRequest(w, r, &updateReq.Image, "failed to save updated comment image", p.conn) {
 		return
 	}
 
+	defer func() {
+		if updateReq.Image.HasImageUpload && updateReq.Image.UploadPath != "" {
+			cleanupStagedImage(r, p.conn, updateReq.Image.ImageURL)
+		}
+	}()
 	if updateReq.Body == nil && !updateReq.Image.HasImageUpdate {
 		WriteError(w, r, NewError("BAD_REQUEST", "nothing to update", http.StatusBadRequest))
 		return
@@ -141,7 +150,7 @@ func (p *PostsHandler) updateComment(w http.ResponseWriter, r *http.Request, com
 	); err != nil {
 		cleanupUploadedPath(updateReq.Image.UploadPath)
 		log.Printf("failed to update comment: %v", err)
-		WriteError(w, r, NewError("INTERNAL_SERVER_ERROR", "error updating comment", http.StatusInternalServerError))
+		writeHandlerError(w, r, err, "error updating comment")
 		return
 	}
 
@@ -154,7 +163,8 @@ func (p *PostsHandler) updateComment(w http.ResponseWriter, r *http.Request, com
 	updatedComment, err := repository.GetCommentWithAuthor(r.Context(), p.conn, commentID)
 	if err != nil {
 		log.Printf("failed to load updated comment: %v", err)
-		WriteError(w, r, NewError("INTERNAL_SERVER_ERROR", "comment updated but failed to load", http.StatusInternalServerError))
+		writeHandlerError(w, r, err, "comment updated but failed to load")
+		return
 	}
 	WriteOK(w, updatedComment, nil)
 }

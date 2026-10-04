@@ -94,6 +94,14 @@ func TestSocialProfilesAndNotificationsContractFixtures(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(filepath.Dir(root), "media", "objects", "fixture.png"), png, 0600); err != nil {
 				t.Fatal(err)
 			}
+			// Direct-SQL historical fixture seeding must run the production ownership backfill.
+			mediaRoot, err := db.AvatarRoot(conn)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := db.PrepareMediaStorage(context.Background(), conn, mediaRoot); err != nil {
+				t.Fatal(err)
+			}
 			var inactive []int64
 			_ = json.Unmarshal(c.State["inactive_user_ids"], &inactive)
 			for _, id := range inactive {

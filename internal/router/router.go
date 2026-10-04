@@ -305,7 +305,18 @@ func NewRouter(database *sql.DB, hub *ws.Hub) http.Handler {
 		http.ServeFile(w, r, "./web/static/favicon.ico")
 	})
 
-	return addMiddlewares(mux, frontendOrigin, socialSchema)
+	var routes http.Handler = mux
+	if socialSchema {
+		protected := auth(handlers.MediaHandler(database))
+		routes = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if db.IsMediaRequestPath(r.URL.EscapedPath()) {
+				protected.ServeHTTP(w, r)
+				return
+			}
+			mux.ServeHTTP(w, r)
+		})
+	}
+	return addMiddlewares(routes, frontendOrigin, socialSchema)
 }
 
 func notFoundJSON(w http.ResponseWriter, r *http.Request) {
@@ -320,7 +331,7 @@ func addMiddlewares(handler http.Handler, frontendOrigin string, socialSchema bo
 	if socialSchema {
 		next := handler
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if strings.HasPrefix(r.URL.Path, apiPrefix+"/users/") || r.URL.Path == apiPrefix+"/users" || strings.HasPrefix(r.URL.Path, apiPrefix+"/notifications") || strings.HasPrefix(r.URL.Path, apiPrefix+"/follows") || strings.HasPrefix(r.URL.Path, apiPrefix+"/follow-requests/") {
+			if strings.HasPrefix(r.URL.Path, apiPrefix+"/") || db.IsMediaRequestPath(r.URL.EscapedPath()) || strings.HasPrefix(r.URL.Path, apiPrefix+"/users/") || r.URL.Path == apiPrefix+"/users" || strings.HasPrefix(r.URL.Path, apiPrefix+"/notifications") || strings.HasPrefix(r.URL.Path, apiPrefix+"/follows") || strings.HasPrefix(r.URL.Path, apiPrefix+"/follow-requests/") {
 				w.Header().Set("Cache-Control", "no-store")
 			}
 			if method := socialContractMethod(r.URL.Path); method != "" && r.Method != method {

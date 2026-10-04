@@ -13,6 +13,9 @@ func CountReactionsForPost(
 	db *sql.DB,
 	postID int64,
 ) (likes int, dislikes int, err error) {
+	if viewer, ok := SocialViewer(ctx); ok {
+		return socialReactionCounts(ctx, db, viewer, postID, "post")
+	}
 
 	err = db.QueryRowContext(ctx, `
 		SELECT
@@ -38,6 +41,9 @@ func CountReactionsForComment(
 	db *sql.DB,
 	commentID int64,
 ) (likes int, dislikes int, err error) {
+	if viewer, ok := SocialViewer(ctx); ok {
+		return socialReactionCounts(ctx, db, viewer, commentID, "comment")
+	}
 
 	err = db.QueryRowContext(ctx, `
 		SELECT

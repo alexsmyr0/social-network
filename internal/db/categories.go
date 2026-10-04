@@ -172,6 +172,9 @@ func DeleteCategory(ctx context.Context, db *sql.DB, id int64) error {
 --------------------------------------------*/
 
 func ListCategoriesWithPosts(ctx context.Context, db *sql.DB, userID int64) ([]CategoryWithPosts, error) {
+	if viewer, ok := SocialViewer(ctx); ok {
+		return socialCategoriesWithPosts(ctx, db, viewer)
+	}
 	ctx, cancel := context.WithTimeout(ctx, categoryTimeout)
 	defer cancel()
 

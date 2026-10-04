@@ -12,7 +12,12 @@ if (!process.env.TEST_RUNTIME_DIR) {
 
 export default defineConfig({
 	testDir: './SPA/tests/e2e',
-	testMatch: ['a03-shell.test.js', 'a05-session.test.js', 'b07-transport.test.js'],
+	testMatch: [
+		'a03-shell.test.js',
+		'a05-session.test.js',
+		'b07-transport.test.js',
+		'b13-media.test.js',
+	],
 	fullyParallel: true,
 	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 2 : 0,

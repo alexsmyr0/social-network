@@ -70,6 +70,13 @@ func PrepareAvatarStorage(ctx context.Context, database *sql.DB) error {
 		}
 	}
 	used := map[string]bool{}
+	mediaSchema, err := HasMediaSchema(ctx, database)
+	if err != nil {
+		return err
+	}
+	if mediaSchema {
+		return PrepareMediaStorage(ctx, database, root)
+	}
 	rows, err := database.QueryContext(ctx, `SELECT avatar_key FROM users WHERE avatar_key IS NOT NULL`)
 	if err != nil {
 		return err

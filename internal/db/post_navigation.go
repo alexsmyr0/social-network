@@ -22,6 +22,9 @@ func GetPostNavigationByCategory(
 	postID int64,
 	categoryID int64,
 ) (*PostNavigation, error) {
+	if viewer, ok := SocialViewer(ctx); ok {
+		return socialNavigation(ctx, db, viewer, postID, categoryID)
+	}
 	var nav PostNavigation
 
 	// ------------------------------------------------------------

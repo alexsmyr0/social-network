@@ -24,6 +24,12 @@ func DraftCreate(
 	categoryIDs []int64,
 	imageURL *string,
 ) (int64, error) {
+	if viewer, ok := SocialViewer(ctx); ok {
+		if userID != viewer {
+			return 0, sql.ErrNoRows
+		}
+		return socialCreatePost(ctx, db, viewer, title, body, "draft", categoryIDs, imageURL)
+	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -72,6 +78,12 @@ func DraftUpdate(
 	categoryIDs []int64,
 	imageURL *string,
 ) error {
+	if viewer, ok := SocialViewer(ctx); ok {
+		if userID != viewer {
+			return sql.ErrNoRows
+		}
+		return socialUpdatePost(ctx, db, viewer, draftID, UpdatePostInput{Title: &title, Body: &body, HasImageUpdate: true, ImageURL: imageURL, HasCategoryUpdate: true, CategoryIDs: categoryIDs}, true)
+	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -126,6 +138,9 @@ func DraftGet(
 	db *sql.DB,
 	userID int64,
 ) (*Draft, error) {
+	if viewer, ok := SocialViewer(ctx); ok {
+		return socialDraft(ctx, db, viewer, userID)
+	}
 
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
@@ -175,6 +190,12 @@ func DraftDelete(
 	userID,
 	draftID int64,
 ) error {
+	if viewer, ok := SocialViewer(ctx); ok {
+		if userID != viewer {
+			return sql.ErrNoRows
+		}
+		return socialDeleteContent(ctx, db, viewer, draftID, "post", true)
+	}
 
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()

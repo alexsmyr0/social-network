@@ -38,6 +38,9 @@ func CreateMessage(ctx context.Context, database *sql.DB, req CreateMessageReque
 		return PrivateMessage{}, fmt.Errorf("message must have a body or an image")
 	}
 
+	if viewer, ok := SocialViewer(ctx); ok {
+		return socialCreateMessage(ctx, database, viewer, req)
+	}
 	// Empty ImagePath is stored as NULL so the column means "no attachment"
 	// rather than an empty string.
 	var imagePath any
@@ -103,7 +106,7 @@ const rosterPreviewMaxChars = 200
 //
 // One query, one window-function pass — no per-user N+1.
 func GetChatRoster(ctx context.Context, database *sql.DB, viewerID int64) ([]RosterEntry, error) {
-	rows, err := database.QueryContext(ctx, `
+	query := `
 		WITH pair_msgs AS (
 			SELECT
 				CASE WHEN sender_id = ?1 THEN recipient_id ELSE sender_id END AS other_id,
@@ -139,7 +142,12 @@ func GetChatRoster(ctx context.Context, database *sql.DB, viewerID int64) ([]Ros
 			l.created_at DESC,
 			l.msg_id DESC,
 			LOWER(u.username) ASC
-	`, viewerID, rosterPreviewMaxChars)
+	`
+	if _, social := SocialViewer(ctx); social {
+		query = strings.ReplaceAll(query, "u.username", `COALESCE(NULLIF(u.nickname,''),u.first_name||' '||u.last_name)`)
+		query = strings.Replace(query, "WHERE u.id <> ?1", "WHERE u.id <> ?1 AND u.is_active=1", 1)
+	}
+	rows, err := database.QueryContext(ctx, query, viewerID, rosterPreviewMaxChars)
 	if err != nil {
 		return nil, fmt.Errorf("get chat roster: %w", err)
 	}
@@ -167,6 +175,12 @@ func GetChatRoster(ctx context.Context, database *sql.DB, viewerID int64) ([]Ros
 // The function fetches 11 rows internally: if 11 arrive, the 11th is discarded
 // and hasMore is set to true. This avoids a separate COUNT query.
 func GetMessageHistory(ctx context.Context, database *sql.DB, userA, userB, beforeID int64) ([]PrivateMessage, bool, error) {
+	if viewer, ok := SocialViewer(ctx); ok {
+		if viewer != userA {
+			return nil, false, sql.ErrNoRows
+		}
+		return socialMessageHistory(ctx, database, viewer, userB, beforeID)
+	}
 	const pageSize = 10
 	const fetchLimit = pageSize + 1 // fetch one extra to detect a next page
 

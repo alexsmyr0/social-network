@@ -52,6 +52,9 @@ func ListUserCommentsWithPost(
 	db *sql.DB,
 	p ListUserCommentsWithPostParams,
 ) (ListUserCommentsWithPostResult, error) {
+	if viewer, ok := SocialViewer(ctx); ok {
+		return socialUserComments(ctx, db, viewer, p)
+	}
 	p.Page, p.PerPage = normalizePagination(p.Page, p.PerPage)
 
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)

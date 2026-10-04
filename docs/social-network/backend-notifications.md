@@ -49,3 +49,8 @@ Final verification after code/test cleanup on 2026-10-03:
 - The focused race command above passed again, including the deferred-COMMIT failure test: no follow/notice survived and neither delivery hook fired.
 - Documentation checks passed: 727 local links/anchors, 36 unique tickets with 20 complete and 16 unstarted, docs-consistency Vitest 10/10, and tracked/new-file whitespace checks.
 - Docker images and hosted CI were not run for B12. Full Phase 2 browser/image acceptance remains SN-A11; inherited content/media enforcement remains SN-B13.
+
+
+## B13 audit corrections
+
+The [combined B12/B13 audit](b12-b13-audit.md) found two retained content gaps in B12 commit `4d503d6`: comment/notice creation was not atomic, and reaction writes ignored notification insertion errors. Both are corrected in the B13 diff, with explicit rollback/no-signal/dedup tests. The original B12 branch has not been rewritten; the earlier verification record describes its exact tested revision. B13 also filters presence and refreshes snapshots after empty invalidation signals without adding protected data to the signal itself.
