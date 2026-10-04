@@ -281,6 +281,22 @@ func (h *Hub) NotifyNotification(userID int64) {
 	_ = h.SendToUser(userID, data)
 }
 
+// InvalidateSocial sends only a refresh hint. Empty recipients broadcasts an
+// actual privacy switch, since any authenticated viewer may hold affected data.
+func (h *Hub) InvalidateSocial(userIDs []int64) {
+	data, _ := json.Marshal(WSMessage{Type: "social.invalidate"})
+	if len(userIDs) == 0 {
+		userIDs = h.GetOnlineUserIDs()
+	}
+	seen := make(map[int64]bool)
+	for _, id := range userIDs {
+		if !seen[id] {
+			_ = h.SendToUser(id, data)
+			seen[id] = true
+		}
+	}
+}
+
 // SendSnapshotToClient enqueues a presence.snapshot to a single client.
 // Call this immediately after Add so the connecting client learns who is online.
 // Using the Client directly (rather than a userID) ensures only the new

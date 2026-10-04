@@ -29,7 +29,8 @@ type PrivacyChange struct {
 
 // BeginSocialWrite obtains SQLite's write lock before any state read. A zero-row
 // UPDATE starts a write transaction without changing rows or firing row triggers.
-// Reads elsewhere remain deferred snapshots. B12 can add notices in this same Tx.
+// Reads elsewhere remain deferred snapshots. Notices share this transaction;
+// wrappers publish refresh signals only after a successful commit.
 func BeginSocialWrite(ctx context.Context, database *sql.DB) (*sql.Tx, error) {
 	tx, err := database.BeginTx(ctx, nil)
 	if err != nil {
@@ -106,6 +107,10 @@ func CreateFollowTx(ctx context.Context, tx *sql.Tx, viewer, target int64) (Foll
 		return Follow{}, false, err
 	}
 	f, err := followInTx(ctx, tx, id)
+	if err == nil && f.State == "pending" {
+		_, err = tx.ExecContext(ctx, `INSERT INTO notifications(recipient_id,actor_id,type,follow_id,follow_state,created_at)
+ VALUES(?,?,'follow_request',?,'pending',?)`, f.FollowedID, f.FollowerID, f.ID, f.CreatedAt)
+	}
 	return f, true, err
 }
 func CreateFollow(ctx context.Context, database *sql.DB, viewer, target int64) (Follow, bool, error) {
@@ -118,7 +123,16 @@ func CreateFollow(ctx context.Context, database *sql.DB, viewer, target int64) (
 	if err != nil {
 		return f, false, err
 	}
-	return f, created, tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return f, false, err
+	}
+	if created {
+		if f.State == "pending" {
+			fireNotificationHook(f.FollowedID)
+		}
+		fireSocialInvalidation(f.FollowerID, f.FollowedID)
+	}
+	return f, created, nil
 }
 
 // RemoveFollowTx returns the removed identity/state for B12 notice reconciliation.
@@ -134,6 +148,13 @@ func RemoveFollowTx(ctx context.Context, tx *sql.Tx, viewer, id int64) (Follow, 
 	if err := activeFollowParticipants(ctx, tx, f); err != nil {
 		return f, err
 	}
+	state := "cancelled"
+	if f.State == "accepted" {
+		state = "unfollowed"
+	}
+	if err := reconcileFollowNotice(ctx, tx, f, state); err != nil {
+		return f, err
+	}
 	_, err = tx.ExecContext(ctx, `DELETE FROM follows WHERE id=?`, id)
 	return f, err
 }
@@ -147,7 +168,11 @@ func RemoveFollow(ctx context.Context, database *sql.DB, viewer, id int64) (Foll
 	if err != nil {
 		return f, err
 	}
-	return f, tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return f, err
+	}
+	fireSocialInvalidation(f.FollowerID, f.FollowedID)
+	return f, nil
 }
 func DecideFollowTx(ctx context.Context, tx *sql.Tx, viewer, id int64, decision string) (Follow, error) {
 	if decision != "accept" && decision != "decline" {
@@ -170,10 +195,16 @@ func DecideFollowTx(ctx context.Context, tx *sql.Tx, viewer, id int64, decision 
 		return f, ErrStaleFollow
 	}
 	if decision == "decline" {
+		if err := reconcileFollowNotice(ctx, tx, f, "declined"); err != nil {
+			return f, err
+		}
 		_, err = tx.ExecContext(ctx, `DELETE FROM follows WHERE id=?`, id)
 		return f, err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE follows SET state='accepted',accepted_at=strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE id=?`, id); err != nil {
+		return f, err
+	}
+	if err := reconcileFollowNotice(ctx, tx, f, "accepted"); err != nil {
 		return f, err
 	}
 	return followInTx(ctx, tx, id)
@@ -184,11 +215,21 @@ func DecideFollow(ctx context.Context, database *sql.DB, viewer, id int64, decis
 		return Follow{}, err
 	}
 	defer tx.Rollback()
+	before, err := followInTx(ctx, tx, id)
+	if err != nil {
+		return before, err
+	}
 	f, err := DecideFollowTx(ctx, tx, viewer, id, decision)
 	if err != nil {
 		return f, err
 	}
-	return f, tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return f, err
+	}
+	if before.State == "pending" {
+		fireSocialInvalidation(f.FollowerID, f.FollowedID)
+	}
+	return f, nil
 }
 func ChangePrivacyTx(ctx context.Context, tx *sql.Tx, viewer int64, visibility string, expected int64) (PrivacyChange, error) {
 	result := PrivacyChange{Accepted: []Follow{}}
@@ -236,6 +277,9 @@ func ChangePrivacyTx(ctx context.Context, tx *sql.Tx, viewer int64, visibility s
 					return result, err
 				}
 				result.Accepted = append(result.Accepted, f)
+				if err := reconcileFollowNotice(ctx, tx, f, "accepted"); err != nil {
+					return result, err
+				}
 			}
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE users SET profile_visibility=?,profile_version=profile_version+1 WHERE id=?`, visibility, viewer); err != nil {
@@ -256,5 +300,18 @@ func ChangePrivacy(ctx context.Context, database *sql.DB, viewer int64, visibili
 	if err != nil {
 		return result, err
 	}
-	return result, tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return result, err
+	}
+	if result.Changed {
+		// Public viewers can also hold affected content. Empty recipients means all.
+		fireSocialInvalidation()
+	}
+	return result, nil
+}
+
+func reconcileFollowNotice(ctx context.Context, tx *sql.Tx, f Follow, state string) error {
+	_, err := tx.ExecContext(ctx, `UPDATE notifications SET follow_state=?,is_read=1
+ WHERE recipient_id=? AND actor_id=? AND follow_id=? AND type='follow_request'`, state, f.FollowedID, f.FollowerID, f.ID)
+	return err
 }

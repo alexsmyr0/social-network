@@ -285,7 +285,7 @@ func TestProfilesPrivacyRollbackAndTxSeam(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := tx.Exec(`INSERT INTO notifications(recipient_id,actor_id,type,post_id) VALUES(2,1,'follow_request',NULL)`); err == nil {
-		t.Fatal("B11 accidentally implemented B12 schema")
+		t.Fatal("follow notice without a target was accepted")
 	}
 	if err := tx.Rollback(); err != nil {
 		t.Fatal(err)

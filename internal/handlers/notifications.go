@@ -10,14 +10,19 @@ import (
 )
 
 type NotificationsHandler struct {
-	conn *sql.DB
+	conn         *sql.DB
+	socialSchema bool
 }
 
-func NewNotificationsHandler(db *sql.DB) *NotificationsHandler {
-	return &NotificationsHandler{conn: db}
+func NewNotificationsHandler(db *sql.DB, socialSchema bool) *NotificationsHandler {
+	return &NotificationsHandler{conn: db, socialSchema: socialSchema}
 }
 
 func (h *NotificationsHandler) HandleNotifications(w http.ResponseWriter, r *http.Request) {
+	if h.socialSchema {
+		h.handleSocialNotifications(w, r)
+		return
+	}
 
 	userID, ok := requireUserID(w, r)
 	if !ok {
@@ -75,4 +80,48 @@ func (h *NotificationsHandler) HandleNotifications(w http.ResponseWriter, r *htt
 	default:
 		MethodNotAllowed(w, r)
 	}
+}
+
+func (h *NotificationsHandler) handleSocialNotifications(w http.ResponseWriter, r *http.Request) {
+	viewer, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+	page, per, _, e := socialQuery(r, r.Method == http.MethodGet, false)
+	if e != nil {
+		WriteError(w, r, e)
+		return
+	}
+	if e := socialEmptyBody(r); e != nil {
+		WriteError(w, r, e)
+		return
+	}
+	if r.Method == http.MethodGet {
+		result, err := repository.ListSocialNotifications(r.Context(), h.conn, viewer, page, per)
+		if err != nil {
+			socialError(w, r, err)
+			return
+		}
+		WriteOK(w, result, &Meta{Pagination: makePaginationMeta(page, per, result.Total)})
+		return
+	}
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/notifications/")
+	var id int64
+	if path != "read-all" {
+		parts := strings.Split(path, "/")
+		if len(parts) != 2 || parts[1] != "read" {
+			WriteError(w, r, NewError("NOT_FOUND", "route not found", 404))
+			return
+		}
+		id, e = socialID(parts[0])
+		if e != nil {
+			WriteError(w, r, e)
+			return
+		}
+	}
+	if err := repository.MarkSocialNotificationsRead(r.Context(), h.conn, viewer, id); err != nil {
+		socialError(w, r, err)
+		return
+	}
+	WriteNoContent(w)
 }
