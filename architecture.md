@@ -8,6 +8,8 @@ This is the current Phase 1 structure. The [Zone01 requirements](docs/social-net
 
 `SPA/core/`, `SPA/features/`, and their existing test files are imported forum code kept as migration evidence. They are not part of the Vite entrypoint. No social-network feed, groups or chat feature is claimed complete by their presence.
 
+SN-A09 adds People, social profiles and follower/following lists. SN-A10 adds the shared authenticated notification/request panel and one session-owned `/ws` connection with exponential backoff, focus/60-second recovery, empty-signal refetch and permission invalidation. The [frontend notification record](docs/social-network/frontend-notifications.md) describes lifecycle and ownership. These frontend features use the approved profile/notification contracts; SN-A11 owns their real-service Phase 2 acceptance.
+
 ## Backend and data
 
 `cmd/backend/` starts the Go API. `internal/router/` wires HTTP routes, `internal/handlers/` handles requests, and `internal/db/` owns SQLite queries and startup migrations. Account/session behavior follows the [approved auth contract](docs/social-network/auth-contract.md), [storage decision](docs/social-network/data-decision.md) and [backend implementation records](docs/social-network/backend-accounts.md). Sessions are independent per device; logout revokes the presented session. Avatar bytes are backend-owned and retrieved through an authenticated route. The [backend image guide](docs/social-network/backend-image.md) describes persistent storage and image verification.

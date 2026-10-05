@@ -57,6 +57,8 @@ export function useSocialResource(load, { social, sources }) {
 	// Bursts of invalidations in one tick collapse to a single request; the
 	// strongest requested mode wins.
 	function reload(mode = 'hard') {
+		latest += 1;
+		if (mode !== 'quiet') discard('loading');
 		if (scheduled) {
 			if (MODE_RANK[mode] > MODE_RANK[scheduled.mode]) scheduled.mode = mode;
 			return scheduled.promise;

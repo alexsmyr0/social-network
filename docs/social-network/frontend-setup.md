@@ -58,6 +58,17 @@ Ownership for later tickets:
 
 Evidence is fixture-backed; real authorization and persistence remain SN-A11.
 
+## Global notifications and request review (SN-A10)
+
+The authenticated shell provides one shared notification panel and a session-owned socket across routes. See [behavior, ownership and verification evidence](frontend-notifications.md). A10 consumes the approved B10 fixtures independently; real Phase 2 delivery and persistence remain SN-A11.
+
+```bash
+bun run test:a10
+make test-e2e PLAYWRIGHT_ARGS=a10-notifications
+```
+
+A13 reuses `SPA/src/features/notifications/notification-state.js` and extends `NotificationCenter.vue` for permitted content navigation. Phase 5 must keep message indicators separate and reuse the session-owned socket lifecycle.
+
 ## Frontend container handoff
 
 SN-A06 packages the browser bundle and its Go same-origin proxy in a frontend-only image named `social-network-frontend`. The build is self-contained: it installs locked Bun dependencies, builds `SPA/dist`, compiles the frontend server and does not consume local `node_modules`, binaries or generated assets.

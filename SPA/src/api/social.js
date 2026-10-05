@@ -220,3 +220,111 @@ export async function setProfileVisibility({ visibility, expectedVersion }, fetc
 		? { status: 'ok', profile }
 		: { status: 'unavailable' };
 }
+
+const NOTICE_TYPES = new Set([
+	'follow_request',
+	'post_like',
+	'post_dislike',
+	'comment',
+	'comment_like',
+	'comment_dislike',
+]);
+const REQUEST_STATES = new Set(['pending', 'accepted', 'declined', 'cancelled', 'unfollowed']);
+
+function normalizeRequestNotice(base, target, actions) {
+	if (
+		target.kind !== 'follow_request' ||
+		!isValidId(target.follow_id) ||
+		!REQUEST_STATES.has(target.state)
+	)
+		return null;
+	return {
+		...base,
+		target: { kind: target.kind, follow_id: target.follow_id, state: target.state },
+		actions:
+			target.state === 'pending' && Array.isArray(actions)
+				? actions.filter((action) => action === 'accept' || action === 'decline')
+				: [],
+	};
+}
+
+export function normalizeNotice(value) {
+	if (
+		!value ||
+		!isValidId(value.id) ||
+		!NOTICE_TYPES.has(value.type) ||
+		typeof value.created_at !== 'string' ||
+		typeof value.is_read !== 'boolean'
+	)
+		return null;
+	const actor = normalizePerson(value.actor);
+	const target = value.target;
+	if (!actor || !target) return null;
+	const base = {
+		id: value.id,
+		type: value.type,
+		created_at: value.created_at,
+		is_read: value.is_read,
+		actor,
+	};
+	if (value.type === 'follow_request') return normalizeRequestNotice(base, target, value.actions);
+	if (!isValidId(target.post_id) || !['post', 'comment'].includes(target.kind)) return null;
+	const content = { kind: target.kind, post_id: target.post_id, title: nullableText(target.title) };
+	if (target.kind === 'comment') {
+		if (!isValidId(target.comment_id)) return null;
+		content.comment_id = target.comment_id;
+		if (typeof target.excerpt === 'string')
+			content.excerpt = [...target.excerpt].slice(0, 20).join('');
+	}
+	return { ...base, target: content, actions: [] };
+}
+
+export async function fetchNotifications({ page = 1, perPage } = {}, fetchRef) {
+	const result = await send(`/notifications${query({ page, perPage })}`, {}, fetchRef);
+	if (result.status !== 'ok') return result;
+	if (
+		!Array.isArray(result.data?.notifications) ||
+		!Number.isSafeInteger(result.data.unread_count) ||
+		result.data.unread_count < 0
+	)
+		return { status: 'unavailable' };
+	const notifications = result.data.notifications.map(normalizeNotice);
+	const pagination = normalizePagination(result.meta);
+	if (notifications.includes(null) || !pagination) return { status: 'unavailable' };
+	return { status: 'ok', notifications, unreadCount: result.data.unread_count, pagination };
+}
+
+export async function fetchFollowRequests({ page = 1, perPage } = {}, fetchRef) {
+	const result = await send(`/users/me/follow-requests${query({ page, perPage })}`, {}, fetchRef);
+	if (result.status !== 'ok') return result;
+	if (!Array.isArray(result.data)) return { status: 'unavailable' };
+	const requests = result.data.map((item) => {
+		const requester = normalizePerson(item?.requester);
+		return isValidId(item?.id) && typeof item.created_at === 'string' && requester
+			? { id: item.id, created_at: item.created_at, requester }
+			: null;
+	});
+	const pagination = normalizePagination(result.meta);
+	return requests.includes(null) || !pagination
+		? { status: 'unavailable' }
+		: { status: 'ok', requests, pagination };
+}
+
+export async function decideFollowRequest(followId, decision, fetchRef) {
+	const result = await send(
+		`/follow-requests/${followId}`,
+		{ method: 'PATCH', body: { decision } },
+		fetchRef,
+	);
+	if (result.status !== 'ok' || decision === 'decline') return result;
+	const follow = normalizeFollow(result.data);
+	return follow?.state === 'accepted' ? { status: 'ok', follow } : { status: 'unavailable' };
+}
+
+export async function markNotificationRead(id, fetchRef) {
+	return send(`/notifications/${id}/read`, { method: 'PATCH' }, fetchRef);
+}
+
+export async function markAllNotificationsRead(fetchRef) {
+	return send('/notifications/read-all', { method: 'PATCH' }, fetchRef);
+}
