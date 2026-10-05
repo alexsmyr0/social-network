@@ -33,7 +33,9 @@ function crowd(count, extra = []) {
 
 const rowFor = (wrapper, id) => wrapper.get(`[data-person-id="${id}"]`);
 const peopleCalls = (fetchRef) =>
-	socialCalls(fetchRef, { method: 'GET' }).filter((call) => call.url.startsWith('/api/v1/users'));
+	socialCalls(fetchRef, { method: 'GET' }).filter(
+		(call) => call.url.split('?')[0] === '/api/v1/users',
+	);
 
 describe('people directory', () => {
 	test('lists active people by display name with relationship-aware access', async () => {

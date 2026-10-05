@@ -6,6 +6,10 @@ import App from '../../../../../src/app/App.vue';
 import { createAppRouter } from '../../../../../src/app/router.js';
 import { createSessionState, sessionKey } from '../../../../../src/features/auth/session-state.js';
 import {
+	createNotificationState,
+	notificationsKey,
+} from '../../../../../src/features/notifications/notification-state.js';
+import {
 	createSocialState,
 	createUnauthenticatedHandler,
 	socialKey,
@@ -13,10 +17,12 @@ import {
 import { createFixtureFetch } from '../../../../fixtures/phase2/fixture-backend.js';
 
 const mounted = [];
+const retained = [];
 
 // Unmounts every app a test mounted so window listeners and timers from one
 // test can never trigger reads inside the next.
 export function cleanupMounted() {
+	for (const release of retained.splice(0)) release();
 	for (const wrapper of mounted.splice(0)) wrapper.unmount();
 	document.body.innerHTML = '';
 }
@@ -38,17 +44,23 @@ export async function mountSocialApp(path, { backend, viewerId = 7, before } = {
 	});
 	await router.push(path);
 	await router.isReady();
+	const notifications = createNotificationState({
+		session,
+		social,
+		socketFactory: () => ({ close() {} }),
+	});
+	retained.push(notifications.dispose);
 
 	const wrapper = mount(App, {
 		attachTo: document.body,
 		global: {
 			plugins: [router],
-			provide: { [sessionKey]: session, [socialKey]: social },
+			provide: { [sessionKey]: session, [socialKey]: social, [notificationsKey]: notifications },
 		},
 	});
 	mounted.push(wrapper);
 	await flushPromises();
-	return { wrapper, router, session, social, fetchRef, current, backend };
+	return { wrapper, router, session, social, fetchRef, current, backend, notifications };
 }
 
 export function socialCalls(fetchRef, { method } = {}) {

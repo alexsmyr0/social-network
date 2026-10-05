@@ -73,6 +73,9 @@ function parseCount(params, key, fallback, min, max) {
 
 function matchRoute(pathname) {
 	const patterns = [
+		['notifications', /^\/api\/v1\/notifications$/u],
+		['readAll', /^\/api\/v1\/notifications\/read-all$/u],
+		['readNotice', /^\/api\/v1\/notifications\/([^/]+)\/read$/u],
 		['health', /^\/api\/v1\/health$/u],
 		['users', /^\/api\/v1\/users$/u],
 		['me', /^\/api\/v1\/users\/me$/u],
@@ -94,6 +97,9 @@ function matchRoute(pathname) {
 }
 
 const ALLOWED_METHODS = {
+	notifications: 'GET',
+	readAll: 'PATCH',
+	readNotice: 'PATCH',
 	health: 'GET',
 	users: 'GET',
 	me: 'GET',
@@ -109,11 +115,23 @@ const ALLOWED_METHODS = {
 };
 
 export class FixtureBackend {
-	constructor({ users = contractUsers(), follows = [], removedFollowIds = [] } = {}) {
+	constructor({
+		users = contractUsers(),
+		follows = [],
+		removedFollowIds = [],
+		notifications = [],
+		posts = [],
+	} = {}) {
 		this.users = new Map(users.map((user) => [user.id, { ...user }]));
 		this.follows = follows.map((follow) => ({ ...follow }));
 		const ids = [...this.follows, ...removedFollowIds.map((id) => ({ id }))].map((f) => f.id);
 		this.nextFollowId = Math.max(200, ...ids) + 1;
+		this.notifications = notifications.map((notice) => ({
+			...structuredClone(notice),
+			recipient_id: notice.recipient_id ?? 42,
+		}));
+		this.posts = new Map(posts.map((post) => [post.id, { ...post }]));
+		this.nextNoticeId = Math.max(500, ...notifications.map((notice) => notice.id)) + 1;
 		this.log = [];
 	}
 
@@ -215,6 +233,13 @@ export class FixtureBackend {
 	dispatch(viewer, route, target, json) {
 		const params = target.searchParams;
 		switch (route.name) {
+			case 'notifications':
+				return this.readNotifications(viewer, params);
+			case 'readNotice':
+				return this.readNotice(viewer, route.param);
+			case 'readAll':
+				for (const notice of this.visibleNotices(viewer)) notice.is_read = true;
+				return reply(204);
 			case 'me':
 				return reply(200, { data: this.account(viewer) });
 			case 'users':
@@ -341,6 +366,17 @@ export class FixtureBackend {
 			accepted_at: accepted ? CLOCK : null,
 		};
 		this.follows.push(follow);
+		if (!accepted)
+			this.notifications.push({
+				id: this.nextNoticeId++,
+				type: 'follow_request',
+				created_at: CLOCK,
+				is_read: false,
+				recipient_id: targetId,
+				actor: this.entry(targetId, viewer),
+				target: { kind: 'follow_request', follow_id: follow.id, state: 'pending' },
+				actions: ['accept', 'decline'],
+			});
 		return reply(201, { data: { ...follow } });
 	}
 
@@ -350,6 +386,10 @@ export class FixtureBackend {
 		const index = this.follows.findIndex((f) => f.id === id);
 		if (index < 0) return failure(409, 'STALE_FOLLOW');
 		if (this.follows[index].follower_id !== viewer.id) return failure(404, 'NOT_FOUND');
+		this.resolveNotice(
+			this.follows[index].id,
+			this.follows[index].state === 'pending' ? 'cancelled' : 'unfollowed',
+		);
 		this.follows.splice(index, 1);
 		return reply(204);
 	}
@@ -368,12 +408,14 @@ export class FixtureBackend {
 		if (follow.followed_id !== viewer.id) return failure(404, 'NOT_FOUND');
 		if (decision === 'decline') {
 			if (follow.state !== 'pending') return failure(409, 'STALE_FOLLOW');
+			this.resolveNotice(follow.id, 'declined');
 			this.follows.splice(index, 1);
 			return reply(204);
 		}
 		if (follow.state === 'pending') {
 			follow.state = 'accepted';
 			follow.accepted_at = CLOCK;
+			this.resolveNotice(follow.id, 'accepted');
 		}
 		return reply(200, { data: { ...follow } });
 	}
@@ -402,11 +444,62 @@ export class FixtureBackend {
 		return reply(200, { data: this.profile(viewer.id, viewer) });
 	}
 
+	resolveNotice(followId, state) {
+		for (const notice of this.notifications) {
+			if (notice.target?.follow_id === followId) {
+				notice.target.state = state;
+				notice.actions = [];
+				notice.is_read = true;
+			}
+		}
+	}
+
+	visibleNotices(viewer) {
+		return this.notifications
+			.filter((notice) => {
+				if (notice.recipient_id !== viewer.id || !this.user(notice.actor.id)) return false;
+				if (notice.type === 'follow_request') return true;
+				const post = this.posts.get(notice.target.post_id);
+				const author = post && this.user(post.author_id);
+				return author && post.status === 'published' && this.canView(viewer.id, author);
+			})
+			.sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id);
+	}
+
+	projectNotice(viewer, notice) {
+		const { recipient_id: _recipient, ...projected } = structuredClone(notice);
+		projected.actor = this.entry(viewer.id, this.user(notice.actor.id));
+		return projected;
+	}
+
+	readNotifications(viewer, params) {
+		const visible = this.visibleNotices(viewer);
+		const paged = this.page(visible, params);
+		if (!paged) return failure(400, 'BAD_REQUEST');
+		return reply(200, {
+			data: {
+				notifications: paged.items.map((notice) => this.projectNotice(viewer, notice)),
+				unread_count: visible.filter((notice) => !notice.is_read).length,
+			},
+			meta: { pagination: paged.pagination },
+		});
+	}
+
+	readNotice(viewer, rawId) {
+		const id = parseId(rawId);
+		if (!id) return failure(400, 'BAD_REQUEST');
+		const notice = this.visibleNotices(viewer).find((item) => item.id === id);
+		if (!notice) return failure(404, 'NOT_FOUND');
+		notice.is_read = true;
+		return reply(204);
+	}
+
 	acceptPendingFor(userId) {
 		for (const follow of this.follows) {
 			if (follow.followed_id === userId && follow.state === 'pending') {
 				follow.state = 'accepted';
 				follow.accepted_at = CLOCK;
+				this.resolveNotice(follow.id, 'accepted');
 			}
 		}
 	}

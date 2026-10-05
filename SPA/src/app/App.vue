@@ -7,6 +7,9 @@ import { checkBackendHealth } from '../api/health.js';
 import HealthStatus from '../components/HealthStatus.vue';
 import { sessionKey } from '../features/auth/session-state.js';
 
+// biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
+import NotificationCenter from '../features/notifications/NotificationCenter.vue';
+
 const session = inject(sessionKey);
 const route = useRoute();
 const router = useRouter();
@@ -69,6 +72,7 @@ async function retrySession() {
 			</RouterLink>
 
 			<nav class="site-nav" aria-label="Primary navigation">
+				<NotificationCenter />
 				<template v-if="session.state.status === 'authenticated'">
 					<RouterLink to="/">Home</RouterLink>
 					<RouterLink :to="{ name: 'people' }">People</RouterLink>

@@ -113,6 +113,8 @@ export function createSocialState({ api = socialApi, session, onUnauthenticated 
 	const follow = (userId) => runFollowAction(userId, 'follow', () => api.followUser(userId));
 	const cancel = (userId, followId) =>
 		runFollowAction(userId, 'cancel', () => api.removeFollow(followId));
+	const decideRequest = (userId, followId, decision) =>
+		runFollowAction(userId, 'decision', () => api.decideFollowRequest(followId, decision));
 	const unfollow = (userId, followId) =>
 		runFollowAction(userId, 'unfollow', () => api.removeFollow(followId));
 
@@ -160,6 +162,7 @@ export function createSocialState({ api = socialApi, session, onUnauthenticated 
 		follow,
 		cancel,
 		unfollow,
+		decideRequest,
 		changePrivacy,
 	};
 }
