@@ -91,6 +91,12 @@ func NewMux() http.Handler {
 		log.Fatal(err)
 	}
 	proxy := httputil.NewSingleHostReverseProxy(backendURL)
+	// SecurityHeaders already supplies nosniff. ReverseProxy adds upstream
+	// headers, so copying the backend value would produce "nosniff, nosniff".
+	proxy.ModifyResponse = func(response *http.Response) error {
+		response.Header.Del("X-Content-Type-Options")
+		return nil
+	}
 	proxy.ErrorHandler = func(w http.ResponseWriter, _ *http.Request, err error) {
 		log.Printf("frontend proxy: backend unavailable: %v", err)
 		w.Header().Set("Content-Type", "application/json")

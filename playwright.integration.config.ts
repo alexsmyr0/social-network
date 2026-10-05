@@ -7,7 +7,7 @@ if (!process.env.PLAYWRIGHT_BASE_URL) {
 export default defineConfig({
 	testDir: './SPA/tests/e2e',
 	// SN-A07 adds a07-*.test.js here without replacing the stack harness.
-	testMatch: ['b07-transport.test.js', 'b13-media.test.js', 'a07-*.test.js'],
+	testMatch: ['b07-transport.test.js', 'b13-media.test.js', 'a07-*.test.js', 'a11-*.test.js'],
 	fullyParallel: false,
 	forbidOnly: !!process.env.CI,
 	retries: 0,
