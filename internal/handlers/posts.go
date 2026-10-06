@@ -34,6 +34,14 @@ const (
 ----------------------------*/
 
 func (p *PostsHandler) HandlePosts(w http.ResponseWriter, r *http.Request) {
+	if _, social := repository.SocialViewer(r.Context()); social {
+		if r.Method == http.MethodGet {
+			p.publishingList(w, r, false)
+		} else {
+			p.publishingWrite(w, r, 0, false)
+		}
+		return
+	}
 	switch r.Method {
 	case http.MethodGet:
 		p.listPosts(w, r)
@@ -282,6 +290,26 @@ func (p *PostsHandler) HandlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if _, social := repository.SocialViewer(r.Context()); social && action == "" {
+		raw := strings.TrimPrefix(r.URL.Path, "/api/v1/posts/")
+		var e *APIError
+		postID, e = socialID(raw)
+		if e != nil {
+			WriteError(w, r, e)
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			p.publishingDetail(w, r, postID)
+		case http.MethodPatch:
+			p.publishingWrite(w, r, postID, false)
+		case http.MethodDelete:
+			p.publishingDelete(w, r, postID, false)
+		default:
+			MethodNotAllowed(w, r)
+		}
+		return
+	}
 	if !p.guardContent(w, r, postID, "post", action == "" && (r.Method == http.MethodPatch || r.Method == http.MethodDelete)) {
 		return
 	}
@@ -593,6 +621,10 @@ func (p *PostsHandler) deletePost(w http.ResponseWriter, r *http.Request, postID
 ----------*/
 
 func (p *PostsHandler) ListMyPosts(w http.ResponseWriter, r *http.Request) {
+	if _, social := repository.SocialViewer(r.Context()); social {
+		p.publishingList(w, r, true)
+		return
+	}
 	userID, ok := requireUserID(w, r)
 	if !ok {
 		return

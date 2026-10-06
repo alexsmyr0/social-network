@@ -12,7 +12,11 @@ import (
 // decodeStrictAuthObject rejects duplicate keys before Go's JSON decoder can
 // silently keep the last value. It also rejects invalid UTF-8 and trailing data.
 func decodeStrictAuthObject(w http.ResponseWriter, r *http.Request, target any, allowedKeys ...string) *APIError {
-	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
+	return decodeStrictObject(w, r, target, 16<<10, allowedKeys...)
+}
+
+func decodeStrictObject(w http.ResponseWriter, r *http.Request, target any, limit int64, allowedKeys ...string) *APIError {
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
 	raw, err := io.ReadAll(r.Body)
 	if err != nil {
 		var tooLarge *http.MaxBytesError

@@ -15,6 +15,10 @@ import (
 )
 
 func (p *PostsHandler) HandleDraft(w http.ResponseWriter, r *http.Request) {
+	if _, social := repository.SocialViewer(r.Context()); social {
+		p.publishingDraft(w, r)
+		return
+	}
 	userID, ok := requireUserID(w, r)
 	if !ok {
 		return
@@ -161,6 +165,10 @@ func (p *PostsHandler) HandleDraft(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *PostsHandler) HandleDraftByID(w http.ResponseWriter, r *http.Request) {
+	if _, social := repository.SocialViewer(r.Context()); social {
+		p.publishingDraftByID(w, r)
+		return
+	}
 	userID, ok := requireUserID(w, r)
 	if !ok {
 		return

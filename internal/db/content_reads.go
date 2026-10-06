@@ -8,11 +8,22 @@ import (
 func socialPostTx(ctx context.Context, tx *sql.Tx, viewer, id int64) (Post, error) {
 	var p Post
 	var first, last string
-	var nick, image sql.NullString
-	err := tx.QueryRowContext(ctx, `SELECT p.id,p.author_id,u.first_name,u.last_name,u.nickname,p.title,p.image_url,p.body,p.status,p.created_at,p.updated_at
- FROM posts p JOIN users u ON u.id=p.author_id WHERE p.id=?2 AND `+contentPermission, viewer, id).Scan(&p.ID, &p.AuthorID, &first, &last, &nick, &p.Title, &image, &p.Body, &p.Status, &p.CreatedAt, &p.UpdatedAt)
+	var nick, image, title sql.NullString
+	err := tx.QueryRowContext(ctx, `SELECT p.id,p.author_id,u.first_name,u.last_name,u.nickname,p.title,p.image_url,p.body,p.status,p.created_at,p.updated_at,p.audience,p.content_version
+ FROM posts p JOIN users u ON u.id=p.author_id WHERE p.id=?2 AND `+contentPermission, viewer, id).Scan(&p.ID, &p.AuthorID, &first, &last, &nick, &title, &image, &p.Body, &p.Status, &p.CreatedAt, &p.UpdatedAt, &p.Audience, &p.Version)
 	if err != nil {
 		return p, err
+	}
+	if title.Valid {
+		p.Title = title.String
+		p.NullableTitle = &title.String
+	}
+	if p.AuthorID == viewer {
+		ids, e := selectedAccountsTx(ctx, tx, id)
+		if e != nil {
+			return p, e
+		}
+		p.SelectedFollowerIDs = &ids
 	}
 	var nickname *string
 	if nick.Valid {

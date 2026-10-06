@@ -22,7 +22,9 @@ func SocialViewer(ctx context.Context) (int64, bool) {
 // draft/archive access; non-owners need a published post and profile permission.
 const contentPermission = `u.is_active=1 AND EXISTS(SELECT 1 FROM users v WHERE v.id=?1 AND v.is_active=1)
  AND (p.author_id=?1 OR (p.status='published' AND
- (u.profile_visibility='public' OR EXISTS(SELECT 1 FROM follows f WHERE f.follower_id=?1 AND f.followed_id=u.id AND f.state='accepted'))))`
+ (u.profile_visibility='public' OR EXISTS(SELECT 1 FROM follows f WHERE f.follower_id=?1 AND f.followed_id=u.id AND f.state='accepted'))
+ AND (p.audience='public' OR (p.audience='followers' AND EXISTS(SELECT 1 FROM follows f WHERE f.follower_id=?1 AND f.followed_id=p.author_id AND f.state='accepted'))
+ OR (p.audience='selected' AND EXISTS(SELECT 1 FROM post_selected_followers sf JOIN follows f ON f.id=sf.follow_id WHERE sf.post_id=p.id AND f.follower_id=?1 AND f.followed_id=p.author_id AND f.state='accepted')))))`
 
 func CanViewPost(ctx context.Context, q ProfileReader, viewer, post int64) (bool, error) {
 	var allowed bool

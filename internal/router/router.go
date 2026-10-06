@@ -334,6 +334,11 @@ func addMiddlewares(handler http.Handler, frontendOrigin string, socialSchema bo
 			if strings.HasPrefix(r.URL.Path, apiPrefix+"/") || db.IsMediaRequestPath(r.URL.EscapedPath()) || strings.HasPrefix(r.URL.Path, apiPrefix+"/users/") || r.URL.Path == apiPrefix+"/users" || strings.HasPrefix(r.URL.Path, apiPrefix+"/notifications") || strings.HasPrefix(r.URL.Path, apiPrefix+"/follows") || strings.HasPrefix(r.URL.Path, apiPrefix+"/follow-requests/") {
 				w.Header().Set("Cache-Control", "no-store")
 			}
+			if methods := handlers.PublishingMethods(r.URL.Path); methods != "" && !strings.Contains(", "+methods+", ", ", "+r.Method+", ") {
+				w.Header().Set("Allow", methods)
+				handlers.WriteError(w, r, handlers.NewError("METHOD_NOT_ALLOWED", "method not allowed", 405))
+				return
+			}
 			if method := socialContractMethod(r.URL.Path); method != "" && r.Method != method {
 				w.Header().Set("Allow", method)
 				handlers.WriteError(w, r, handlers.NewError("METHOD_NOT_ALLOWED", "method not allowed", http.StatusMethodNotAllowed))

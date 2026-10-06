@@ -45,7 +45,7 @@ func applyStartupMigrations(ctx context.Context, database *sql.DB, files fs.FS) 
 	if err != nil {
 		return fmt.Errorf("initialize SQLite migrations: %w", err)
 	}
-	m, err := migrate.NewWithInstance("iofs", source, "sqlite3", driver)
+	m, err := migrate.NewWithInstance("iofs", source, "sqlite3", &contentMigrationDriver{Driver: driver, db: database, ctx: ctx})
 	if err != nil {
 		return fmt.Errorf("initialize migrations: %w", err)
 	}
