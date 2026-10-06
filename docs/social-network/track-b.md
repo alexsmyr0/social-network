@@ -319,7 +319,7 @@ Work:
 - Apply shared profile/status checks to inherited feeds/detail, comments/reactions, activity, categories/counts, navigation and chat identity projections. Filter before pagination/totals; preserve authorized behavior and owner-only drafts.
 - Migrate post/comment files/associations to private storage or authorized compatibility routes. Cover upload/edit/delete and reads; close static bypasses without discarding recoverable files.
 - Extend cleanup across retained media owners. Preserve DM associations/participant access during shared-route changes without choosing Phase 5 policy; report missing/unmappable assets with recovery steps.
-- B owns `cmd/frontend` static/proxy and runtime/harness edits, with A review. Record the exposure inventory and media upgrade/recovery handoff.
+- B owns `cmd/frontend` static/proxy and runtime/harness edits. Record the exposure inventory and media upgrade/recovery handoff.
 
 Verification Gate:
 

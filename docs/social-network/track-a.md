@@ -194,7 +194,7 @@ Verification Gate:
 
 - Browser tests verify valid users reach protected content; unauthenticated/revoked sessions cannot, including after logout/back navigation.
 - Browser-reopen and container-recreation checks preserve valid sessions/data; avatars and repeated startup remain correct under the approved policy.
-- Local/hosted gates including new journeys pass; mobile/desktop and keyboard checks are recorded. Both developers review evidence; every predecessor is complete and skips/failures cannot masquerade as a pass.
+- Local/hosted gates including new journeys pass; mobile/desktop and keyboard checks are recorded. Every predecessor is complete and skips/failures cannot masquerade as a pass.
 
 ## SN-A09 — Build people, profiles and follow controls
 
@@ -260,7 +260,7 @@ Depends on: SN-A10, SN-B12, SN-B13
 
 Blocks: SN-B14
 
-External gate: Successful local and hosted shared gates, with B owning harness/CI changes; both developers review the evidence.
+External gate: Successful local and hosted shared gates, with B owning harness/CI changes.
 
 Work:
 
@@ -340,7 +340,7 @@ Depends on: SN-A13, SN-B16
 
 Blocks: SN-B17
 
-External gate: Successful local and hosted shared gates, with B owning harness/CI changes; both developers review the evidence.
+External gate: Successful local and hosted shared gates, with B owning harness/CI changes.
 
 Work:
 
@@ -420,7 +420,7 @@ Depends on: SN-A16, SN-B19
 
 Blocks: None
 
-External gate: Successful local and hosted shared gates, with B owning harness/CI changes; both developers review the evidence.
+External gate: Successful local and hosted shared gates, with B owning harness/CI changes.
 
 Work:
 

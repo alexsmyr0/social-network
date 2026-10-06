@@ -59,3 +59,7 @@ The owner authorized Docker Desktop startup and main conflict resolution. Implem
 - Final tested image IDs: backend `sha256:01adcb797fd64c26db5f4d3cfab70199dab3f9f784c3c3d8602fa24082f82628`; frontend `sha256:71534151b146809d3cb08b9c2612b6bcd862f4ae0e0479af287b86d3e2c4f1c4`.
 
 A's review of shared frontend routes remains unrecorded; no new fixture approval or duplicate owner confirmation is requested. Hosted CI has not been run. Docker remains running as authorized. No PR or remote push is part of this work.
+
+## Track A technical review — 2026-10-05
+
+The [A-side frontend-route review](backend-content-media.md#track-a-frontend-route-review--2026-10-05) is now recorded on merged source `078016c`, with real native proxy/alias/static tests passing. The earlier unrecorded-review caveat is historical; B13 is complete in the tracker. A11 subsequently found and fixed duplicate frontend-proxy nosniff values without changing authorization or API contracts. The [Phase 2 acceptance record](phase-2-acceptance.md) owns current image/native/hosted evidence and the owner-revised phase acceptance gate; no new human fixture sign-off is inferred.

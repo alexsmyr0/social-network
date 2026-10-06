@@ -54,3 +54,13 @@ A second `make test` passed after streaming and staged-DM cleanup corrections (5
 ### Merged image verification — 2026-10-04
 
 B13 implementation is committed as `08f345e`; `ba3b78f` merges main `d56d1a0`, retaining A09 UI/test changes and B13 privacy/media behavior. `make test` passed on the merged implementation (787 frontend tests, 25 native browser tests). `make test-images` rebuilt both images and passed backend persistence smoke, [legacy post/comment/DM recovery and static-denial smoke](../../scripts/smoke-media-images.sh), 10 container browser tests and backend-outage handling. The legacy smoke mounts actual uploads in frontend as well as backend, so a raw FileServer fallback would fail the privacy checks. Historical references and copied bytes survive backend restart; DM participant access remains intact after private-profile denial. The [combined audit](b12-b13-audit.md#main-merge-and-both-image-verification--2026-10-04) records exact revisions, image IDs and the corrected ephemeral-port harness failure. Shared frontend-route A review remains unrecorded; no second fixture sign-off is required.
+
+
+### Track A frontend-route review — 2026-10-05
+
+As part of the authorized A11 work, the Track A coding agent reviewed merged B13 frontend source and its concrete tests on `chbaikas/A11`, based on `078016c` (merged A10). `cmd/frontend/routes.go` intercepts sensitive escaped paths before ServeMux canonicalization, forwards cookies through the same-origin backend proxy, and uses `privateStaticFS` to refuse upload paths, symlink aliases, filesystem escapes and directory listings while permitting ordinary assets. API/WebSocket routing, CSP and SPA fallback remain compatible with the shipped Vue application.
+
+`GOCACHE="$PWD/.tmp/go-cache" GOTMPDIR="$PWD/.tmp/go-tmp" go test ./cmd/frontend -run 'TestMediaAliases|TestPrivateStatic' -count=1` passed with local listeners permitted. The review found no additional frontend-route defect. This closes the previously unrecorded **A-side technical review**; it is not a claim of a new human review or A11 Phase 2 acceptance. B13's existing native/image evidence remains tied to the dated revisions above; A11 runs its own current combined gates.
+
+
+The subsequent A11 image-level acceptance found duplicate `X-Content-Type-Options` values at the frontend proxy (`nosniff, nosniff`). A11 fixes that transport defect in `cmd/frontend/routes.go` and adds `TestMediaProxyKeepsSingleNosniffHeader`, preserving the authorization/static boundary reviewed above. The [Phase 2 acceptance record](phase-2-acceptance.md#review-correction) owns its current verification.

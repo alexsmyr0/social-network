@@ -1,6 +1,6 @@
 # Social Network — Ticket Progress Tracker
 
-Execution checkpoint: **Phase 2 — Profiles and following**. Ticketed scope: **Phases 1–4**; the owner authorized larger tickets following the [Phase 2–3 interview](phase-2-3-decisions.md) and [Phase 4 interview](phase-4-decisions.md). **Phase 5 is pending** at the owner's request; Phase 6 remains roadmap-only. Full scope: [roadmap](roadmap.md). Authority: [Zone01 assignment](requirements.md). The [forum tracker](../ticket-tracker.md) is historical.
+Execution checkpoint: **Phase 3 — Posts, comments, and audiences**. Ticketed scope: **Phases 1–4**; the owner authorized larger tickets following the [Phase 2–3 interview](phase-2-3-decisions.md) and [Phase 4 interview](phase-4-decisions.md). **Phase 5 is pending** at the owner's request; Phase 6 remains roadmap-only. Full scope: [roadmap](roadmap.md). Authority: [Zone01 assignment](requirements.md). The [forum tracker](../ticket-tracker.md) is historical.
 
 ## Team and ownership
 
@@ -9,7 +9,7 @@ Execution checkpoint: **Phase 2 — Profiles and following**. Ticketed scope: **
 | A | Dev 1 | Frontend/app/UI/image, profiles/content/groups/notifications, active docs, phase acceptance | [Track A](track-a.md) |
 | B | Dev 2 | Contracts/data/APIs/media/notifications, backend image, shared run/CI | [Track B](track-b.md) |
 
-A owns frontend source/config and frontend setup docs. B owns Go/data files and shared Makefile/CI/orchestration edits, including final runtime setup instructions. A supplies frontend commands; coordinate shared README/ignore-file edits before work. B owns SN-B13 changes to shared frontend Go static/proxy routes, with A review. Contract and fixture handoffs use one owner approval; fixture completeness/consistency remains a ticket check. Track counts do not imply equal effort.
+A owns frontend source/config and frontend setup docs. B owns Go/data files and shared Makefile/CI/orchestration edits, including final runtime setup instructions. A supplies frontend commands; coordinate shared README/ignore-file edits before work. B owns SN-B13 changes to shared frontend Go static/proxy routes. Contract and fixture handoffs use one owner approval; fixture completeness/consistency remains a ticket check. Track counts do not imply equal effort.
 
 ## Status and execution rules
 
@@ -25,12 +25,12 @@ Follow the [ticket-writing rules](ticket-rules.md). The [Phase 1 audit](ticket-a
 
 ## Summary
 
-36 tickets: 17 in A, 19 in B. Done: 22. In progress: 1. Blocked: 0. Not started: 13. Owner confirmed SN-A07 Dev 2 review passed on 2026-10-02. SN-B10 is complete: owner approved interfaces/fixture handoff on 2026-10-02; documentation/fixture checks passed. The owner removed duplicate Dev 1 sign-off because they are Dev 1. SN-A09/A10 frontends and SN-B11/B12 backends are verified complete. SN-B13 implementation is in progress on `asmyrogl/B13`; native evidence and the combined audit are recorded below. SN-A10 passed its frontend-only gate on `chbaikas/A10`; SN-A11 is next after B13’s recorded review gate.
+36 tickets: 17 in A, 19 in B. Done: 24. In progress: 0. Blocked: 0. Not started: 12. Owner confirmed SN-A07 Dev 2 review passed on 2026-10-02. SN-B10 is complete: owner approved interfaces/fixture handoff on 2026-10-02; documentation/fixture checks passed. The owner removed duplicate Dev 1 sign-off because they are Dev 1. SN-A09/A10 frontends and SN-B11/B12 backends are verified complete. SN-B13 is verified complete with its A-side technical frontend-route review recorded on 2026-10-05. SN-A10 passed its frontend-only gate on `chbaikas/A10`; SN-A11 is verified complete on `chbaikas/A11` after the owner removed the cross-developer review requirement on 2026-10-06; recorded local/hosted checks remain required.
 
 | Phase | A | B | Total | Done | In progress | Not started | Exit |
 |---|---|---|---|---|---|---|---|
 | 1 | 8 | 9 | 17 | 17 | 0 | 0 | SN-A07 |
-| 2 | 3 | 4 | 7 | 5 | 1 | 1 | SN-A11 |
+| 2 | 3 | 4 | 7 | 7 | 0 | 0 | SN-A11 |
 | 3 | 3 | 3 | 6 | 0 | 0 | 6 | SN-A14 |
 | 4 | 3 | 3 | 6 | 0 | 0 | 6 | SN-A17 |
 
@@ -67,8 +67,8 @@ Phase 5 has no tickets or approved messaging/event model yet; unanswered proposa
 | [x] | [SN-B11](track-b.md#sn-b11--implement-profiles-and-the-follow-lifecycle) | Implement profiles and the follow lifecycle | SN-B10 | SN-B12, SN-B13 | [Implementation/verification record](backend-profiles.md#verification-record) on `asmyrogl/B11`, based on `09562ab`: 72 real-service contract fixtures, migration/backfill/constraint/concurrency/rollback tests and full `make test` passed, including Go/race checks, Vitest 540/540 and native Playwright 15/15. B12/B13 complete notifications/content privacy before A11. |
 | [x] | [SN-A10](track-a.md#sn-a10--deliver-global-notifications-and-request-review) | Deliver global notifications and request review | SN-A09 | SN-A11 | [Frontend implementation/verification](frontend-notifications.md#verification-record) on `chbaikas/A10`, based on `f8f8aa8`: focused A10 checks 175/175; `make test` exit 0 (Vitest 846/846, native Playwright 32/32 including 7 A10 journeys). Approved notification/request fixtures, read/decision reconciliation, stale IDs, reconnect/signals, session cleanup, hidden-content filtering and keyboard/360px/desktop checks pass. Production contains no fixtures; real delivery/persistence remain SN-A11. |
 | [x] | [SN-B12](track-b.md#sn-b12--persist-and-deliver-relationship-notifications) | Persist and deliver relationship notifications | SN-B11 | SN-A11 | [Implementation/verification record](backend-notifications.md#verification-record) on `asmyrogl/B12`, based on `6a650e9`: preserved upgrade/backfill/read state, atomic notice transitions and rollback/failed-commit silence, 87 approved HTTP fixtures, real multi-session/reconnect/restart/revocation sockets, focused race checks and native `make test` passed. Full Phase 2 browser/image acceptance remains A11 after B13. |
-| [-] | [SN-B13](track-b.md#sn-b13--protect-inherited-content-and-migrate-media-access) | Protect inherited content and migrate media access | SN-B11 | SN-A11 | [Implementation/recovery handoff](backend-content-media.md) and [B12/B13 audit](b12-b13-audit.md), based on `4d503d6`: merged main `d56d1a0` via `ba3b78f`. `make test` passes (787 frontend/25 native browser tests); `make test-images` passes backend and legacy-media smoke plus 10 container browser tests. A review of shared frontend routes remains unrecorded. All referenced media owners are preserved. |
-| [ ] | [SN-A11](track-a.md#sn-a11--accept-profiles-following-and-privacy-end-to-end) | Accept profiles, following and privacy end to end | SN-A10, SN-B12, SN-B13 | SN-B14 | Local/hosted shared gates and both-developer review required. |
+| [x] | [SN-B13](track-b.md#sn-b13--protect-inherited-content-and-migrate-media-access) | Protect inherited content and migrate media access | SN-B11 | SN-A11 | [Implementation/recovery handoff](backend-content-media.md) and [B12/B13 audit](b12-b13-audit.md), based on `4d503d6`: merged main `d56d1a0` via `ba3b78f`. `make test` passes (787 frontend/25 native browser tests); `make test-images` passes backend and legacy-media smoke plus 10 container browser tests. [A-side technical frontend-route review](backend-content-media.md#track-a-frontend-route-review--2026-10-05) passed on merged source `078016c`; existing native/image evidence stays revision-scoped. All referenced media owners are preserved. |
+| [x] | [SN-A11](track-a.md#sn-a11--accept-profiles-following-and-privacy-end-to-end) | Accept profiles, following and privacy end to end | SN-A10, SN-B12, SN-B13 | SN-B14 | [Phase 2 acceptance implementation/evidence](phase-2-acceptance.md) on `chbaikas/A11`, based on `078016c`. Implementation `b530650`: real multi-user browser/API/media/reconnect and two-recreation journeys passed. Local and [hosted shared gates](https://github.com/alexsmyr0/social-network/actions/runs/37296922996) passed (846 frontend, 32 native browser, 16 integration including 6 A11). Owner removed the cross-developer review requirement on 2026-10-06; recorded local/hosted checks satisfy the revised gate, completing Phase 2 and unlocking SN-B14. No Dev 2 review is claimed. |
 
 ## Phase 3 — Posts, comments, and audiences
 
@@ -79,7 +79,7 @@ Phase 5 has no tickets or approved messaging/event model yet; unanswered proposa
 | [ ] | [SN-B15](track-b.md#sn-b15--implement-audience-aware-publishing-and-feeds) | Implement audience-aware publishing and feeds | SN-B14 | SN-B16 | — |
 | [ ] | [SN-A13](track-a.md#sn-a13--restore-discussions-and-private-activity) | Restore discussions and private activity | SN-A12 | SN-A14 | Frontend fixture gate; real services in SN-A14. |
 | [ ] | [SN-B16](track-b.md#sn-b16--enforce-audiences-across-discussions-and-activity) | Enforce audiences across discussions and activity | SN-B15 | SN-A14 | — |
-| [ ] | [SN-A14](track-a.md#sn-a14--accept-publishing-audiences-and-preserved-features) | Accept publishing, audiences and preserved features | SN-A13, SN-B16 | SN-B17 | Local/hosted shared gates and both-developer review required. |
+| [ ] | [SN-A14](track-a.md#sn-a14--accept-publishing-audiences-and-preserved-features) | Accept publishing, audiences and preserved features | SN-A13, SN-B16 | SN-B17 | Local/hosted shared gates required. |
 
 ## Phase 4 — Groups and membership
 
@@ -90,7 +90,7 @@ Phase 5 has no tickets or approved messaging/event model yet; unanswered proposa
 | [ ] | [SN-B18](track-b.md#sn-b18--implement-groups-and-membership-transitions) | Implement groups and membership transitions | SN-B17 | SN-B19 | — |
 | [ ] | [SN-A16](track-a.md#sn-a16--extend-publishing-and-discussions-into-groups) | Extend publishing and discussions into groups | SN-A15 | SN-A17 | Frontend fixture gate; real services in SN-A17. |
 | [ ] | [SN-B19](track-b.md#sn-b19--enforce-membership-across-group-content) | Enforce membership across group content | SN-B18 | SN-A17 | — |
-| [ ] | [SN-A17](track-a.md#sn-a17--accept-groups-and-membership-end-to-end) | Accept groups and membership end to end | SN-A16, SN-B19 | None | Local/hosted shared gates and both-developer review required. |
+| [ ] | [SN-A17](track-a.md#sn-a17--accept-groups-and-membership-end-to-end) | Accept groups and membership end to end | SN-A16, SN-B19 | None | Local/hosted shared gates required. |
 
 ## Suggested two-developer sequence
 

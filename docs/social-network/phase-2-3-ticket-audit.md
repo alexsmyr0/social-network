@@ -37,7 +37,7 @@ Each ticket retains Goal, Scope, direct Depends on/Blocks, source mapping, Work 
 | Repeated follow requests could let an old notification accept a new request | SN-B10 fixes request identity/stale-action outcomes; SN-B11/B12 verify transitions, races and notification reconciliation. |
 | Approved product rules could be reopened or unwritten API details treated as approved | Record settled choices separately; B10/B14 translate them into concrete interfaces/fixtures and obtain approval for new interface details before consumers start. |
 | UI completion could implicitly wait for backend acceptance | A09/A10 and A12/A13 use reviewed fixtures. A11/A14 explicitly require real services; infrastructure producers do not wait for their consumers' browser tests. |
-| Shared Go frontend routes and acceptance CI edits could have competing owners | B owns SN-B13 static/proxy changes with A review and shared runtime/CI changes under SN-B07; A owns browser scenarios and acceptance reports. |
+| Shared Go frontend routes and acceptance CI edits could have competing owners | B owns SN-B13 static/proxy changes and shared runtime/CI changes under SN-B07 (owner removed A review on 2026-10-06); A owns browser scenarios and acceptance reports. |
 | Two historical baseline code links referenced line ranges beyond today's shorter files | Pin only those citations to the baseline's immutable `8fdccf5` revision after verifying the original ranges with `git show`; preserve the baseline findings. |
 
 ## Verification

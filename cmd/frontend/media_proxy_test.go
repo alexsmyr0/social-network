@@ -68,3 +68,26 @@ func TestPrivateStaticFSDeniesUploadsSymlinkAliasesAndDirectories(t *testing.T) 
 		t.Fatal("unrelated asset intercepted")
 	}
 }
+
+func TestMediaProxyKeepsSingleNosniffHeader(t *testing.T) {
+	requireLocalTCPListener(t)
+	original := backendBaseURL
+	t.Cleanup(func() { backendBaseURL = original })
+	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Cache-Control", "no-store")
+		w.Write([]byte("checked bytes"))
+	}))
+	defer backend.Close()
+	backendBaseURL = backend.URL
+	recorder := httptest.NewRecorder()
+	NewMux().ServeHTTP(recorder, httptest.NewRequest("GET", "/api/v1/media/1", nil))
+	values := recorder.Header().Values("X-Content-Type-Options")
+	if len(values) != 1 || values[0] != "nosniff" {
+		t.Fatalf("invalid nosniff header: %v", values)
+	}
+	if recorder.Code != 200 || recorder.Header().Get("Cache-Control") != "no-store" || recorder.Body.String() != "checked bytes" {
+		t.Fatalf("proxy response changed: %d %s", recorder.Code, recorder.Body.String())
+	}
+}
