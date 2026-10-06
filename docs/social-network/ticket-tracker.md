@@ -25,13 +25,13 @@ Follow the [ticket-writing rules](ticket-rules.md). The [Phase 1 audit](ticket-a
 
 ## Summary
 
-36 tickets: 17 in A, 19 in B. Done: 24. In progress: 0. Blocked: 0. Not started: 12. Owner confirmed SN-A07 Dev 2 review passed on 2026-10-02. SN-B10 is complete: owner approved interfaces/fixture handoff on 2026-10-02; documentation/fixture checks passed. The owner removed duplicate Dev 1 sign-off because they are Dev 1. SN-A09/A10 frontends and SN-B11/B12 backends are verified complete. SN-B13 is verified complete with its A-side technical frontend-route review recorded on 2026-10-05. SN-A10 passed its frontend-only gate on `chbaikas/A10`; SN-A11 is verified complete on `chbaikas/A11` after the owner removed the cross-developer review requirement on 2026-10-06; recorded local/hosted checks remain required.
+36 tickets: 17 in A, 19 in B. Done: 25. In progress: 0. Blocked: 0. Not started: 11. Owner confirmed SN-A07 Dev 2 review passed on 2026-10-02. SN-B10 is complete: owner approved interfaces/fixture handoff on 2026-10-02; documentation/fixture checks passed. The owner removed duplicate Dev 1 sign-off because they are Dev 1. SN-A09/A10 frontends and SN-B11/B12 backends are verified complete. SN-B13 is verified complete with its A-side technical frontend-route review recorded on 2026-10-05. SN-A10 passed its frontend-only gate on `chbaikas/A10`; SN-A11 is verified complete on `chbaikas/A11` after the owner removed the cross-developer review requirement on 2026-10-06; recorded local/hosted checks remain required. SN-B14 contract/data/fixture handoff is complete on `asmyrogl/B14`: owner approved all concrete choices on 2026-10-06 and artifact checks passed, unlocking SN-B15 and SN-A12.
 
 | Phase | A | B | Total | Done | In progress | Not started | Exit |
 |---|---|---|---|---|---|---|---|
 | 1 | 8 | 9 | 17 | 17 | 0 | 0 | SN-A07 |
 | 2 | 3 | 4 | 7 | 7 | 0 | 0 | SN-A11 |
-| 3 | 3 | 3 | 6 | 0 | 0 | 6 | SN-A14 |
+| 3 | 3 | 3 | 6 | 1 | 0 | 5 | SN-A14 |
 | 4 | 3 | 3 | 6 | 0 | 0 | 6 | SN-A17 |
 
 Phase 5 has no tickets or approved messaging/event model yet; unanswered proposals remain pending. Phase 6 will be discussed and ticketed later. Neither is counted as blocked or completed work.
@@ -74,7 +74,7 @@ Phase 5 has no tickets or approved messaging/event model yet; unanswered proposa
 
 | Status | Ticket | Description | Depends on | Blocks | Evidence / external gate |
 |---|---|---|---|---|---|
-| [ ] | [SN-B14](track-b.md#sn-b14--publish-content-audience-and-lifecycle-contracts) | Publish content, audience and lifecycle contracts | SN-A11 | SN-B15, SN-A12 | One owner approval of concrete interfaces and fixture handoff; fixture completeness/consistency checks. Approved policies remain settled. |
+| [x] | [SN-B14](track-b.md#sn-b14--publish-content-audience-and-lifecycle-contracts) | Publish content, audience and lifecycle contracts | SN-A11 | SN-B15, SN-A12 | [Owner-approved contract](content-contract.md), [data plan](phase-3-data-plan.md) and [fixtures](fixtures/phase-3-contract.json) on `asmyrogl/B14`, based on merged main `e890eae`. Owner approved contract/data/fixture handoff on 2026-10-06; [completion checks](content-contract.md#owner-approval-and-completion-record--2026-10-06) pass (246 HTTP cases, 18 matrix cells, exact follow sequence, schemas/redaction/signals, links/graph/status; docs tests 10/10). No application validation claimed. Approved policies remain settled. |
 | [ ] | [SN-A12](track-a.md#sn-a12--build-audience-aware-feeds-and-publishing) | Build audience-aware feeds and publishing | SN-B14 | SN-A13 | Frontend fixture gate; real services in SN-A14. |
 | [ ] | [SN-B15](track-b.md#sn-b15--implement-audience-aware-publishing-and-feeds) | Implement audience-aware publishing and feeds | SN-B14 | SN-B16 | — |
 | [ ] | [SN-A13](track-a.md#sn-a13--restore-discussions-and-private-activity) | Restore discussions and private activity | SN-A12 | SN-A14 | Frontend fixture gate; real services in SN-A14. |
