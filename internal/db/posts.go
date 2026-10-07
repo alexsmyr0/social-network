@@ -4,6 +4,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -17,19 +18,23 @@ var ErrInvalidPostCategoryUpdate = errors.New("invalid post category update")
 -------*/
 
 type Post struct {
-	ID         int64          `json:"id"`
-	AuthorID   int64          `json:"author_id"`
-	Author     string         `json:"author"`
-	Title      string         `json:"title"`
-	ImageURL   *string        `json:"image_url"`
-	Body       string         `json:"body"`
-	CreatedAt  string         `json:"created_at"`
-	UpdatedAt  string         `json:"updated_at,omitempty"`
-	Status     string         `json:"status"`
-	Likes      int            `json:"likes"`
-	Dislikes   int            `json:"dislikes"`
-	MyReaction int            `json:"my_reaction"`
-	Categories []PostCategory `json:"categories"`
+	NullableTitle       *string        `json:"-"`
+	Audience            string         `json:"audience,omitempty"`
+	Version             int64          `json:"version,omitempty"`
+	SelectedFollowerIDs *[]int64       `json:"selected_follower_ids,omitempty"`
+	ID                  int64          `json:"id"`
+	AuthorID            int64          `json:"author_id"`
+	Author              string         `json:"author"`
+	Title               string         `json:"title"`
+	ImageURL            *string        `json:"image_url"`
+	Body                string         `json:"body"`
+	CreatedAt           string         `json:"created_at"`
+	UpdatedAt           string         `json:"updated_at,omitempty"`
+	Status              string         `json:"status"`
+	Likes               int            `json:"likes"`
+	Dislikes            int            `json:"dislikes"`
+	MyReaction          int            `json:"my_reaction"`
+	Categories          []PostCategory `json:"categories"`
 }
 
 type PostCategory struct {
@@ -765,4 +770,17 @@ func GetImageUsageCount(ctx context.Context, db *sql.DB, imageURL string) (int, 
 			(SELECT COUNT(1) FROM comments WHERE image_url = ?)
 	`, imageURL, imageURL).Scan(&count)
 	return count, err
+}
+
+// Keep legacy repository callers' string title while the social wire contract
+// exposes optional title as JSON null. No audience means historical schema.
+func (p Post) MarshalJSON() ([]byte, error) {
+	type alias Post
+	if p.Audience == "" {
+		return json.Marshal(alias(p))
+	}
+	return json.Marshal(struct {
+		alias
+		Title *string `json:"title"`
+	}{alias(p), p.NullableTitle})
 }

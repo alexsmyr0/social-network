@@ -132,7 +132,13 @@ async function checkContentAccess(actor, post, comment, allowed) {
 async function checkDeniedMutations(actor, post) {
 	await http(actor, 'post', `/api/v1/posts/${post.id}/comments`, { body: 'denied' }, 404);
 	await http(actor, 'post', `/api/v1/posts/${post.id}/like`, undefined, 404);
-	await http(actor, 'patch', `/api/v1/posts/${post.id}`, { body: 'denied' }, 404);
+	await http(
+		actor,
+		'patch',
+		`/api/v1/posts/${post.id}`,
+		{ expected_version: post.version, body: 'denied' },
+		404,
+	);
 	for (const path of [
 		'/static/uploads/guess.png',
 		'/static/%75ploads/guess.png',
@@ -421,7 +427,13 @@ test.describe('SN-A11 real Phase 2 acceptance through both images', () => {
 			await privacy(owner, 'private');
 			await http(follower, 'delete', `/api/v1/follows/${accepted.id}`, undefined, 204);
 			expect((await follower.context.request.get(post.image_url)).status()).toBe(404);
-			await http(owner, 'delete', `/api/v1/posts/${post.id}`, undefined, 204);
+			await http(
+				owner,
+				'delete',
+				`/api/v1/posts/${post.id}?expected_version=${post.version}`,
+				undefined,
+				204,
+			);
 			expect((await owner.context.request.get(post.image_url)).status()).toBe(404);
 		} finally {
 			await dispose(all);

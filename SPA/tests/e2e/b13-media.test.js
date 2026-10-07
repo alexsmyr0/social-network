@@ -75,7 +75,9 @@ test('private attachments lose outsider access through the frontend proxy', asyn
 		expect((await viewer.get(post.image_url)).status()).toBe(200);
 		expect((await viewer.delete(`/api/v1/follows/${request.id}`)).status()).toBe(204);
 		expect((await viewer.get(post.image_url)).status()).toBe(404);
-		expect((await owner.delete(`/api/v1/posts/${post.id}`)).status()).toBe(204);
+		expect(
+			(await owner.delete(`/api/v1/posts/${post.id}?expected_version=${post.version}`)).status(),
+		).toBe(204);
 		expect((await owner.get(post.image_url)).status()).toBe(404);
 	} finally {
 		await owner.dispose();
