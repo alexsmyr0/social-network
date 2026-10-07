@@ -497,6 +497,71 @@ func TestPublishingContractFollowReselectionSequence(t *testing.T) {
 	}
 }
 
+func TestPublishingHTTPBodyLineEndings(t *testing.T) {
+	handler, conn := socialAPI(t)
+	fixtureExec(t, conn, `INSERT INTO users(id,username,email,password_hash,first_name,last_name,date_of_birth)VALUES(1,'owner','owner@line-endings.test','hash','Owner','Test','2000-01-01');INSERT INTO sessions(user_id,token,ip,user_agent)VALUES(1,'line-endings','','')`)
+	png, err := os.ReadFile("../../SPA/tests/fixtures/a07/avatar.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, encoding := range []string{"json", "multipart with image"} {
+		for _, tc := range []struct {
+			name, title, body, wantBody, invalidField, invalidCode string
+		}{
+			{name: "mixed line endings", body: " \r\none\r\ntwo\n\tthree\r\n ", wantBody: "one\ntwo\n\tthree"},
+			{name: "normalized length limit", body: strings.Repeat("x\r\n", 4999) + "xx", wantBody: strings.Repeat("x\n", 4999) + "xx"},
+			{name: "normalized length overflow", body: strings.Repeat("x\r\n", 4999) + "xxx", invalidField: "body", invalidCode: "TOO_LONG"},
+			{name: "bare carriage return", body: "one\rtwo", invalidField: "body", invalidCode: "INVALID_TEXT"},
+			{name: "title line break", title: "one\r\ntwo", body: "ok", invalidField: "title", invalidCode: "INVALID_TEXT"},
+		} {
+			t.Run(encoding+"/"+tc.name, func(t *testing.T) {
+				fields := map[string]string{"title": tc.title, "body": tc.body}
+				var response *httptest.ResponseRecorder
+				if encoding == "json" {
+					payload, err := json.Marshal(fields)
+					if err != nil {
+						t.Fatal(err)
+					}
+					response = socialRequest(t, handler, "POST", "/api/v1/posts", "application/json", payload, "line-endings")
+				} else {
+					response = contentUpload(t, handler, "line-endings", "/api/v1/posts", png, fields)
+				}
+				if tc.invalidField != "" {
+					assertSocialCode(t, response, 400, "VALIDATION_ERROR")
+					var got struct {
+						Error struct{ Fields map[string]string }
+					}
+					if err := json.Unmarshal(response.Body.Bytes(), &got); err != nil {
+						t.Fatal(err)
+					}
+					if got.Error.Fields[tc.invalidField] != tc.invalidCode {
+						t.Fatalf("validation fields %v, want %s=%s", got.Error.Fields, tc.invalidField, tc.invalidCode)
+					}
+					return
+				}
+				assertSocialCode(t, response, 201, "")
+				var got struct{ Data db.Post }
+				if err := json.Unmarshal(response.Body.Bytes(), &got); err != nil {
+					t.Fatal(err)
+				}
+				if got.Data.Body != tc.wantBody {
+					t.Fatalf("response body length %d, want %d; normalized text differs", len(got.Data.Body), len(tc.wantBody))
+				}
+				if encoding == "multipart with image" && (got.Data.ImageURL == nil || *got.Data.ImageURL == "") {
+					t.Fatal("multipart post lost its image")
+				}
+				var stored string
+				if err := conn.QueryRow(`SELECT body FROM posts WHERE id=?`, got.Data.ID).Scan(&stored); err != nil {
+					t.Fatal(err)
+				}
+				if stored != tc.wantBody {
+					t.Fatal("stored body differs from normalized text")
+				}
+			})
+		}
+	}
+}
+
 func TestPublishingHTTPStructuralAndUnicodeBounds(t *testing.T) {
 	handler, conn := socialAPI(t)
 	fixtureExec(t, conn, `INSERT INTO users(id,username,email,password_hash,first_name,last_name,date_of_birth)VALUES(1,'owner','owner@bounds.test','hash','Owner','Test','2000-01-01');INSERT INTO sessions(user_id,token,ip,user_agent)VALUES(1,'bounds','','')`)

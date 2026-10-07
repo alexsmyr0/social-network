@@ -94,6 +94,9 @@ func publishingText(raw json.RawMessage, field string, max int, nullable bool) (
 	if !utf8.ValidString(text) {
 		return nil, NewError("BAD_REQUEST", "invalid UTF-8", 400)
 	}
+	if field == "body" {
+		text = strings.ReplaceAll(text, "\r\n", "\n")
+	}
 	text = strings.TrimSpace(text)
 	if utf8.RuneCountInString(text) > max {
 		return nil, socialFieldError(field, "TOO_LONG")
