@@ -17,7 +17,13 @@ const session = inject(sessionKey);
 				this protected space as the next phases arrive.
 			</p>
 			<p class="home-view__actions">
-				<RouterLink class="button button--primary" :to="{ name: 'people' }">Find people</RouterLink>
+				<RouterLink class="button button--primary" :to="{ name: 'feed' }">Open your feed</RouterLink>
+				<RouterLink class="text-link" :to="{ name: 'compose' }">
+					Write a post <span aria-hidden="true">↗</span>
+				</RouterLink>
+				<RouterLink class="text-link" :to="{ name: 'people' }">
+					Find people <span aria-hidden="true">↗</span>
+				</RouterLink>
 				<RouterLink class="text-link" :to="{ name: 'profile', params: { id: session.state.account.id } }">
 					Your profile <span aria-hidden="true">↗</span>
 				</RouterLink>
@@ -41,7 +47,7 @@ const session = inject(sessionKey);
 		<div class="feature-line" aria-label="Planned social network areas">
 			<p>Coming into focus</p>
 			<ul>
-				<li>Profiles</li>
+				<li>Discussions</li>
 				<li>Groups</li>
 				<li>Conversations</li>
 			</ul>

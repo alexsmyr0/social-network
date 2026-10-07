@@ -69,6 +69,17 @@ make test-e2e PLAYWRIGHT_ARGS=a10-notifications
 
 A13 reuses `SPA/src/features/notifications/notification-state.js` and extends `NotificationCenter.vue` for permitted content navigation. Phase 5 must keep message indicators separate and reuse the session-owned socket lifecycle.
 
+## Audience-aware feeds and publishing (SN-A12)
+
+Feed, composer, owner editor and Your posts views run against the [approved content contract](content-contract.md) and its [fixture pack](fixtures/phase-3-contract.json). See [behavior, ownership and verification evidence](frontend-publishing.md). Real persistence and authorization remain SN-A14.
+
+```bash
+bun run test:a12
+make test-e2e PLAYWRIGHT_ARGS=a12-publishing
+```
+
+A13 reuses `PostCard.vue`, `PostComposer.vue`, `post-form.js` and `content-state.js` for discussions, profile activity and draft management.
+
 ## Frontend container handoff
 
 SN-A06 packages the browser bundle and its Go same-origin proxy in a frontend-only image named `social-network-frontend`. The build is self-contained: it installs locked Bun dependencies, builds `SPA/dist`, compiles the frontend server and does not consume local `node_modules`, binaries or generated assets.

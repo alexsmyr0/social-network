@@ -550,6 +550,7 @@ describe('stale data and session changes', () => {
 			.map((link) => [link.text(), link.attributes('href')]);
 		expect(links).toEqual([
 			['Home', '/'],
+			['Feed', '/feed'],
 			['People', '/people'],
 			['Profile', '/users/7'],
 		]);
