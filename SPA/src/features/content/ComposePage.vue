@@ -31,7 +31,10 @@ const alertKind = ref('');
 const resources = useComposerResources({ social, content, session });
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 const { categories, followers, eligibleIds, visibility } = resources;
-const latestDraft = useSocialResource(() => content.api.fetchLatestDraft(), { social });
+const latestDraft = useSocialResource(() => content.api.fetchLatestDraft(), {
+	social,
+	sources: () => session.state.account?.id ?? null,
+});
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 const draft = computed(() => latestDraft.result.value?.draft ?? null);
 const busy = computed(() => content.isPending('new'));

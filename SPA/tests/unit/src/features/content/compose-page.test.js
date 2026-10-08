@@ -258,6 +258,47 @@ describe('SN-A12 composer', () => {
 		expect(textOf(app.wrapper)).toContain('Edit draft');
 	});
 
+	test('an account change replaces the followers and latest draft with the new account’s', async () => {
+		const backend = new ContentBackend();
+		backend.addPost({ status: 'draft', body: 'Alex draft' });
+		const app = await compose({ backend });
+		await audience(app.wrapper, 'selected').setValue(true);
+		expect(textOf(app.wrapper)).toContain('Ada Lovelace');
+		expect(app.wrapper.find('[data-latest-draft]').exists()).toBe(true);
+
+		// Ada is signed in now; she has no followers and no drafts.
+		app.current.viewerId = 7;
+		app.session.acceptAccount({ id: 7, display_name: 'Ada Lovelace' });
+		await settle();
+		await audience(app.wrapper, 'selected').setValue(true);
+		expect(textOf(app.wrapper)).not.toContain('Sam Example');
+		expect(app.wrapper.find('input[name="selected_follower_ids"]').exists()).toBe(false);
+		expect(textOf(app.wrapper)).toContain('No one follows you yet.');
+		expect(app.wrapper.find('[data-latest-draft]').exists()).toBe(false);
+		const followerReads = app.fetchRef.calls.filter((call) => /\/followers/u.test(call.url));
+		expect(followerReads.at(-1).url).toMatch(/^\/api\/v1\/users\/7\/followers/u);
+	});
+
+	test('an account change hides the old followers while the new ones load', async () => {
+		const gate = deferred();
+		const app = await compose({
+			before: async (entry) => {
+				if (/\/users\/7\/(followers|profile)/u.test(entry.url)) await gate.promise;
+			},
+		});
+		await audience(app.wrapper, 'selected').setValue(true);
+		expect(textOf(app.wrapper)).toContain('Sam Example');
+		app.current.viewerId = 7;
+		app.session.acceptAccount({ id: 7, display_name: 'Ada Lovelace' });
+		await settle();
+		await audience(app.wrapper, 'selected').setValue(true);
+		expect(textOf(app.wrapper)).not.toContain('Sam Example');
+		expect(textOf(app.wrapper)).toContain('Loading your followers…');
+		gate.release();
+		await settle();
+		expect(textOf(app.wrapper)).toContain('No one follows you yet.');
+	});
+
 	test('an account change discards unsent text', async () => {
 		const app = await compose();
 		await app.wrapper.get('#compose-body').setValue('Private thought');

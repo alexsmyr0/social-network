@@ -268,6 +268,9 @@ onUnmounted(() => clearImageChoice(props.form));
 						</li>
 					</ul>
 					<p v-if="visibleFollowers.length === 0" class="field-hint">No follower matches that name.</p>
+					<p v-if="!followers.complete" class="field-hint" data-followers-truncated>
+						Showing your first {{ followers.list.length }} followers. Anyone you already chose who isn’t listed stays selected.
+					</p>
 				</template>
 				<p v-if="form.errors.selected_follower_ids" class="field-error" role="alert">{{ form.errors.selected_follower_ids }}</p>
 			</div>

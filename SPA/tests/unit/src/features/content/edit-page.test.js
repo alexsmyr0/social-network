@@ -222,6 +222,34 @@ describe('SN-A12 owner editor — lifecycle', () => {
 		expect(backend.request(7, 'GET', '/api/v1/posts/101').status).toBe(200);
 	});
 
+	test('a recipient beyond a truncated follower list is kept, not flagged as lost', async () => {
+		const backend = new ContentBackend();
+		Object.assign(backend.posts.get(101), { audience: 'selected', selected_follow_ids: [71] });
+		// The author has more followers than the picker loads; Ada falls
+		// outside the loaded pages but still follows.
+		const app = await edit(101, {
+			backend,
+			after: async (entry, result) => {
+				if (!/\/users\/42\/followers/u.test(entry.url)) return;
+				result.body.data = result.body.data.filter((person) => person.id !== 7);
+				result.body.meta.pagination.total_pages = 12;
+			},
+		});
+		const followerReads = app.fetchRef.calls.filter((call) => /\/followers/u.test(call.url));
+		expect(followerReads).toHaveLength(10);
+		expect(app.wrapper.find('[data-followers-truncated]').exists()).toBe(true);
+		expect(app.wrapper.find('[data-lost-recipients]').exists()).toBe(false);
+		expect(textOf(app.wrapper)).toContain('1 follower selected');
+		await app.wrapper.get('#edit-body').setValue('Still for Ada');
+		await button(app.wrapper, 'Save changes').trigger('click');
+		await settle();
+		expect(writes(app.fetchRef)).toHaveLength(1);
+		expect(backend.posts.get(101)).toMatchObject({
+			body: 'Still for Ada',
+			selected_follow_ids: [71],
+		});
+	});
+
 	test('publishing an empty draft or a recipient-less Selected draft is refused locally', async () => {
 		const backend = new ContentBackend();
 		Object.assign(backend.posts.get(101), { status: 'draft', body: '', image_url: null });

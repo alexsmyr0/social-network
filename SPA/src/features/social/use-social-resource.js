@@ -11,7 +11,8 @@ const MODE_RANK = { quiet: 0, hard: 1, clear: 2 };
 // fallback and writes that retain access refetch quietly. A failed read never
 // leaves the previous protected details on screen. `retain` keeps the last
 // result through invalidations for the viewer's own form inputs (categories,
-// own followers); session clears and failed reads still discard it.
+// own followers); source changes, session clears and failed reads still
+// discard it.
 export function useSocialResource(load, { social, sources, retain = false }) {
 	const status = ref('loading');
 	const result = shallowRef(null);
@@ -87,7 +88,14 @@ export function useSocialResource(load, { social, sources, retain = false }) {
 		}, FALLBACK_REFETCH_MS);
 	}
 
-	if (sources) watch(sources, () => reload('hard'));
+	// A new source is a different subject (route, query or account), so even
+	// a retained result belongs to the old one.
+	if (sources) {
+		watch(sources, () => {
+			discard('loading');
+			reload('hard');
+		});
+	}
 	reload('hard');
 
 	onUnmounted(() => {
