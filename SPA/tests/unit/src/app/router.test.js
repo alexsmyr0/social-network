@@ -18,10 +18,10 @@ describe('Vue route contract', () => {
 	});
 
 	test.each([
-		'/posts/12',
+		'/edit-post/12',
 		'/view-post/12',
 		'/create-post',
-		'/activity',
+		'/chat',
 		'/profile/8',
 	])('keeps retired route %s in place and renders the migration state', async (path) => {
 		const router = createAppRouter(createMemoryHistory());

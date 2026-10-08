@@ -1,13 +1,29 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
-// biome-ignore lint/correctness/noUnusedImports: used by the Vue template
-import { AUDIENCE_LABELS, feedQuery, formatPostDate, STATUS_LABELS } from './content-utils.js';
+import { useRoute } from 'vue-router';
+import {
+	AUDIENCE_LABELS,
+	feedQuery,
+	// biome-ignore lint/correctness/noUnusedImports: used by Vue template
+	formatPostDate,
+	readFeedQuery,
+	STATUS_LABELS,
+} from './content-utils.js';
 
 const props = defineProps({
 	post: { type: Object, required: true },
 	viewerId: { type: Number, default: null },
 });
 
+const route = useRoute();
+// biome-ignore lint/correctness/noUnusedVariables: used by Vue template
+const discussionLink = computed(() => ({
+	name: 'post',
+	params: { id: props.post.id },
+	query: ['feed', 'post'].includes(route.name)
+		? feedQuery({ ...readFeedQuery(route.query), page: 1 })
+		: {},
+}));
 const own = computed(() => props.post.author_id === props.viewerId);
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 const headingId = computed(() => `post-${props.post.id}-heading`);
@@ -63,7 +79,7 @@ function categoryLink(categoryId) {
 			</p>
 		</header>
 
-		<h2 v-if="post.title" :id="headingId" class="post-card__title">{{ post.title }}</h2>
+		<h2 v-if="post.title" :id="headingId" class="post-card__title"><RouterLink :to="discussionLink">{{ post.title }}</RouterLink></h2>
 		<h2 v-else :id="headingId" class="visually-hidden">Post by {{ post.author }}</h2>
 
 		<p v-if="post.body" class="post-card__body">{{ post.body }}</p>
@@ -80,6 +96,7 @@ function categoryLink(categoryId) {
 		</ul>
 
 		<footer class="post-card__foot">
+			<RouterLink class="post-card__discussion" :to="discussionLink">Open discussion</RouterLink>
 			<p class="post-card__counts">
 				<span>{{ post.likes }} {{ post.likes === 1 ? 'like' : 'likes' }}</span>
 				<span>{{ post.dislikes }} {{ post.dislikes === 1 ? 'dislike' : 'dislikes' }}</span>

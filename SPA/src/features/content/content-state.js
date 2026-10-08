@@ -66,6 +66,11 @@ export function createContentState({ api = contentApi, session, social } = {}) {
 		setFlash,
 		takeFlash,
 		reset,
+		createComment: (id, fields) => run(`thread-${id}`, () => api.createComment(id, fields)),
+		updateComment: (id, fields) => run(`comment-${id}`, () => api.updateComment(id, fields)),
+		deleteComment: (id, version) => run(`comment-${id}`, () => api.deleteComment(id, version)),
+		react: (kind, id, reaction) =>
+			run(`${kind}-${id}`, () => api.reactToContent(kind, id, reaction)),
 		createPost: (fields) => run('new', () => api.createPost(fields)),
 		createDraft: (fields) => run('new', () => api.createDraft(fields)),
 		updatePost: (id, fields) => run(id, () => api.updatePost(id, fields)),

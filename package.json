@@ -20,6 +20,7 @@
 		"format": "biome format --write .",
 		"policy": "bun run build && bun run lint && bun run test",
 		"test:a10": "vitest run SPA/tests/unit/src/api/notifications.test.js SPA/tests/unit/src/features/notifications SPA/tests/unit/src/features/social SPA/tests/unit/policy/no-fixtures-in-production.test.js",
+		"test:a13": "vitest run SPA/tests/unit/src/api/discussions.test.js SPA/tests/unit/src/api/content.test.js SPA/tests/unit/src/features/content SPA/tests/unit/src/features/social SPA/tests/unit/src/features/notifications SPA/tests/unit/src/app SPA/tests/unit/policy/no-fixtures-in-production.test.js",
 		"test:a12": "vitest run SPA/tests/unit/src/api/content.test.js SPA/tests/unit/src/features/content SPA/tests/unit/src/features/social SPA/tests/unit/src/app SPA/tests/unit/policy/no-fixtures-in-production.test.js"
 	},
 	"devDependencies": {

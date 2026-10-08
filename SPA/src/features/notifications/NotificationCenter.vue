@@ -153,7 +153,7 @@ function dateLabel(value) {
 							<div class="notice__content">
 								<RouterLink :to="{ name: 'profile', params: { id: notice.actor.id } }">{{ notice.actor.display_name }}</RouterLink>
 								<p>{{ noticeLabel(notice) }}</p>
-								<p v-if="notice.target.kind !== 'follow_request'" class="notice__context">{{ notice.target.title || 'Untitled post' }}<span v-if="notice.target.excerpt"> · {{ notice.target.excerpt }}</span></p>
+								<RouterLink v-if="notice.target.kind !== 'follow_request'" :to="notice.target.kind === 'comment' ? {name:'comment',params:{id:notice.target.comment_id}} : {name:'post',params:{id:notice.target.post_id}}" class="notice__context">{{ notice.target.title || 'Untitled post' }}<span v-if="notice.target.excerpt"> · {{ notice.target.excerpt }}</span></RouterLink>
 								<time :datetime="notice.created_at">{{ dateLabel(notice.created_at) }}</time>
 								<div v-if="notice.actions.length" class="notice__actions">
 									<button v-for="decision in notice.actions" :key="decision" class="button" :class="decision === 'accept' ? 'button--primary' : 'button--secondary'" type="button" :aria-label="`${decision === 'accept' ? 'Accept' : 'Decline'} follow request from ${notice.actor.display_name}`" :disabled="Boolean(social.state.pendingFollows[notice.actor.id])" @click="decide(notice.actor, notice.target.follow_id, decision)">{{ decision === 'accept' ? 'Accept' : 'Decline' }}</button>
