@@ -24,6 +24,8 @@ Failures roll back the rebuild and retain migration 5's dirty marker; subsequent
 
 ## B16 handoff
 
+Delivered by [SN-B16](backend-discussions.md); this section records the original handoff.
+
 Reuse `contentPermission`/`CanViewPost` and serialized social writes rather than profile permission alone. Post producers are `WritePublishingPost`, `DeletePublishingPost`, `PublishingFeed` and `LatestPublishingDraft`; `socialPostTx` now projects audience/version and owner-only selections with nullable wire titles. Comment `content_version` is already present. Discussion/reaction writers remain inherited B13 interfaces until B16 adds required versions, strict parsing and the approved response shapes.
 
 B16 must finish profile/private activity, optional-category navigation/filtering, category summaries and notice target/excerpt/count consumers. In particular, inherited notifications still use their Phase 2 target predicate and must compose the new post audience/publication permission. Nullable title projections and nested comment versions also need their assigned B16 adapters. B15 does not certify those surfaces or Phase 3 acceptance; A12/A13/A14 keep their own gates.

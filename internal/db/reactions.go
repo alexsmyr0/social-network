@@ -37,21 +37,6 @@ func ToggleReaction(
 	if _, err := tx.ExecContext(ctx, `UPDATE posts SET id=id WHERE 0`); err != nil {
 		return 0, err
 	}
-	if viewer, ok := SocialViewer(ctx); ok {
-		if viewer != userID {
-			return 0, sql.ErrNoRows
-		}
-		if targetType == "post" {
-			err = requirePostAccess(ctx, tx, viewer, objectID, false)
-		} else if targetType == "comment" {
-			_, err = requireCommentAccess(ctx, tx, viewer, objectID, false)
-		} else {
-			err = ErrInvalidInput
-		}
-		if err != nil {
-			return 0, err
-		}
-	}
 	// Find ownership (who gets notified)
 	ownerID, err := getReactionTargetOwnerTx(ctx, tx, objectID, targetType)
 	if err != nil {

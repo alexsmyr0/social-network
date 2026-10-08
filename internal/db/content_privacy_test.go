@@ -99,21 +99,21 @@ func TestContentPrivacyEveryProjectionAndMutation(t *testing.T) {
 		t.Fatalf("denied comment count %v", err)
 	}
 	for _, value := range []int{1, -1} {
-		if _, err := ToggleReaction(v, database, 3, 10, value, "post"); !errors.Is(err, sql.ErrNoRows) {
+		if _, err := ToggleDiscussionReaction(v, database, 3, 10, value, "post"); !errors.Is(err, sql.ErrNoRows) {
 			t.Fatalf("denied reaction %v", err)
 		}
-		if _, err := ToggleReaction(v, database, 3, 20, value, "comment"); !errors.Is(err, sql.ErrNoRows) {
+		if _, err := ToggleDiscussionReaction(v, database, 3, 20, value, "comment"); !errors.Is(err, sql.ErrNoRows) {
 			t.Fatalf("denied comment reaction %v", err)
 		}
 	}
-	if _, err := CreateComment(v, database, CreateCommentInput{PostID: 10, UserID: 3, Body: "denied"}); !errors.Is(err, sql.ErrNoRows) {
+	if _, err := WriteDiscussionComment(v, database, 3, 10, 0, CommentInput{Body: testText("denied")}); !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("denied create %v", err)
 	}
 	body := "denied"
-	if err := UpdateComment(v, database, 20, UpdateCommentInput{Body: &body}); !errors.Is(err, sql.ErrNoRows) {
+	if _, err := WriteDiscussionComment(v, database, 3, 0, 20, CommentInput{ExpectedVersion: 1, Body: &body}); !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("denied own comment update %v", err)
 	}
-	if err := DeleteComment(v, database, 20); !errors.Is(err, sql.ErrNoRows) {
+	if err := DeleteDiscussionComment(v, database, 3, 20, 1); !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("denied own comment delete %v", err)
 	}
 	if err := UpdatePostContent(v, database, 10, UpdatePostInput{Body: &body}); !errors.Is(err, sql.ErrNoRows) {
@@ -130,8 +130,8 @@ func TestContentPrivacyEveryProjectionAndMutation(t *testing.T) {
 	if err != nil || disliked.Total != 1 {
 		t.Fatalf("dislikes %+v %v", disliked, err)
 	}
-	history, err := ListUserCommentsWithPost(v, database, ListUserCommentsWithPostParams{UserID: 3, Page: 1, PerPage: 10})
-	if err != nil || history.Total != 0 {
+	history, err := SocialActivity(v, database, 3, 1, 10, nil)
+	if err != nil || history.Comments.Total != 0 || len(history.Comments.Comments) != 0 {
 		t.Fatalf("hidden activity %+v %v", history, err)
 	}
 	mustExec(t, database, `DELETE FROM follows WHERE id=1`)
@@ -142,11 +142,12 @@ func TestContentPrivacyEveryProjectionAndMutation(t *testing.T) {
 	if _, err := GetPost(v, database, 10); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := CreateComment(v, database, CreateCommentInput{PostID: 12, UserID: 3, ParentCommentID: pointerID(20), Body: "wrong parent"}); !errors.Is(err, sql.ErrNoRows) {
+	if _, err := WriteDiscussionComment(v, database, 3, 12, 0, CommentInput{ParentCommentID: pointerID(20), Body: testText("wrong parent")}); !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("cross-post parent %v", err)
 	}
 }
 func pointerID(id int64) *int64 { return &id }
+func testText(s string) *string { return &s }
 func TestContentNotificationFailureRollsBackAndStaysSilent(t *testing.T) {
 	database := profileTestDB(t)
 	ctx := WithSocialViewer(context.Background(), 2)
@@ -154,10 +155,10 @@ func TestContentNotificationFailureRollsBackAndStaysSilent(t *testing.T) {
 	calls := 0
 	SetNotificationHook(func(int64) { calls++ })
 	t.Cleanup(func() { SetNotificationHook(nil) })
-	if _, err := CreateComment(ctx, database, CreateCommentInput{PostID: 10, UserID: 2, Body: "rollback"}); err == nil {
+	if _, err := WriteDiscussionComment(ctx, database, 2, 10, 0, CommentInput{Body: testText("rollback")}); err == nil {
 		t.Fatal("comment committed without notice")
 	}
-	if _, err := ToggleReaction(ctx, database, 2, 10, 1, "post"); err == nil {
+	if _, err := ToggleDiscussionReaction(ctx, database, 2, 10, 1, "post"); err == nil {
 		t.Fatal("reaction committed without notice")
 	}
 	for _, table := range []string{"comments", "reactions", "notifications"} {
@@ -170,13 +171,13 @@ func TestContentNotificationFailureRollsBackAndStaysSilent(t *testing.T) {
 		t.Fatalf("rollback signaled %d", calls)
 	}
 	mustExec(t, database, `DROP TRIGGER fail_content_notice`)
-	if _, err := CreateComment(ctx, database, CreateCommentInput{PostID: 10, UserID: 2, Body: "committed"}); err != nil {
+	if _, err := WriteDiscussionComment(ctx, database, 2, 10, 0, CommentInput{Body: testText("committed")}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := CreateComment(ctx, database, CreateCommentInput{PostID: 10, UserID: 2, Body: "dedup"}); err != nil {
+	if _, err := WriteDiscussionComment(ctx, database, 2, 10, 0, CommentInput{Body: testText("dedup")}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ToggleReaction(ctx, database, 2, 10, 1, "post"); err != nil {
+	if _, err := ToggleDiscussionReaction(ctx, database, 2, 10, 1, "post"); err != nil {
 		t.Fatal(err)
 	}
 	if calls != 2 {
@@ -201,12 +202,12 @@ func TestContentMutationsObserveCommittedPrivacyWhileWaitingForWriter(t *testing
 	viewer := WithSocialViewer(ctx, 2)
 	go func() {
 		started <- struct{}{}
-		_, err := CreateComment(viewer, database, CreateCommentInput{PostID: 10, UserID: 2, Body: "must not survive"})
+		_, err := WriteDiscussionComment(viewer, database, 2, 10, 0, CommentInput{Body: testText("must not survive")})
 		result <- err
 	}()
 	go func() {
 		started <- struct{}{}
-		_, err := ToggleReaction(viewer, database, 2, 10, 1, "post")
+		_, err := ToggleDiscussionReaction(viewer, database, 2, 10, 1, "post")
 		result <- err
 	}()
 	<-started

@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"strings"
 )
 
@@ -15,6 +16,20 @@ type NoticeTarget struct {
 	Title     *string `json:"title,omitempty"`
 	Excerpt   *string `json:"excerpt,omitempty"`
 }
+
+// Content targets always carry the current nullable post title; follow-request
+// targets never do.
+func (t NoticeTarget) MarshalJSON() ([]byte, error) {
+	type alias NoticeTarget
+	if t.Kind == "follow_request" {
+		return json.Marshal(alias(t))
+	}
+	return json.Marshal(struct {
+		alias
+		Title *string `json:"title"`
+	}{alias(t), t.Title})
+}
+
 type SocialNotice struct {
 	ID        int64        `json:"id"`
 	Type      string       `json:"type"`
@@ -30,8 +45,9 @@ type SocialNotificationsPage struct {
 	Total         int            `json:"-"`
 }
 
-// All projections, counts and writes share this access filter. Personal content
-// inherits its post author's profile privacy; B16 adds the future audience model.
+// All projections, counts and writes share this access filter: the recipient must
+// currently be able to read the published parent post (profile AND audience) and,
+// for comment notices, the comment's author must still be active.
 const noticeJoins = ` FROM notifications n
  JOIN users a ON a.id=n.actor_id AND a.is_active=1
  JOIN users v ON v.id=n.recipient_id AND v.is_active=1
@@ -40,7 +56,8 @@ const noticeJoins = ` FROM notifications n
  LEFT JOIN users u ON u.id=p.author_id `
 
 var visibleNotice = `n.recipient_id=? AND (n.type='follow_request' OR
- (p.id IS NOT NULL AND p.status='published' AND u.is_active=1 AND ` + strings.ReplaceAll(profilePermission, "?", "n.recipient_id") + `))`
+ (p.id IS NOT NULL AND p.status='published' AND ` + strings.ReplaceAll(contentPermission, "?1", "n.recipient_id") + `
+ AND (c.id IS NULL OR EXISTS(SELECT 1 FROM users ca WHERE ca.id=c.user_id AND ca.is_active=1))))`
 
 func ListSocialNotifications(ctx context.Context, database *sql.DB, viewer int64, page, perPage int) (SocialNotificationsPage, error) {
 	result := SocialNotificationsPage{Notifications: []SocialNotice{}}
@@ -79,7 +96,10 @@ func ListSocialNotifications(ctx context.Context, database *sql.DB, viewer int64
 				n.Actions = []string{"accept", "decline"}
 			}
 		} else {
-			n.Target = NoticeTarget{Kind: "post", PostID: &post.Int64, Title: &title.String}
+			n.Target = NoticeTarget{Kind: "post", PostID: &post.Int64}
+			if title.Valid {
+				n.Target.Title = &title.String
+			}
 			if comment.Valid {
 				n.Target.Kind = "comment"
 				n.Target.CommentID = &comment.Int64
@@ -132,12 +152,20 @@ func MarkSocialNotificationsRead(ctx context.Context, database *sql.DB, viewer, 
 			return ErrNotFound
 		}
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE notifications SET is_read=1 WHERE id IN (SELECT n.id`+noticeJoins+`WHERE `+where+`)`, args...); err != nil {
+	result, err := tx.ExecContext(ctx, `UPDATE notifications SET is_read=1 WHERE is_read=0 AND id IN (SELECT n.id`+noticeJoins+`WHERE `+where+`)`, args...)
+	if err != nil {
+		return err
+	}
+	changed, err := result.RowsAffected()
+	if err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	fireSocialInvalidation(viewer)
+	// Repeats and reads that only skip hidden rows change nothing to refresh.
+	if changed > 0 {
+		fireSocialInvalidation(viewer)
+	}
 	return nil
 }

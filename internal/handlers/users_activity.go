@@ -45,6 +45,11 @@ func (u *UsersHandler) GetUserActivity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if u.socialSchema {
+		u.socialActivity(w, r, userID)
+		return
+	}
+
 	page, perPage := sanitizePagination(r)
 
 	statusPtr, err := parsePostStatusFilter(r)

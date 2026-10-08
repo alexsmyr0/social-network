@@ -132,25 +132,23 @@ func publishingIDs(raw json.RawMessage, field string, max int) ([]int64, *APIErr
 	return ids, nil
 }
 
-// Parse both encodings into the same presence-aware fields. Fresh files are
-// validated here but staged only after resource ownership has been checked.
-func parsePublishing(w http.ResponseWriter, r *http.Request, edit, draft bool) (in db.PublishingInput, image imageUpdateRequest, cleanup func(), e *APIError) {
+// Multipart text fields keep their typed meaning without parsing structured JSON:
+// arrays repeat, IDs/versions are decimal strings and flags are exactly true/false.
+var (
+	contentArrayFields = map[string]bool{"category_ids": true, "selected_follower_ids": true}
+	contentIDFields    = map[string]bool{"expected_version": true, "parent_comment_id": true}
+	contentBoolFields  = map[string]bool{"manual": true, "remove_image": true}
+)
+
+// readContentFields collects strict JSON or multipart text into raw JSON values.
+// A nil cleanup with a nil error means the response was already written.
+func readContentFields(w http.ResponseWriter, r *http.Request, keys []string) (fields map[string]json.RawMessage, upload bool, cleanup func(), e *APIError) {
 	cleanup = func() {}
-	keys := []string{"title", "body", "category_ids", "image_url", "remove_image", "audience", "selected_follower_ids"}
-	if edit {
-		keys = append(keys, "expected_version")
-	}
-	if !draft {
-		keys = append(keys, "status")
-	}
-	if draft && !edit {
-		keys = append(keys, "manual")
-	}
 	allowed := map[string]bool{}
 	for _, k := range keys {
 		allowed[k] = true
 	}
-	fields := map[string]json.RawMessage{}
+	fields = map[string]json.RawMessage{}
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil {
 		e = NewError("UNSUPPORTED_MEDIA_TYPE", "expected JSON or multipart", 415)
@@ -160,15 +158,14 @@ func parsePublishing(w http.ResponseWriter, r *http.Request, edit, draft bool) (
 		var ok bool
 		cleanup, ok = parseMultipartForm(w, r)
 		if !ok {
-			return in, image, nil, nil
+			return nil, false, nil, nil
 		}
-		// The caller distinguishes parse failure by cleanup==nil below.
 		for k, values := range r.MultipartForm.Value {
 			if !allowed[k] {
 				e = NewError("BAD_REQUEST", "unknown multipart field", 400)
 				return
 			}
-			if k == "category_ids" || k == "selected_follower_ids" {
+			if contentArrayFields[k] {
 				vals := []json.RawMessage{}
 				for _, v := range values {
 					if v == "" {
@@ -186,26 +183,27 @@ func parsePublishing(w http.ResponseWriter, r *http.Request, edit, draft bool) (
 					vals = append(vals, json.RawMessage(strconv.FormatInt(n, 10)))
 				}
 				fields[k], _ = json.Marshal(vals)
-			} else {
-				if len(values) != 1 || !utf8.ValidString(values[0]) {
-					e = NewError("BAD_REQUEST", "invalid multipart scalar", 400)
+				continue
+			}
+			if len(values) != 1 || !utf8.ValidString(values[0]) {
+				e = NewError("BAD_REQUEST", "invalid multipart scalar", 400)
+				return
+			}
+			switch {
+			case contentIDFields[k]:
+				if _, err := socialID(values[0]); err != nil {
+					e = err
 					return
 				}
-				if k == "expected_version" {
-					if _, err := socialID(values[0]); err != nil {
-						e = err
-						return
-					}
-					fields[k] = json.RawMessage(values[0])
-				} else if k == "manual" || k == "remove_image" {
-					if values[0] != "true" && values[0] != "false" {
-						e = NewError("BAD_REQUEST", "invalid boolean", 400)
-						return
-					}
-					fields[k] = json.RawMessage(values[0])
-				} else {
-					fields[k], _ = json.Marshal(values[0])
+				fields[k] = json.RawMessage(values[0])
+			case contentBoolFields[k]:
+				if values[0] != "true" && values[0] != "false" {
+					e = NewError("BAD_REQUEST", "invalid boolean", 400)
+					return
 				}
+				fields[k] = json.RawMessage(values[0])
+			default:
+				fields[k], _ = json.Marshal(values[0])
 			}
 		}
 		for k, files := range r.MultipartForm.File {
@@ -214,14 +212,37 @@ func parsePublishing(w http.ResponseWriter, r *http.Request, edit, draft bool) (
 				return
 			}
 		}
-		image.HasImageUpload = len(r.MultipartForm.File["image"]) == 1
-	} else if mediaType == "application/json" {
-		e = decodeStrictObject(w, r, &fields, 64<<10, keys...)
-		if e != nil {
-			return
-		}
-	} else {
+		upload = len(r.MultipartForm.File["image"]) == 1
+		return
+	}
+	if mediaType != "application/json" {
 		e = NewError("UNSUPPORTED_MEDIA_TYPE", "expected JSON or multipart", 415)
+		return
+	}
+	e = decodeStrictObject(w, r, &fields, 64<<10, keys...)
+	return
+}
+
+// Parse both encodings into the same presence-aware fields. Fresh files are
+// validated here but staged only after resource ownership has been checked.
+func parsePublishing(w http.ResponseWriter, r *http.Request, edit, draft bool) (in db.PublishingInput, image imageUpdateRequest, cleanup func(), e *APIError) {
+	cleanup = func() {}
+	keys := []string{"title", "body", "category_ids", "image_url", "remove_image", "audience", "selected_follower_ids"}
+	if edit {
+		keys = append(keys, "expected_version")
+	}
+	if !draft {
+		keys = append(keys, "status")
+	}
+	if draft && !edit {
+		keys = append(keys, "manual")
+	}
+	fields, upload, cleanup, e := readContentFields(w, r, keys)
+	if cleanup == nil && e == nil {
+		return in, image, nil, nil
+	}
+	image.HasImageUpload = upload
+	if e != nil {
 		return
 	}
 	if edit {

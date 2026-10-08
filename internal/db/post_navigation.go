@@ -23,7 +23,7 @@ func GetPostNavigationByCategory(
 	categoryID int64,
 ) (*PostNavigation, error) {
 	if viewer, ok := SocialViewer(ctx); ok {
-		return socialNavigation(ctx, db, viewer, postID, categoryID)
+		return socialNavigation(ctx, db, viewer, postID, categoryID, false)
 	}
 	var nav PostNavigation
 
@@ -76,4 +76,10 @@ func GetPostNavigationByCategory(
 	}
 
 	return &nav, nil
+}
+
+// SocialPostNavigation resolves optional category and Following filters. The
+// source post must itself be readable, published and inside both filters.
+func SocialPostNavigation(ctx context.Context, db *sql.DB, viewer, postID, categoryID int64, following bool) (*PostNavigation, error) {
+	return socialNavigation(ctx, db, viewer, postID, categoryID, following)
 }

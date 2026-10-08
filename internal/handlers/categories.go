@@ -58,11 +58,18 @@ func resolveCategoryID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 -----------------*/
 
 func (c *CategoriesHandler) listCategories(w http.ResponseWriter, r *http.Request) {
+	_, social := repository.SocialViewer(r.Context())
+	if social && !discussionRequest(w, r) {
+		return
+	}
 	categories, err := repository.ListCategories(r.Context(), c.conn)
 	if err != nil {
 		log.Printf("failed to list categories: %v", err)
 		writeHandlerError(w, r, err, "failed to list categories")
 		return
+	}
+	if social && categories == nil {
+		categories = []repository.Category{}
 	}
 
 	WriteOK(w, categories, nil)
@@ -121,6 +128,23 @@ func (c *CategoriesHandler) createCategory(w http.ResponseWriter, r *http.Reques
 -----------------------------------------*/
 
 func (c *CategoriesHandler) HandleCategory(w http.ResponseWriter, r *http.Request) {
+	if _, social := repository.SocialViewer(r.Context()); social {
+		raw := strings.TrimPrefix(r.URL.Path, "/api/v1/categories/")
+		if strings.Contains(raw, "/") {
+			notFound(w, r)
+			return
+		}
+		id, e := socialID(raw)
+		if e != nil {
+			WriteError(w, r, e)
+			return
+		}
+		if !discussionRequest(w, r) {
+			return
+		}
+		c.getCategory(w, r, id)
+		return
+	}
 	id, ok := resolveCategoryID(w, r)
 	if !ok {
 		return
@@ -251,6 +275,9 @@ func (c *CategoriesHandler) ListCategoriesWithPosts(
 
 	// Extract logged-in user ID (or 0 if guest)
 	userID, _ := middleware.GetUserID(r.Context())
+	if _, social := repository.SocialViewer(r.Context()); social && !discussionRequest(w, r) {
+		return
+	}
 
 	result, err := repository.ListCategoriesWithPosts(
 		r.Context(),

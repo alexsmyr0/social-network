@@ -116,74 +116,26 @@ func socialUpdatePost(ctx context.Context, database *sql.DB, viewer, id int64, i
 	}
 	return nil
 }
-func socialDeleteContent(ctx context.Context, database *sql.DB, viewer, id int64, kind string, draftOnly bool) error {
+func socialDeleteContent(ctx context.Context, database *sql.DB, viewer, id int64, draftOnly bool) error {
 	tx, err := BeginSocialWrite(ctx, database)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
-	table := "posts"
-	if kind == "comment" {
-		table = "comments"
-		if _, err := requireCommentAccess(ctx, tx, viewer, id, true); err != nil {
+	if err := requirePostAccess(ctx, tx, viewer, id, true); err != nil {
+		return err
+	}
+	if draftOnly {
+		var status string
+		if err := tx.QueryRowContext(ctx, `SELECT status FROM posts WHERE id=?`, id).Scan(&status); err != nil {
 			return err
 		}
-	} else {
-		if err := requirePostAccess(ctx, tx, viewer, id, true); err != nil {
-			return err
-		}
-		if draftOnly {
-			var status string
-			if err := tx.QueryRowContext(ctx, `SELECT status FROM posts WHERE id=?`, id).Scan(&status); err != nil {
-				return err
-			}
-			if status != "draft" {
-				return sql.ErrNoRows
-			}
+		if status != "draft" {
+			return sql.ErrNoRows
 		}
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM `+table+` WHERE id=?`, id); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM posts WHERE id=?`, id); err != nil {
 		return err
-	}
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-	fireSocialInvalidation()
-	if err := CleanupMedia(ctx, database, false); err != nil {
-		log.Printf("media cleanup deferred to restart: %v", err)
-	}
-	return nil
-}
-func socialUpdateComment(ctx context.Context, database *sql.DB, viewer, id int64, in UpdateCommentInput) error {
-	tx, err := BeginSocialWrite(ctx, database)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	if _, err := requireCommentAccess(ctx, tx, viewer, id, true); err != nil {
-		return err
-	}
-	sets := []string{"updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')"}
-	args := []any{}
-	if in.Body != nil {
-		sets = append(sets, "body=?")
-		args = append(args, *in.Body)
-	}
-	if in.HasImageUpdate {
-		if err := claimMediaTx(ctx, tx, viewer, "comment", id, in.ImageURL, 0); err != nil {
-			return err
-		}
-		sets = append(sets, "image_url=?")
-		args = append(args, in.ImageURL)
-	}
-	args = append(args, id)
-	if _, err := tx.ExecContext(ctx, `UPDATE comments SET `+strings.Join(sets, ",")+` WHERE id=?`, args...); err != nil {
-		return err
-	}
-	if in.HasImageUpdate {
-		if err := finishMediaClaimTx(ctx, tx, in.ImageURL); err != nil {
-			return err
-		}
 	}
 	if err := tx.Commit(); err != nil {
 		return err

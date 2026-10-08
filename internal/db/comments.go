@@ -4,6 +4,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -21,11 +22,25 @@ type Comment struct {
 	ParentCommentID *int64  `json:"parent_comment_id,omitempty"`
 	Body            string  `json:"body"`
 	ImageURL        *string `json:"image_url"`
+	Version         int64   `json:"version,omitempty"`
 	CreatedAt       string  `json:"created_at"`
 	UpdatedAt       string  `json:"updated_at,omitempty"`
 	Likes           int     `json:"likes"`
 	Dislikes        int     `json:"dislikes"`
 	MyReaction      int     `json:"my_reaction"`
+}
+
+// A stored version marks the social wire shape: parent_comment_id is always
+// present (null for top-level comments). Historical forum rows keep omitempty.
+func (c Comment) MarshalJSON() ([]byte, error) {
+	type alias Comment
+	if c.Version == 0 {
+		return json.Marshal(alias(c))
+	}
+	return json.Marshal(struct {
+		alias
+		ParentCommentID *int64 `json:"parent_comment_id"`
+	}{alias(c), c.ParentCommentID})
 }
 
 type ListCommentsParams struct {
@@ -50,7 +65,7 @@ func ListCommentsByPost(
 	viewerID int64,
 ) (ListCommentsResult, error) {
 	if viewer, ok := SocialViewer(ctx); ok {
-		return socialCommentPage(ctx, db, viewer, p.PostID, 0, p.Page, p.PerPage)
+		return socialCommentPage(ctx, db, viewer, p.PostID, p.Page, p.PerPage)
 	}
 
 	// use p not params
@@ -116,18 +131,6 @@ func CreateComment(
 	if _, err := tx.ExecContext(ctx, `UPDATE posts SET id=id WHERE 0`); err != nil {
 		return 0, err
 	}
-	viewer, social := SocialViewer(ctx)
-	if social {
-		if viewer != input.UserID {
-			return 0, sql.ErrNoRows
-		}
-		if err := requirePostAccess(ctx, tx, viewer, input.PostID, false); err != nil {
-			return 0, err
-		}
-		if err := claimMediaTx(ctx, tx, viewer, "comment", 0, input.ImageURL, 0); err != nil {
-			return 0, err
-		}
-	}
 	var owner int64
 	if err := tx.QueryRowContext(ctx, `SELECT author_id FROM posts WHERE id=?`, input.PostID).Scan(&owner); err != nil {
 		return 0, err
@@ -148,11 +151,6 @@ func CreateComment(
 	id, err := res.LastInsertId()
 	if err != nil {
 		return 0, err
-	}
-	if social {
-		if err := finishMediaClaimTx(ctx, tx, input.ImageURL); err != nil {
-			return 0, err
-		}
 	}
 	var announced bool
 	if owner != input.UserID {
@@ -257,10 +255,6 @@ type UpdateCommentInput struct {
 }
 
 func UpdateComment(ctx context.Context, db *sql.DB, id int64, in UpdateCommentInput) error {
-	if viewer, ok := SocialViewer(ctx); ok {
-		return socialUpdateComment(ctx, db, viewer, id, in)
-	}
-
 	setParts := []string{}
 	args := []any{}
 
@@ -295,9 +289,6 @@ func UpdateComment(ctx context.Context, db *sql.DB, id int64, in UpdateCommentIn
 ----------------*/
 
 func DeleteComment(ctx context.Context, db *sql.DB, id int64) error {
-	if viewer, ok := SocialViewer(ctx); ok {
-		return socialDeleteContent(ctx, db, viewer, id, "comment", false)
-	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
