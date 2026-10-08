@@ -4,20 +4,22 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 )
 
 type UserActivityCommentPost struct {
-	ID         int64          `json:"id"`
-	AuthorID   int64          `json:"author_id"`
-	Author     string         `json:"author"`
-	Title      string         `json:"title"`
-	ImageURL   *string        `json:"image_url"`
-	Categories []PostCategory `json:"categories"`
-	Likes      int            `json:"likes"`
-	Dislikes   int            `json:"dislikes"`
-	MyReaction int            `json:"my_reaction"`
+	NullableTitle *string        `json:"-"`
+	ID            int64          `json:"id"`
+	AuthorID      int64          `json:"author_id"`
+	Author        string         `json:"author"`
+	Title         string         `json:"title"`
+	ImageURL      *string        `json:"image_url"`
+	Categories    []PostCategory `json:"categories"`
+	Likes         int            `json:"likes"`
+	Dislikes      int            `json:"dislikes"`
+	MyReaction    int            `json:"my_reaction"`
 }
 
 type UserActivityComment struct {
@@ -33,7 +35,29 @@ type UserActivityComment struct {
 	Likes           int                     `json:"likes"`
 	Dislikes        int                     `json:"dislikes"`
 	MyReaction      int                     `json:"my_reaction"`
+	Version         int64                   `json:"version,omitempty"`
 	Post            UserActivityCommentPost `json:"post"`
+}
+
+// Social rows carry a comment version. Their nullable parent and parent-post
+// title use the social wire shape; historical rows keep the forum shape.
+func (c UserActivityComment) MarshalJSON() ([]byte, error) {
+	type alias UserActivityComment
+	if c.Version == 0 {
+		return json.Marshal(alias(c))
+	}
+	type postAlias UserActivityCommentPost
+	return json.Marshal(struct {
+		alias
+		ParentCommentID *int64 `json:"parent_comment_id"`
+		Post            struct {
+			postAlias
+			Title *string `json:"title"`
+		} `json:"post"`
+	}{alias: alias(c), ParentCommentID: c.ParentCommentID, Post: struct {
+		postAlias
+		Title *string `json:"title"`
+	}{postAlias(c.Post), c.Post.NullableTitle}})
 }
 
 type ListUserCommentsWithPostParams struct {
@@ -52,9 +76,6 @@ func ListUserCommentsWithPost(
 	db *sql.DB,
 	p ListUserCommentsWithPostParams,
 ) (ListUserCommentsWithPostResult, error) {
-	if viewer, ok := SocialViewer(ctx); ok {
-		return socialUserComments(ctx, db, viewer, p)
-	}
 	p.Page, p.PerPage = normalizePagination(p.Page, p.PerPage)
 
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)

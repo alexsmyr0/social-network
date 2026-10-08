@@ -15,6 +15,10 @@ import (
 -------------------------------------*/
 
 func (p *PostsHandler) HandleComment(w http.ResponseWriter, r *http.Request) {
+	if _, social := repository.SocialViewer(r.Context()); social {
+		p.socialCommentRoute(w, r)
+		return
+	}
 	commentID, action, ok := resolveCommentRoute(w, r)
 	if !ok {
 		return

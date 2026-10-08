@@ -43,6 +43,10 @@ func (u *UsersHandler) HandleUser(w http.ResponseWriter, r *http.Request) {
 			u.socialProfile(w, r, userID, parts[1])
 			return
 		}
+		if len(parts) == 2 && (parts[1] == "posts" || parts[1] == "comments") {
+			u.socialProfileContent(w, r, userID, parts[1] == "comments")
+			return
+		}
 		ownerID, authErr := middleware.GetUserID(r.Context())
 		if authErr != nil || ownerID != userID {
 			notFound(w, r)

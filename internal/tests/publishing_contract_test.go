@@ -12,6 +12,8 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -220,16 +222,43 @@ func seedPublishingFixture(t *testing.T, conn *sql.DB, state map[string]map[stri
 	}
 	for key, p := range state["posts"] {
 		fixtureExec(t, conn, `INSERT INTO posts(id,author_id,title,body,image_url,status,audience,content_version,created_at,updated_at)VALUES(?,?,?,?,?,?,?,?,?,?)`, key, p["author_id"], p["title"], p["body"], p["image_url"], p["status"], p["audience"], p["version"], p["created_at"], p["updated_at"])
-		for _, v := range p["categories"].([]any) {
+		categories, _ := p["categories"].([]any)
+		for _, v := range categories {
 			cat := v.(map[string]any)
 			fixtureExec(t, conn, `INSERT INTO post_categories VALUES(?,?)`, key, cat["id"])
 		}
-		for _, follow := range p["selected_follow_ids"].([]any) {
+		selected, _ := p["selected_follow_ids"].([]any)
+		for _, follow := range selected {
 			fixtureExec(t, conn, `INSERT INTO post_selected_followers VALUES(?,?)`, key, follow)
 		}
 	}
-	for key, c := range state["comments"] {
+	// Parents are inserted before nested replies, so foreign keys hold.
+	commentKeys := make([]string, 0, len(state["comments"]))
+	for key := range state["comments"] {
+		commentKeys = append(commentKeys, key)
+	}
+	sort.Slice(commentKeys, func(i, j int) bool {
+		a, _ := strconv.Atoi(commentKeys[i])
+		b, _ := strconv.Atoi(commentKeys[j])
+		return a < b
+	})
+	for _, key := range commentKeys {
+		c := state["comments"][key]
 		fixtureExec(t, conn, `INSERT INTO comments(id,post_id,user_id,parent_comment_id,body,image_url,content_version,created_at,updated_at)VALUES(?,?,?,?,?,?,?,?,?)`, key, c["post_id"], c["user_id"], c["parent_comment_id"], c["body"], c["image_url"], c["version"], c["created_at"], c["updated_at"])
+	}
+	for key, r := range state["reactions"] {
+		fixtureExec(t, conn, `INSERT INTO reactions(id,user_id,post_id,comment_id,value)VALUES(?,?,?,?,?)`, key, r["user_id"], r["post_id"], r["comment_id"], r["value"])
+	}
+	for key, n := range state["notifications"] {
+		fixtureExec(t, conn, `INSERT INTO notifications(id,recipient_id,actor_id,type,post_id,comment_id,is_read,created_at)VALUES(?,?,?,?,?,?,?,?)`, key, n["recipient_id"], n["actor_id"], n["type"], n["post_id"], n["comment_id"], n["is_read"], n["created_at"])
+	}
+	if len(state["categories"]) > 0 {
+		// The database seeds default categories; the fixture's category set is exact.
+		keep := []any{}
+		for key := range state["categories"] {
+			keep = append(keep, key)
+		}
+		fixtureExec(t, conn, `DELETE FROM categories WHERE id NOT IN (`+strings.TrimSuffix(strings.Repeat("?,", len(keep)), ",")+`)`, keep...)
 	}
 	for key, c := range state["categories"] {
 		fixtureExec(t, conn, `UPDATE categories SET name=?,created_at=? WHERE id=?`, c["name"], c["created_at"], key)
@@ -366,11 +395,18 @@ func publishingStateSnapshot(t *testing.T, conn *sql.DB) map[string]string {
 func assertPublishingFixtureState(t *testing.T, conn *sql.DB, expected map[string]map[string]map[string]any, viewer *int64) {
 	t.Helper()
 	for table, rows := range expected {
-		for id, fields := range rows {
-			actualTable := map[string]string{"posts": "posts", "comments": "comments", "media": "media_objects", "follows": "follows"}[table]
-			if actualTable == "" {
-				t.Fatalf("unsupported fixture postcondition table %s", table)
+		actualTable := map[string]string{"posts": "posts", "comments": "comments", "media": "media_objects", "follows": "follows", "reactions": "reactions", "notifications": "notifications"}[table]
+		if actualTable == "" {
+			t.Fatalf("unsupported fixture postcondition table %s", table)
+		}
+		if len(rows) == 0 {
+			// An empty table map asserts the table has no rows.
+			var count int
+			if err := conn.QueryRow(`SELECT COUNT(*) FROM ` + actualTable).Scan(&count); err != nil || count != 0 {
+				t.Fatalf("%s has %d rows, want none: %v", table, count, err)
 			}
+		}
+		for id, fields := range rows {
 			if fields == nil {
 				var count int
 				if err := conn.QueryRow(`SELECT COUNT(*) FROM `+actualTable+` WHERE id=?`, id).Scan(&count); err != nil || count != 0 {
@@ -413,7 +449,7 @@ func assertPublishingFixtureState(t *testing.T, conn *sql.DB, expected map[strin
 						}
 					} else {
 						// Fixture keys are data, never executable identifiers.
-						allowed := map[string]bool{"id": true, "author_id": true, "title": true, "body": true, "image_url": true, "status": true, "audience": true, "content_version": true, "created_at": true, "updated_at": true, "post_id": true, "user_id": true, "parent_comment_id": true, "state": true}
+						allowed := map[string]bool{"id": true, "author_id": true, "title": true, "body": true, "image_url": true, "status": true, "audience": true, "content_version": true, "created_at": true, "updated_at": true, "post_id": true, "user_id": true, "parent_comment_id": true, "state": true, "comment_id": true, "value": true, "is_read": true, "recipient_id": true, "actor_id": true, "type": true}
 						if !allowed[column] {
 							t.Fatalf("unsupported fixture field %s", key)
 						}
@@ -421,6 +457,9 @@ func assertPublishingFixtureState(t *testing.T, conn *sql.DB, expected map[strin
 							t.Fatal(err)
 						}
 					}
+				}
+				if key == "is_read" {
+					got = got == int64(1)
 				}
 				b, _ := json.Marshal(got)
 				var normalized any

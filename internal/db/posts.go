@@ -340,7 +340,7 @@ func UpdatePostStatus(ctx context.Context, db *sql.DB, postID, authorID int64, s
 
 func DeletePost(ctx context.Context, db *sql.DB, id int64) error {
 	if viewer, ok := SocialViewer(ctx); ok {
-		return socialDeleteContent(ctx, db, viewer, id, "post", false)
+		return socialDeleteContent(ctx, db, viewer, id, false)
 	}
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()

@@ -63,16 +63,14 @@ func TestSocialContentHTTPRoutePrivacyMatrix(t *testing.T) {
 		}
 	}
 	for viewer := 3; viewer <= 4; viewer++ {
-		for _, tc := range []struct{ method, path, body string }{{"POST", "/posts/10/comments", `{"body":"denied"}`}, {"POST", "/posts/10/like", ""}, {"POST", "/posts/10/dislike", ""}, {"POST", "/comments/20/like", ""}, {"POST", "/comments/20/dislike", ""}, {"PATCH", "/posts/10", `{"expected_version":1,"body":"denied"}`}, {"DELETE", "/posts/10?expected_version=1", ""}, {"PATCH", "/comments/20", `{"body":"denied"}`}, {"DELETE", "/comments/20", ""}} {
+		for _, tc := range []struct{ method, path, body string }{{"POST", "/posts/10/comments", `{"body":"denied"}`}, {"POST", "/posts/10/like", ""}, {"POST", "/posts/10/dislike", ""}, {"POST", "/comments/20/like", ""}, {"POST", "/comments/20/dislike", ""}, {"PATCH", "/posts/10", `{"expected_version":1,"body":"denied"}`}, {"DELETE", "/posts/10?expected_version=1", ""}, {"PATCH", "/comments/20", `{"expected_version":1,"body":"denied"}`}, {"DELETE", "/comments/20?expected_version=1", ""}} {
 			r := socialRequest(t, handler, tc.method, "/api/v1"+tc.path, "application/json", []byte(tc.body), tokens[viewer])
 			assertSocialCode(t, r, 404, "")
 		}
 	}
 	// Ownership cannot be inferred through editing a public foreign post/comment.
 	for _, path := range []string{"/posts/12", "/comments/21"} {
-		if strings.HasPrefix(path, "/posts/") {
-			path += "?expected_version=1"
-		}
+		path += "?expected_version=1"
 		r := socialRequest(t, handler, "DELETE", "/api/v1"+path, "", nil, tokens[2])
 		assertSocialCode(t, r, 404, "")
 	}

@@ -285,29 +285,12 @@ func (p *PostsHandler) createPost(w http.ResponseWriter, r *http.Request) {
 --------------------------------*/
 
 func (p *PostsHandler) HandlePost(w http.ResponseWriter, r *http.Request) {
-	postID, action, ok := resolvePostRoute(w, r)
-	if !ok {
+	if _, social := repository.SocialViewer(r.Context()); social {
+		p.socialPostRoute(w, r)
 		return
 	}
-
-	if _, social := repository.SocialViewer(r.Context()); social && action == "" {
-		raw := strings.TrimPrefix(r.URL.Path, "/api/v1/posts/")
-		var e *APIError
-		postID, e = socialID(raw)
-		if e != nil {
-			WriteError(w, r, e)
-			return
-		}
-		switch r.Method {
-		case http.MethodGet:
-			p.publishingDetail(w, r, postID)
-		case http.MethodPatch:
-			p.publishingWrite(w, r, postID, false)
-		case http.MethodDelete:
-			p.publishingDelete(w, r, postID, false)
-		default:
-			MethodNotAllowed(w, r)
-		}
+	postID, action, ok := resolvePostRoute(w, r)
+	if !ok {
 		return
 	}
 	if !p.guardContent(w, r, postID, "post", action == "" && (r.Method == http.MethodPatch || r.Method == http.MethodDelete)) {
@@ -670,6 +653,10 @@ func (p *PostsHandler) ListMyPosts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *PostsHandler) ListLikedPosts(w http.ResponseWriter, r *http.Request) {
+	if _, social := repository.SocialViewer(r.Context()); social {
+		p.socialHistory(w, r, repository.ReactionLike)
+		return
+	}
 	userID, ok := requireUserID(w, r)
 	if !ok {
 		return
@@ -709,6 +696,10 @@ func (p *PostsHandler) ListLikedPosts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *PostsHandler) ListDislikedPosts(w http.ResponseWriter, r *http.Request) {
+	if _, social := repository.SocialViewer(r.Context()); social {
+		p.socialHistory(w, r, repository.ReactionDislike)
+		return
+	}
 	userID, ok := requireUserID(w, r)
 	if !ok {
 		return

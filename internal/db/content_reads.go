@@ -68,34 +68,30 @@ func socialGetPost(ctx context.Context, database *sql.DB, viewer, id int64) (Pos
 	return p, tx.Commit()
 }
 func socialPostPage(ctx context.Context, database *sql.DB, viewer int64, page, per int, extra string, args ...any) (ListPostsResult, error) {
-	result := ListPostsResult{Posts: []Post{}}
-	page, per = normalizePagination(page, per)
 	tx, err := database.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return ListPostsResult{Posts: []Post{}}, err
+	}
+	defer tx.Rollback()
+	result, err := socialPostPageTx(ctx, tx, viewer, page, per, extra, args...)
 	if err != nil {
 		return result, err
 	}
-	defer tx.Rollback()
+	return result, tx.Commit()
+}
+
+// Count, paging and projections share the caller's snapshot. Plain ? placeholders
+// in extra must follow the numbered viewer placeholder used by contentPermission.
+func socialPostPageTx(ctx context.Context, tx *sql.Tx, viewer int64, page, per int, extra string, args ...any) (ListPostsResult, error) {
+	result := ListPostsResult{Posts: []Post{}}
+	page, per = normalizePagination(page, per)
 	values := append([]any{viewer}, args...)
 	from := ` FROM posts p JOIN users u ON u.id=p.author_id WHERE ` + contentPermission + extra
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*)`+from, values...).Scan(&result.Total); err != nil {
 		return result, err
 	}
 	params := append(append([]any{}, values...), per, (page-1)*per)
-	rows, err := tx.QueryContext(ctx, `SELECT p.id`+from+` ORDER BY p.created_at DESC,p.id DESC LIMIT ? OFFSET ?`, params...)
-	if err != nil {
-		return result, err
-	}
-	ids := []int64{}
-	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
-			rows.Close()
-			return result, err
-		}
-		ids = append(ids, id)
-	}
-	err = rows.Err()
-	rows.Close()
+	ids, err := queryIDs(ctx, tx, `SELECT p.id`+from+` ORDER BY p.created_at DESC,p.id DESC LIMIT ? OFFSET ?`, params...)
 	if err != nil {
 		return result, err
 	}
@@ -106,16 +102,32 @@ func socialPostPage(ctx context.Context, database *sql.DB, viewer int64, page, p
 		}
 		result.Posts = append(result.Posts, p)
 	}
-	return result, tx.Commit()
+	return result, nil
+}
+func queryIDs(ctx context.Context, tx *sql.Tx, query string, args ...any) ([]int64, error) {
+	rows, err := tx.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	ids := []int64{}
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 func socialCommentTx(ctx context.Context, tx *sql.Tx, viewer, id int64) (Comment, error) {
 	var c Comment
 	var parent sql.NullInt64
 	var image sql.NullString
-	err := tx.QueryRowContext(ctx, `SELECT c.id,c.post_id,c.user_id,c.parent_comment_id,c.body,c.image_url,c.created_at,c.updated_at
+	err := tx.QueryRowContext(ctx, `SELECT c.id,c.post_id,c.user_id,c.parent_comment_id,c.body,c.image_url,c.created_at,c.updated_at,c.content_version
  FROM comments c JOIN posts p ON p.id=c.post_id JOIN users u ON u.id=p.author_id
- JOIN users ca ON ca.id=c.user_id AND ca.is_active=1 WHERE c.id=?2 AND `+contentPermission, viewer, id).Scan(&c.ID, &c.PostID, &c.UserID, &parent, &c.Body, &image, &c.CreatedAt, &c.UpdatedAt)
+ JOIN users ca ON ca.id=c.user_id AND ca.is_active=1 WHERE c.id=?2 AND `+contentPermission, viewer, id).Scan(&c.ID, &c.PostID, &c.UserID, &parent, &c.Body, &image, &c.CreatedAt, &c.UpdatedAt, &c.Version)
 	if err != nil {
 		return c, err
 	}
@@ -146,61 +158,100 @@ func socialGetComment(ctx context.Context, database *sql.DB, viewer, id int64) (
 	}
 	return c, tx.Commit()
 }
-func socialCommentPage(ctx context.Context, database *sql.DB, viewer, post, user int64, page, per int) (ListCommentsResult, error) {
-	result := ListCommentsResult{Comments: []Comment{}}
+
+// Thread reads are oldest first; profile and activity histories are newest first.
+// Every list gates on the parent post (and an active commenter) before counting.
+func socialCommentListTx(ctx context.Context, tx *sql.Tx, viewer int64, where string, args []any, oldest bool, page, per int) ([]Comment, int, error) {
 	page, per = normalizePagination(page, per)
+	values := append([]any{viewer}, args...)
+	from := ` FROM comments c JOIN users ca ON ca.id=c.user_id AND ca.is_active=1 JOIN posts p ON p.id=c.post_id JOIN users u ON u.id=p.author_id WHERE ` + contentPermission + where
+	var total int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*)`+from, values...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	order := "DESC"
+	if oldest {
+		order = "ASC"
+	}
+	params := append(append([]any{}, values...), per, (page-1)*per)
+	ids, err := queryIDs(ctx, tx, `SELECT c.id`+from+` ORDER BY c.created_at `+order+`,c.id `+order+` LIMIT ? OFFSET ?`, params...)
+	if err != nil {
+		return nil, 0, err
+	}
+	comments := []Comment{}
+	for _, id := range ids {
+		c, err := socialCommentTx(ctx, tx, viewer, id)
+		if err != nil {
+			return nil, 0, err
+		}
+		comments = append(comments, c)
+	}
+	return comments, total, nil
+}
+func socialCommentPage(ctx context.Context, database *sql.DB, viewer, post int64, page, per int) (ListCommentsResult, error) {
+	result := ListCommentsResult{Comments: []Comment{}}
 	tx, err := database.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
 		return result, err
 	}
 	defer tx.Rollback()
-	if post != 0 {
-		if err := requirePostAccess(ctx, tx, viewer, post, false); err != nil {
-			return result, err
-		}
-	}
-	where := contentPermission + ` AND ca.is_active=1`
-	args := []any{viewer}
-	if post != 0 {
-		where += ` AND c.post_id=?`
-		args = append(args, post)
-	}
-	if user != 0 {
-		where += ` AND c.user_id=?`
-		args = append(args, user)
-	}
-	from := ` FROM comments c JOIN users ca ON ca.id=c.user_id JOIN posts p ON p.id=c.post_id JOIN users u ON u.id=p.author_id WHERE ` + where
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*)`+from, args...).Scan(&result.Total); err != nil {
+	if err := requirePostAccess(ctx, tx, viewer, post, false); err != nil {
 		return result, err
 	}
-	params := append(append([]any{}, args...), per, (page-1)*per)
-	rows, err := tx.QueryContext(ctx, `SELECT c.id`+from+` ORDER BY c.created_at DESC,c.id DESC LIMIT ? OFFSET ?`, params...)
+	result.Comments, result.Total, err = socialCommentListTx(ctx, tx, viewer, ` AND c.post_id=?`, []any{post}, true, page, per)
 	if err != nil {
 		return result, err
-	}
-	ids := []int64{}
-	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
-			rows.Close()
-			return result, err
-		}
-		ids = append(ids, id)
-	}
-	err = rows.Err()
-	rows.Close()
-	if err != nil {
-		return result, err
-	}
-	for _, id := range ids {
-		c, err := socialCommentTx(ctx, tx, viewer, id)
-		if err != nil {
-			return result, err
-		}
-		result.Comments = append(result.Comments, c)
 	}
 	return result, tx.Commit()
 }
+
+// beginProfileRead opens a read snapshot for a profile's content. A teaser,
+// inactive or unknown subject is indistinguishable from a missing resource.
+func beginProfileRead(ctx context.Context, database *sql.DB, viewer, subject int64) (*sql.Tx, error) {
+	tx, err := database.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return nil, err
+	}
+	allowed, err := CanViewProfile(ctx, tx, viewer, subject)
+	if err == nil && !allowed {
+		err = sql.ErrNoRows
+	}
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	return tx, nil
+}
+
+// SocialProfilePosts lists the subject's published posts the viewer may read.
+func SocialProfilePosts(ctx context.Context, database *sql.DB, viewer, subject int64, page, per int) (ListPostsResult, error) {
+	tx, err := beginProfileRead(ctx, database, viewer, subject)
+	if err != nil {
+		return ListPostsResult{Posts: []Post{}}, err
+	}
+	defer tx.Rollback()
+	result, err := socialPostPageTx(ctx, tx, viewer, page, per, ` AND p.status='published' AND p.author_id=?`, subject)
+	if err != nil {
+		return result, err
+	}
+	return result, tx.Commit()
+}
+
+// SocialProfileComments lists the subject's comments on published, readable posts.
+func SocialProfileComments(ctx context.Context, database *sql.DB, viewer, subject int64, page, per int) (ListCommentsResult, error) {
+	result := ListCommentsResult{Comments: []Comment{}}
+	tx, err := beginProfileRead(ctx, database, viewer, subject)
+	if err != nil {
+		return result, err
+	}
+	defer tx.Rollback()
+	result.Comments, result.Total, err = socialCommentListTx(ctx, tx, viewer, ` AND p.status='published' AND c.user_id=?`, []any{subject}, false, page, per)
+	if err != nil {
+		return result, err
+	}
+	return result, tx.Commit()
+}
+
 func socialCategoriesWithPosts(ctx context.Context, database *sql.DB, viewer int64) ([]CategoryWithPosts, error) {
 	tx, err := database.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
@@ -255,13 +306,27 @@ func socialCategoriesWithPosts(ctx context.Context, database *sql.DB, viewer int
 	}
 	return result, tx.Commit()
 }
-func socialNavigation(ctx context.Context, database *sql.DB, viewer, post, category int64) (*PostNavigation, error) {
+
+// PostNavigation neighbours are the older/newer published posts the viewer may
+// read that satisfy the same category and Following filters as the source.
+func socialNavigation(ctx context.Context, database *sql.DB, viewer, post, category int64, following bool) (*PostNavigation, error) {
 	tx, err := database.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback()
-	if err := requirePostAccess(ctx, tx, viewer, post, false); err != nil {
+	filter := ` AND p.status='published'`
+	args := []any{}
+	if category != 0 {
+		filter += ` AND EXISTS(SELECT 1 FROM post_categories pc WHERE pc.post_id=p.id AND pc.category_id=?)`
+		args = append(args, category)
+	}
+	if following {
+		filter += ` AND EXISTS(SELECT 1 FROM follows ff WHERE ff.follower_id=?1 AND ff.followed_id=p.author_id AND ff.state='accepted')`
+	}
+	var source int64
+	err = tx.QueryRowContext(ctx, `SELECT p.id FROM posts p JOIN users u ON u.id=p.author_id WHERE `+contentPermission+filter+` AND p.id=?`, append(append([]any{viewer}, args...), post)...).Scan(&source)
+	if err != nil {
 		return nil, err
 	}
 	var nav PostNavigation
@@ -270,9 +335,9 @@ func socialNavigation(ctx context.Context, database *sql.DB, viewer, post, categ
 		target     **int64
 	}{{"<", "DESC", &nav.PrevID}, {">", "ASC", &nav.NextID}} {
 		var id int64
-		err := tx.QueryRowContext(ctx, `SELECT p.id FROM posts p JOIN users u ON u.id=p.author_id JOIN post_categories pc ON pc.post_id=p.id
- WHERE pc.category_id=?2 AND p.status='published' AND `+contentPermission+` AND (p.created_at,p.id) `+dir.cmp+` (SELECT created_at,id FROM posts WHERE id=?3)
- ORDER BY p.created_at `+dir.order+`,p.id `+dir.order+` LIMIT 1`, viewer, category, post).Scan(&id)
+		err := tx.QueryRowContext(ctx, `SELECT p.id FROM posts p JOIN users u ON u.id=p.author_id
+ WHERE `+contentPermission+filter+` AND (p.created_at,p.id) `+dir.cmp+` (SELECT created_at,id FROM posts WHERE id=?)
+ ORDER BY p.created_at `+dir.order+`,p.id `+dir.order+` LIMIT 1`, append(append([]any{viewer}, args...), post)...).Scan(&id)
 		if err != nil && err != sql.ErrNoRows {
 			return nil, err
 		}
@@ -283,49 +348,82 @@ func socialNavigation(ctx context.Context, database *sql.DB, viewer, post, categ
 	return &nav, tx.Commit()
 }
 
-func socialUserComments(ctx context.Context, database *sql.DB, viewer int64, in ListUserCommentsWithPostParams) (ListUserCommentsWithPostResult, error) {
-	result := ListUserCommentsWithPostResult{Comments: []UserActivityComment{}}
-	if in.UserID != viewer {
-		return result, sql.ErrNoRows
+func activityComment(ctx context.Context, tx *sql.Tx, viewer int64, c Comment) (UserActivityComment, error) {
+	p, err := socialPostTx(ctx, tx, viewer, c.PostID)
+	if err != nil {
+		return UserActivityComment{}, err
 	}
-	page, per := normalizePagination(in.Page, in.PerPage)
+	return UserActivityComment{ID: c.ID, PostID: c.PostID, UserID: c.UserID, Username: c.Username, ParentCommentID: c.ParentCommentID, Body: c.Body, ImageURL: c.ImageURL, CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt, Likes: c.Likes, Dislikes: c.Dislikes, MyReaction: c.MyReaction, Version: c.Version,
+		Post: UserActivityCommentPost{ID: p.ID, AuthorID: p.AuthorID, Author: p.Author, Title: p.Title, NullableTitle: p.NullableTitle, ImageURL: p.ImageURL, Categories: p.Categories, Likes: p.Likes, Dislikes: p.Dislikes, MyReaction: p.MyReaction}}, nil
+}
+
+// SocialActivityResult is the owner's private history, read from one snapshot.
+// Every section counts and pages only content whose parent is readable now.
+type SocialActivityResult struct {
+	Created, Liked, Disliked ListPostsResult
+	Comments                 ListUserCommentsWithPostResult
+}
+
+func SocialActivity(ctx context.Context, database *sql.DB, viewer int64, page, per int, status *string) (SocialActivityResult, error) {
+	var result SocialActivityResult
 	tx, err := database.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
 		return result, err
 	}
 	defer tx.Rollback()
-	from := ` FROM comments c JOIN users ca ON ca.id=c.user_id JOIN posts p ON p.id=c.post_id JOIN users u ON u.id=p.author_id WHERE c.user_id=?1 AND ca.is_active=1 AND ` + contentPermission
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*)`+from, viewer).Scan(&result.Total); err != nil {
+	created, args := ` AND p.author_id=?`, []any{viewer}
+	if status != nil {
+		created += ` AND p.status=?`
+		args = append(args, *status)
+	}
+	if result.Created, err = socialPostPageTx(ctx, tx, viewer, page, per, created, args...); err != nil {
 		return result, err
 	}
-	rows, err := tx.QueryContext(ctx, `SELECT c.id`+from+` ORDER BY c.created_at DESC,c.id DESC LIMIT ?2 OFFSET ?3`, viewer, per, (page-1)*per)
-	if err != nil {
-		return result, err
-	}
-	ids := []int64{}
-	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
-			rows.Close()
-			return result, err
-		}
-		ids = append(ids, id)
-	}
-	err = rows.Err()
-	rows.Close()
-	if err != nil {
-		return result, err
-	}
-	for _, id := range ids {
-		c, err := socialCommentTx(ctx, tx, viewer, id)
+	for _, section := range []struct {
+		target *ListPostsResult
+		value  int
+	}{{&result.Liked, ReactionLike}, {&result.Disliked, ReactionDislike}} {
+		*section.target, err = socialPostPageTx(ctx, tx, viewer, page, per, ` AND EXISTS(SELECT 1 FROM reactions r WHERE r.post_id=p.id AND r.user_id=? AND r.value=?)`, viewer, section.value)
 		if err != nil {
 			return result, err
 		}
-		p, err := socialPostTx(ctx, tx, viewer, c.PostID)
+	}
+	comments, total, err := socialCommentListTx(ctx, tx, viewer, ` AND c.user_id=?`, []any{viewer}, false, page, per)
+	if err != nil {
+		return result, err
+	}
+	result.Comments = ListUserCommentsWithPostResult{Comments: []UserActivityComment{}, Total: total}
+	for _, c := range comments {
+		item, err := activityComment(ctx, tx, viewer, c)
 		if err != nil {
 			return result, err
 		}
-		result.Comments = append(result.Comments, UserActivityComment{ID: c.ID, PostID: c.PostID, UserID: c.UserID, Username: c.Username, ParentCommentID: c.ParentCommentID, Body: c.Body, ImageURL: c.ImageURL, CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt, Likes: c.Likes, Dislikes: c.Dislikes, MyReaction: c.MyReaction, Post: UserActivityCommentPost{ID: p.ID, AuthorID: p.AuthorID, Author: p.Author, Title: p.Title, ImageURL: p.ImageURL, Categories: p.Categories, Likes: p.Likes, Dislikes: p.Dislikes, MyReaction: p.MyReaction}})
+		result.Comments.Comments = append(result.Comments.Comments, item)
+	}
+	return result, tx.Commit()
+}
+
+func socialUserComments(ctx context.Context, database *sql.DB, viewer int64, in ListUserCommentsWithPostParams) (ListUserCommentsWithPostResult, error) {
+	result := ListUserCommentsWithPostResult{Comments: []UserActivityComment{}}
+	if in.UserID != viewer {
+		return result, sql.ErrNoRows
+	}
+	tx, err := database.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return result, err
+	}
+	defer tx.Rollback()
+	comments, total, err := socialCommentListTx(ctx, tx, viewer, ` AND c.user_id=?`, []any{viewer}, false, in.Page, in.PerPage)
+	if err != nil {
+		return result, err
+	}
+	result.Total = total
+	for _, c := range comments {
+		item, err := activityComment(ctx, tx, viewer, c)
+		if err != nil {
+			return result, err
+		}
+		result.Comments = append(result.Comments, item)
 	}
 	return result, tx.Commit()
 }

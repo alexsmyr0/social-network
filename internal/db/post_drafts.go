@@ -194,7 +194,7 @@ func DraftDelete(
 		if userID != viewer {
 			return sql.ErrNoRows
 		}
-		return socialDeleteContent(ctx, db, viewer, draftID, "post", true)
+		return socialDeleteContent(ctx, db, viewer, draftID, true)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)

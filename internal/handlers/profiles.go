@@ -63,19 +63,9 @@ func socialQuery(r *http.Request, pagination, search bool) (int, int, string, *A
 			return 0, 0, "", NewError("BAD_REQUEST", "invalid query", 400)
 		}
 	}
-	page, per := 1, 20
-	for _, v := range []struct {
-		key    string
-		target *int
-		max    int
-	}{{"page", &page, 1000000}, {"per_page", &per, 50}} {
-		if raw, ok := values[v.key]; ok {
-			n, e := socialID(raw[0])
-			if e != nil || n > int64(v.max) {
-				return 0, 0, "", NewError("BAD_REQUEST", "invalid pagination", 400)
-			}
-			*v.target = int(n)
-		}
+	page, per, e := socialPaging(values)
+	if e != nil {
+		return 0, 0, "", e
 	}
 	q := strings.TrimSpace(values.Get("q"))
 	if !utf8.ValidString(q) {
@@ -90,6 +80,26 @@ func socialQuery(r *http.Request, pagination, search bool) (int, int, string, *A
 		}
 	}
 	return page, per, q, nil
+}
+
+// socialPaging reads page (1–1,000,000, default 1) and per_page (1–50, default 20)
+// from an already validated query; invalid values are rejected, never clamped.
+func socialPaging(values url.Values) (int, int, *APIError) {
+	page, per := 1, 20
+	for _, v := range []struct {
+		key    string
+		target *int
+		max    int
+	}{{"page", &page, 1000000}, {"per_page", &per, 50}} {
+		if raw, ok := values[v.key]; ok {
+			n, e := socialID(raw[0])
+			if e != nil || n > int64(v.max) {
+				return 0, 0, NewError("BAD_REQUEST", "invalid pagination", 400)
+			}
+			*v.target = int(n)
+		}
+	}
+	return page, per, nil
 }
 func urlQuery(r *http.Request) (url.Values, *APIError) {
 	values, err := url.ParseQuery(r.URL.RawQuery)

@@ -7,7 +7,7 @@ export default defineConfig({
 		globals: true,
 		environment: 'node',
 		include: ['**/*.test.{js,mjs,ts}'],
-		exclude: ['node_modules/**', 'SPA/dist/**', 'SPA/tests/e2e/**'],
+		exclude: ['node_modules/**', '.tmp/**', 'SPA/dist/**', 'SPA/tests/e2e/**'],
 		coverage: {
 			provider: 'v8',
 			reporter: ['text-summary', 'lcov'],

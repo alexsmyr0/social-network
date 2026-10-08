@@ -71,7 +71,7 @@ func TestMediaOwnershipStagingReplacementAndEveryOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	comment, err := CreateComment(WithSocialViewer(ctx, 2), database, CreateCommentInput{PostID: id, UserID: 2, Body: "image", ImageURL: &commentURL})
+	comment, err := WriteDiscussionComment(ctx, database, 2, id, 0, CommentInput{Body: testText("image"), ImageURL: &commentURL, HasImage: true, UploadedImage: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestMediaOwnershipStagingReplacementAndEveryOwner(t *testing.T) {
 	}
 	assertMedia(t, database, 3, dmURL, data)
 	denyMedia(t, database, 1, dmURL)
-	mustExec(t, database, `UPDATE comments SET image_url=? WHERE id=?`, dmURL, comment)
+	mustExec(t, database, `UPDATE comments SET image_url=? WHERE id=?`, dmURL, comment.ID)
 	if err := DeletePost(owner, database, id); err != nil {
 		t.Fatal(err)
 	}
