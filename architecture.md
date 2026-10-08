@@ -10,6 +10,8 @@ This is the current Phase 1 structure. The [Zone01 requirements](docs/social-net
 
 SN-A09 adds People, social profiles and follower/following lists. SN-A10 adds the shared authenticated notification/request panel and one session-owned `/ws` connection with exponential backoff, focus/60-second recovery, empty-signal refetch and permission invalidation. The [frontend notification record](docs/social-network/frontend-notifications.md) describes lifecycle and ownership. These frontend features use the approved profile/notification contracts; SN-A11 owns their real-service Phase 2 acceptance.
 
+SN-A12 adds the audience-aware feed (`/feed`), composer (`/posts/new`), owner editor (`/posts/:id/edit`) and Your posts (`/posts/mine`) against the approved content contract. Shared publishing writes live in `content-state.js`, and protected feeds reuse the A09 resource lifecycle. The [frontend publishing record](docs/social-network/frontend-publishing.md) covers the behavior. SN-A14 owns real-service Phase 3 acceptance.
+
 ## Backend and data
 
 `cmd/backend/` starts the Go API. `internal/router/` wires HTTP routes, `internal/handlers/` handles requests, and `internal/db/` owns SQLite queries and startup migrations. Account/session behavior follows the [approved auth contract](docs/social-network/auth-contract.md), [storage decision](docs/social-network/data-decision.md) and [backend implementation records](docs/social-network/backend-accounts.md). Sessions are independent per device; logout revokes the presented session. Avatar bytes are backend-owned and retrieved through an authenticated route. The [backend image guide](docs/social-network/backend-image.md) describes persistent storage and image verification.

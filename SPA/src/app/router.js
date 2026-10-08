@@ -3,6 +3,11 @@ import { createRouter, createWebHistory } from 'vue-router';
 import LoginPage from '../features/auth/LoginPage.vue';
 import RegisterPage from '../features/auth/RegisterPage.vue';
 import { safeReturnPath } from '../features/auth/return-path.js';
+import ComposePage from '../features/content/ComposePage.vue';
+import { feedQuery, readFeedQuery, sameQuery } from '../features/content/content-utils.js';
+import EditPostPage from '../features/content/EditPostPage.vue';
+import FeedPage from '../features/content/FeedPage.vue';
+import MyPostsPage from '../features/content/MyPostsPage.vue';
 import NotFoundPage from '../features/migration/NotFoundPage.vue';
 import HomePage from '../features/shell/HomePage.vue';
 import FollowListPage from '../features/social/FollowListPage.vue';
@@ -15,6 +20,30 @@ export const routes = [
 		name: 'home',
 		component: HomePage,
 		meta: { title: 'Home', requiresAuth: true },
+	},
+	{
+		path: '/feed',
+		name: 'feed',
+		component: FeedPage,
+		meta: { title: 'Feed', requiresAuth: true },
+	},
+	{
+		path: '/posts/new',
+		name: 'compose',
+		component: ComposePage,
+		meta: { title: 'New post', requiresAuth: true },
+	},
+	{
+		path: '/posts/mine',
+		name: 'my-posts',
+		component: MyPostsPage,
+		meta: { title: 'Your posts', requiresAuth: true },
+	},
+	{
+		path: '/posts/:id([1-9]\\d*)/edit',
+		name: 'edit-post',
+		component: EditPostPage,
+		meta: { title: 'Edit post', requiresAuth: true },
 	},
 	{
 		path: '/people',
@@ -84,6 +113,17 @@ export function createAppRouter(history = createWebHistory(), session) {
 			return true;
 		});
 	}
+
+	// Malformed, repeated or unknown feed filters recover to the nearest valid
+	// route state, so a shared or hand-edited link always lands on a working
+	// view. Runs before views mount, so they never redirect themselves.
+	router.beforeEach((to) => {
+		if (to.name !== 'feed') return true;
+		const canonical = feedQuery(readFeedQuery(to.query));
+		return sameQuery(to.query, canonical)
+			? true
+			: { name: 'feed', query: canonical, replace: true };
+	});
 
 	router.afterEach((to) => {
 		if (typeof document !== 'undefined') {

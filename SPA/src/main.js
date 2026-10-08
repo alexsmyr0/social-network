@@ -3,6 +3,7 @@ import { createApp } from 'vue';
 import App from './app/App.vue';
 import { createAppRouter } from './app/router.js';
 import { createSessionState, sessionKey } from './features/auth/session-state.js';
+import { contentKey, createContentState } from './features/content/content-state.js';
 import {
 	createNotificationState,
 	notificationsKey,
@@ -12,6 +13,7 @@ import {
 	createUnauthenticatedHandler,
 	socialKey,
 } from './features/social/social-state.js';
+import './styles/content.css';
 import './styles/notifications.css';
 import './styles/main.css';
 import './styles/registration.css';
@@ -29,6 +31,7 @@ const social = createSocialState({
 });
 
 const notifications = createNotificationState({ session, social });
+const content = createContentState({ session, social });
 
 logoutChannel?.addEventListener('message', (event) => {
 	if (event.data !== 'logged-out') return;
@@ -45,5 +48,6 @@ app
 	.provide(sessionKey, session)
 	.provide(socialKey, social)
 	.provide(notificationsKey, notifications)
+	.provide(contentKey, content)
 	.use(router)
 	.mount('#app');

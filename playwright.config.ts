@@ -17,6 +17,7 @@ export default defineConfig({
 		'a05-session.test.js',
 		'a09-people.test.js',
 		'a10-notifications.test.js',
+		'a12-publishing.test.js',
 		'b07-transport.test.js',
 		'b13-media.test.js',
 	],

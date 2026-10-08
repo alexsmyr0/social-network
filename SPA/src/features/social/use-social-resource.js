@@ -9,8 +9,11 @@ const MODE_RANK = { quiet: 0, hard: 1, clear: 2 };
 // since-denied data. Route/query changes, window focus and server
 // invalidations discard the shown data before refetching; the 60-second
 // fallback and writes that retain access refetch quietly. A failed read never
-// leaves the previous protected details on screen.
-export function useSocialResource(load, { social, sources }) {
+// leaves the previous protected details on screen. `retain` keeps the last
+// result through invalidations for the viewer's own form inputs (categories,
+// own followers); source changes, session clears and failed reads still
+// discard it.
+export function useSocialResource(load, { social, sources, retain = false }) {
 	const status = ref('loading');
 	const result = shallowRef(null);
 	const failure = shallowRef(null);
@@ -43,7 +46,7 @@ export function useSocialResource(load, { social, sources }) {
 			discard('loading');
 			return;
 		}
-		if (mode === 'hard') discard('loading');
+		if (mode === 'hard' && !retain) discard('loading');
 		const outcome = await load();
 		if (!active || mine !== latest) return;
 		if (outcome.status === 'unauthenticated') {
@@ -58,7 +61,7 @@ export function useSocialResource(load, { social, sources }) {
 	// strongest requested mode wins.
 	function reload(mode = 'hard') {
 		latest += 1;
-		if (mode !== 'quiet') discard('loading');
+		if (mode === 'clear' || (mode === 'hard' && !retain)) discard('loading');
 		if (scheduled) {
 			if (MODE_RANK[mode] > MODE_RANK[scheduled.mode]) scheduled.mode = mode;
 			return scheduled.promise;
@@ -85,7 +88,14 @@ export function useSocialResource(load, { social, sources }) {
 		}, FALLBACK_REFETCH_MS);
 	}
 
-	if (sources) watch(sources, () => reload('hard'));
+	// A new source is a different subject (route, query or account), so even
+	// a retained result belongs to the old one.
+	if (sources) {
+		watch(sources, () => {
+			discard('loading');
+			reload('hard');
+		});
+	}
 	reload('hard');
 
 	onUnmounted(() => {
