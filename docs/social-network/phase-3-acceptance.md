@@ -54,3 +54,9 @@ On 2026-10-09, `make check` passed with **exit 0** on implementation commit `209
 ### Completion and handoff
 
 Local and hosted checks cover the same application/test implementation `209e2d0f714ae4946fd1469c88c2e7bb8391b704`. Subsequent completion changes update documentation only and pass fixture/link/anchor/status/dependency validation, docs-consistency **10/10**, and whitespace checks. All required Phase 3 acceptance surfaces and preserved bonuses have executable evidence above. SN-A14 is complete; SN-B17 may begin Phase 4 contracts. No group, event or chat implementation is claimed.
+
+### Post-upload correctness review — 2026-10-09
+
+The exact completion HEAD `3c78302c1f10643d1ad713572990d81715202563` also passed [hosted `make check` run 37915148676](https://github.com/alexsmyr0/social-network/actions/runs/37915148676): Vitest **1177/1177**, native browser **47/47**, integration **29/29**, with no browser retries. The subsequent review found two corrections: A17's evidence cell had accidentally received A14's completion text, and the matrix's negative browser-feed assertion could succeed before the feed loaded. A17 now retains its own future local/hosted gate; the matrix waits for a successfully rendered numeric post summary before checking presence or absence, so a loading/error screen cannot satisfy the denial check.
+
+After these corrections, `make test-browser PLAYWRIGHT_ARGS=a14` passed **13/13**, including real recreation, keyboard/mobile/desktop, outage and disposable cleanup. Log: `.tmp/a14-review-browser.log`. Biome, the 246-fixture/link/anchor/dependency/status validator, docs-consistency **10/10** and whitespace checks passed. Application/runtime interfaces are unchanged. The corrected revision's full hosted result is available in [PR #31 checks](https://github.com/alexsmyr0/social-network/pull/31/checks).

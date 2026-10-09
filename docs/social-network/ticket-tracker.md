@@ -90,7 +90,7 @@ Phase 5 has no tickets or approved messaging/event model yet; unanswered proposa
 | [ ] | [SN-B18](track-b.md#sn-b18--implement-groups-and-membership-transitions) | Implement groups and membership transitions | SN-B17 | SN-B19 | — |
 | [ ] | [SN-A16](track-a.md#sn-a16--extend-publishing-and-discussions-into-groups) | Extend publishing and discussions into groups | SN-A15 | SN-A17 | Frontend fixture gate; real services in SN-A17. |
 | [ ] | [SN-B19](track-b.md#sn-b19--enforce-membership-across-group-content) | Enforce membership across group content | SN-B18 | SN-A17 | — |
-| [ ] | [SN-A17](track-a.md#sn-a17--accept-groups-and-membership-end-to-end) | Accept groups and membership end to end | SN-A16, SN-B19 | None | [Real-service acceptance/evidence](phase-3-acceptance.md) on `chbaikas/A14`, implementation `209e2d0`: local and [hosted make check](https://github.com/alexsmyr0/social-network/actions/runs/37913944905) pass (Vitest 1177/1177, native browser 47/47, integration 29/29 including 13 A14). Complete audience/profile matrix, lifecycle/refollow, bonuses, retained bytes, desktop/360px and earlier-phase regressions pass; SN-B17 ready. |
+| [ ] | [SN-A17](track-a.md#sn-a17--accept-groups-and-membership-end-to-end) | Accept groups and membership end to end | SN-A16, SN-B19 | None | Local/hosted shared gates required. |
 
 ## Suggested two-developer sequence
 

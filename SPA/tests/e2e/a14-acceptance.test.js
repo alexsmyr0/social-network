@@ -264,6 +264,10 @@ test.describe('SN-A14 real Phase 3 acceptance', () => {
 							await checkDeniedMutations(actor, post);
 						}
 						await actor.page.goto('/feed');
+						// An empty loading/error screen must not satisfy the denial assertion.
+						await expect(actor.page.locator('.feed-view .social-status')).toHaveText(
+							/^\d+ posts?$/u,
+						);
 						await expect(actor.page.locator(`[data-post-id="${post.id}"]`)).toHaveCount(
 							allowed ? 1 : 0,
 						);
