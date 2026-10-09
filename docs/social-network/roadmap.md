@@ -80,7 +80,7 @@ SN-B10 supplies reviewed contracts/data mappings; SN-B11 implements profiles/rel
 
 SN-B14 supplies reviewed content/audience contracts and data mappings. SN-B15/B16 implement publishing, all audiences, protected interactions/activity and preserved bonuses; SN-A12/A13 deliver the Vue journeys. Follow/profile/audience changes affect future reads, writes and media consistently, including private histories, counts and notification excerpts. Migrations preserve earlier-phase data and files.
 
-[SN-A14](track-a.md#sn-a14--accept-publishing-audiences-and-preserved-features) requires every approved matrix case and scoped bonus to have real browser/API/media evidence, plus persistence and retained Phase 1–2 regressions. Groups/events/chat adaptations remain outside this exit. SN-A14 unlocks SN-B17 and Phase 4 execution.
+[SN-A14](track-a.md#sn-a14--accept-publishing-audiences-and-preserved-features) requires every approved matrix case and scoped bonus to have real browser/API/media evidence, plus persistence and retained Phase 1–2 regressions. Groups/events/chat adaptations remain outside this exit. SN-A14 unlocks SN-B17 and Phase 4 execution. The [completed Phase 3 acceptance record](phase-3-acceptance.md) maps these requirements to the passing local/hosted gates on implementation `209e2d0` (13 new real-service journeys, 29 integration journeys total).
 
 ## Phase 4 boundary and exit
 

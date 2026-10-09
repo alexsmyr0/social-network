@@ -1,0 +1,62 @@
+# Phase 3 integrated acceptance — SN-A14
+
+Implementation on `chbaikas/A14`, based on merged main `92df197` (A13 and B16 included). The [content contract](content-contract.md), [Phase 3 data plan](phase-3-data-plan.md) and [Phase 2–3 decisions](phase-2-3-decisions.md) control expectations. Status lives in the [tracker](ticket-tracker.md). The required local and hosted gates passed; SN-A14 is verified complete.
+
+## Execution boundary
+
+[Real-service A14 journeys](../../SPA/tests/e2e/a14-acceptance.test.js) use the existing [B07 two-image harness](shared-runtime.md). Each journey registers unique accounts through real HTTP into disposable SQLite/media storage. Independent browser contexts own real session cookies; no HTTP, socket, account, relationship, content or notice fixtures are mocked. The checked-in PNG is uploaded and compared byte-for-byte. Container recreation refuses any project outside the isolated `sn-b07-test-*` naming convention. Docker was already running; this work did not start the daemon. No shared deployment or CI architecture changes are needed.
+
+```bash
+make test-browser PLAYWRIGHT_ARGS=a14
+make test
+make test-images
+# The two preceding commands are the complete make check prerequisites.
+make check
+```
+
+A14 extends `playwright.integration.config.ts`; native frontend fixture tests remain in their existing configuration. The hosted PR gate runs the same `make check` with locked dependencies and Chromium.
+
+## Coverage and preserved features
+
+| Requirement or feature | Executable evidence |
+|---|---|
+| Public/private profiles × public/followers/selected audience | Six matrix journeys, each with author, selected follower, unselected follower, non-follower and pending role. Private profiles retain a real pending request. Public profiles automatically accept pending requests, so the former requester unfollows to exercise the approved non-follower cell. All 18 contract cells plus author are covered. |
+| Shared permission on every surface | Direct post/thread/comment/navigation/media, comment attachment bytes, feed and Following/category combination, profile posts/comments and totals, private histories/category summaries, recipient selection redaction, denied mutations/static aliases, anonymous media 401 and browser detail/feed checks. |
+| Audience and profile changes | Public→followers→selected→public; public↔private; live browser revocation, unfollow/refollow with new follow identity and empty selections, explicit reselection restores access. |
+| Drafts and publication | Incomplete real editor draft, save/reload, publish, edit, stale write rejection, unpublish/delete; separate lifecycle journey preserves nested comments and reactions through unpublish/republish. |
+| Optional titles/categories; image-only posts/comments | Matrix posts have null titles; recreation journey creates image-only post/comment; category-filtered feeds and summaries remain available. |
+| Nested comments and ownership/versioning | Real comment creation/edit, nested reply, versioned deletion and descendant cascade; exact-comment notification deep link. |
+| Likes/dislikes and activity | Same-action removal and opposite-action switch for post/comment reactions, private liked history, comment activity, hidden history filtering and restored counts after publication. |
+| Notifications | Real durable comment-reaction notice, exact target navigation, hidden list/read-all state during unpublish, same notice restored after republish. Existing A11 journeys retain socket reconnect, cross-tab read state, empty signals and recipient-only follow decisions. |
+| Hidden totals/navigation | Dedicated category/page-size-one journey checks hidden total difference, skips a hidden adjacent post, excludes category projections and restores total/navigation on audience expansion. |
+| Persistence and cleanup | Recreate both containers with retained storage: selected grants, draft post, comments, reaction and exact bytes survive; republish preserves restrictions; replacement invalidates old URL, removal retains text, deletion removes descendant access/bytes. A07/A11 retain account/session/avatar/follow/notice persistence. |
+| Earlier-phase upgrade and orphan recovery | Current native gate runs `TestContentMigrationPreservesPhase2DataAndBytes`, failure-boundary/dirty/corruption checks in `internal/db/content_migration_test.go`, and media recovery/orphan suites in `internal/db/media_test.go`. Existing image gate runs legacy media import/recovery, participant/static denial and restart. Migration fixtures execute at the database layer; browser accounts are real registrations. |
+| Keyboard/mobile/desktop/session cleanup | Real selected publishing and comment submission with keyboard, 360px/desktop screenshots, horizontal overflow assertions, logout/back and protected direct-entry checks. Existing native A12/A13 journeys retain broader UI error/loading/empty and conflict coverage. |
+
+Groups, events and chat adaptation remain outside Phase 3. The inherited DM media regression preserves existing participant access without deciding Phase 5 behavior.
+
+## Verification record — 2026-10-09
+
+The initial exploratory run found an acceptance assertion passing a null optional title to `toContain`; it was corrected to compare the unique post body. This was a test defect; no application behavior changed. The next focused run passed all **11/11** then-present A14 journeys, including both-image recreation, attachment cleanup and desktop/360px keyboard journeys. Local log: `.tmp/a14-focused-2.log`. The expanded exploratory `make test-images` run passed all **13/13 A14** journeys, the backend image smoke and legacy media recovery/static-denial smoke. Its overall result was **28/29**, because the concurrently running native Playwright gate removed shared `test-results` trace artifacts while an A11 API call used them (`ENOENT`). This was an execution error, not a passing complete image gate or an application failure. Final `make check` runs sequentially, matching normal local/CI use; its result is recorded separately below. Log: `.tmp/a14-images.log`.
+
+`make test` passed with exit 0: builds, Biome, gofmt, vet, native Go and configured race suites, Vitest **1177/1177**, native Playwright **47/47** without retries. Log: `.tmp/a14-native.log`. Visual inspection of `.tmp/a14-desktop.png` and `.tmp/a14-360px.png` confirmed readable selected-audience posts, comment controls, upload controls and no horizontal overflow; keyboard submission and logout/back protections passed.
+
+The first push attempt was rejected by automatic approval review because trust/authorization for the destination was not established. A read-only GitHub check confirmed the configured origin `alexsmyr0/social-network` is public and the authenticated project collaborator has WRITE permission. Approval review then allowed the same branch push; implementation commit `209e2d0` is published. Hosted `make check` subsequently passed; the completion record below unlocks B17. No second contract/fixture approval is required.
+
+### Final local gate
+
+On 2026-10-09, `make check` passed with **exit 0** on implementation commit `209e2d0` (subsequent working-tree edits are evidence documentation only). The serial gate passed builds, Biome, gofmt, vet, Go/migration/media suites and scoped race checks, Vitest **1177/1177**, native Playwright **47/47**, both image builds, backend account/session/avatar persistence smoke, legacy-media import/recovery/static denial, integration Playwright **29/29** including all **13/13 A14 journeys**, stopped-backend outage handling and disposable container/network/volume cleanup. No test retries or unexplained skips occurred. Log: `.tmp/a14-final-check.log`. The exploratory artifact collision did not recur when running the normal serial gate.
+
+### Hosted gate
+
+[PR #31](https://github.com/alexsmyr0/social-network/pull/31) triggers [CI run 37913944905](https://github.com/alexsmyr0/social-network/actions/runs/37913944905) on full implementation revision `209e2d0f714ae4946fd1469c88c2e7bb8391b704`. The fresh Ubuntu runner passed the complete `make check` gate: Go/build/format/lint/vet/race, Vitest **1177/1177**, native Playwright **47/47**, both image builds, backend persistence smoke, legacy media recovery/static denial, integration Playwright **29/29** including **13/13 A14**, outage and cleanup. No browser retries or unexplained skips occurred. The Go cache restore emitted a nonfatal tar warning; dependencies, builds and every check completed successfully. Downloaded log: `.tmp/a14-hosted-check.log`.
+
+### Completion and handoff
+
+Local and hosted checks cover the same application/test implementation `209e2d0f714ae4946fd1469c88c2e7bb8391b704`. Subsequent completion changes update documentation only and pass fixture/link/anchor/status/dependency validation, docs-consistency **10/10**, and whitespace checks. All required Phase 3 acceptance surfaces and preserved bonuses have executable evidence above. SN-A14 is complete; SN-B17 may begin Phase 4 contracts. No group, event or chat implementation is claimed.
+
+### Post-upload correctness review — 2026-10-09
+
+The exact completion HEAD `3c78302c1f10643d1ad713572990d81715202563` also passed [hosted `make check` run 37915148676](https://github.com/alexsmyr0/social-network/actions/runs/37915148676): Vitest **1177/1177**, native browser **47/47**, integration **29/29**, with no browser retries. The subsequent review found two corrections: A17's evidence cell had accidentally received A14's completion text, and the matrix's negative browser-feed assertion could succeed before the feed loaded. A17 now retains its own future local/hosted gate; the matrix waits for a successfully rendered numeric post summary before checking presence or absence, so a loading/error screen cannot satisfy the denial check.
+
+After these corrections, `make test-browser PLAYWRIGHT_ARGS=a14` passed **13/13**, including real recreation, keyboard/mobile/desktop, outage and disposable cleanup. Log: `.tmp/a14-review-browser.log`. Biome, the 246-fixture/link/anchor/dependency/status validator, docs-consistency **10/10** and whitespace checks passed. Application/runtime interfaces are unchanged. The corrected revision's full hosted result is available in [PR #31 checks](https://github.com/alexsmyr0/social-network/pull/31/checks).
