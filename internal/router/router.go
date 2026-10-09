@@ -163,6 +163,17 @@ func NewRouter(database *sql.DB, hub *ws.Hub) http.Handler {
 		socialRoute("/follows", users.Follow, http.MethodPost)
 		socialRoute("/follows/", users.RemoveFollow, http.MethodDelete)
 		socialRoute("/follow-requests/", users.DecideFollow, http.MethodPatch)
+
+		groups := handlers.NewGroupsHandler(database)
+		groupRoute := func(path string, fn http.HandlerFunc, methods ...string) {
+			mux.Handle(apiPrefix+path, middleware.AllowMethods(auth(fn), methods...))
+		}
+		groupRoute("/groups", groups.Groups, http.MethodGet, http.MethodPost)
+		groupRoute("/groups/", groups.GroupItem, http.MethodGet, http.MethodPost)
+		groupRoute("/group-invitations/", groups.DecideInvitation, http.MethodPatch)
+		groupRoute("/group-join-requests/", groups.DecideJoinRequest, http.MethodPatch)
+		groupRoute("/group-memberships/", groups.RemoveMembership, http.MethodDelete)
+		groupRoute("/users/me/group-invitations", groups.MyInvitations, http.MethodGet)
 	}
 
 	/*---------
@@ -337,6 +348,9 @@ func addMiddlewares(handler http.Handler, frontendOrigin string, socialSchema bo
 			methods := handlers.DiscussionMethods(r.URL.Path)
 			if methods == "" {
 				methods = handlers.PublishingMethods(r.URL.Path)
+			}
+			if methods == "" {
+				methods = handlers.GroupMethods(r.URL.Path)
 			}
 			if methods != "" && !strings.Contains(", "+methods+", ", ", "+r.Method+", ") {
 				w.Header().Set("Allow", methods)

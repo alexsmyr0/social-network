@@ -24,7 +24,9 @@ func contentPhase2Files(t *testing.T) fstest.MapFS {
 		t.Fatal(err)
 	}
 	for _, name := range names {
-		if strings.Contains(name, "000005_") {
+		// The phase-4 group migration builds on version 5, so the old-world
+		// fixture stops before both it and the content rebuild.
+		if strings.Contains(name, "000005_") || strings.Contains(name, "000006_") {
 			continue
 		}
 		b, err := migrationFS.ReadFile(name)
