@@ -44,8 +44,8 @@ test.describe('SN-A03 framework shell', () => {
 		page,
 		request,
 	}) => {
-		await page.goto('/posts/42');
-		await expect(page).toHaveURL(/\/posts\/42$/);
+		await page.goto('/edit-post/42');
+		await expect(page).toHaveURL(/\/edit-post\/42$/);
 		await expect(page.locator('[data-screen="route-unavailable"]')).toContainText(
 			'This forum route is resting.',
 		);

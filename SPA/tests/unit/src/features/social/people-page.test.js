@@ -552,6 +552,7 @@ describe('stale data and session changes', () => {
 			['Home', '/'],
 			['Feed', '/feed'],
 			['People', '/people'],
+			['Activity', '/activity'],
 			['Profile', '/users/7'],
 		]);
 		expect(wrapper.get('.site-nav a.router-link-active').text()).toBe('People');

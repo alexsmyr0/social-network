@@ -122,7 +122,7 @@ describe('framework shell', () => {
 
 	test('renders retired routes as a migration state without redirecting', async () => {
 		const { router, wrapper } = await mountAt(
-			'/posts/42',
+			'/edit-post/42',
 			vi.fn(async () => ({
 				ok: true,
 				status: 200,
@@ -130,7 +130,7 @@ describe('framework shell', () => {
 			})),
 		);
 
-		expect(router.currentRoute.value.fullPath).toBe('/posts/42');
+		expect(router.currentRoute.value.fullPath).toBe('/edit-post/42');
 		expect(wrapper.get('[data-screen="route-unavailable"]').text()).toContain(
 			'This forum route is resting.',
 		);

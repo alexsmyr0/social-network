@@ -310,3 +310,190 @@ export async function deleteDraft(postId, expectedVersion, fetchRef) {
 	const result = await send(path, { method: 'DELETE' }, fetchRef);
 	return result.status === 'ok' ? { status: 'ok' } : result;
 }
+
+// Discussions use the same transport, error mapping and checked media policy.
+export function normalizeComment(value) {
+	if (
+		!value ||
+		!isValidId(value.id) ||
+		!isValidId(value.post_id) ||
+		!isValidId(value.user_id) ||
+		typeof value.username !== 'string' ||
+		typeof value.body !== 'string' ||
+		!(value.parent_comment_id === null || isValidId(value.parent_comment_id)) ||
+		!isValidId(value.version) ||
+		typeof value.created_at !== 'string' ||
+		typeof value.updated_at !== 'string' ||
+		count(value.likes) === null ||
+		count(value.dislikes) === null ||
+		!REACTIONS.has(value.my_reaction)
+	)
+		return null;
+	return Object.fromEntries(
+		[
+			'id',
+			'post_id',
+			'user_id',
+			'username',
+			'parent_comment_id',
+			'body',
+			'version',
+			'created_at',
+			'updated_at',
+			'likes',
+			'dislikes',
+			'my_reaction',
+		]
+			.map((key) => [key, value[key]])
+			.concat([['image_url', safeMediaUrl(value.image_url)]]),
+	);
+}
+function commentResult(result) {
+	if (result.status !== 'ok') return result;
+	const comment = normalizeComment(result.data);
+	return comment ? { status: 'ok', comment } : { status: 'unavailable' };
+}
+function listQuery({ page = 1, perPage } = {}) {
+	return query([
+		['page', page > 1 ? page : null],
+		['per_page', perPage],
+	]);
+}
+function commentList(result) {
+	if (result.status !== 'ok') return result;
+	const comments = Array.isArray(result.data) ? result.data.map(normalizeComment) : null;
+	const pagination = normalizePagination(result.meta);
+	return comments && !comments.includes(null) && pagination
+		? { status: 'ok', comments, pagination }
+		: { status: 'unavailable' };
+}
+export async function fetchComments(id, options = {}, fetchRef) {
+	return commentList(await send(`/posts/${id}/comments${listQuery(options)}`, {}, fetchRef));
+}
+export async function fetchComment(id, fetchRef) {
+	return commentResult(await send(`/comments/${id}`, {}, fetchRef));
+}
+function commentBody(fields) {
+	const wire = {};
+	if (fields.body !== undefined) wire.body = fields.body;
+	if (fields.parentCommentId !== undefined) wire.parent_comment_id = fields.parentCommentId;
+	if (fields.expectedVersion !== undefined) wire.expected_version = fields.expectedVersion;
+	if (fields.removeImage) wire.remove_image = true;
+	if (fields.image instanceof Blob) {
+		if (wire.parent_comment_id === null) delete wire.parent_comment_id;
+		return { form: multipart(wire, fields.image) };
+	}
+	return { json: wire };
+}
+export async function createComment(id, fields, fetchRef) {
+	return commentResult(
+		await send(`/posts/${id}/comments`, { method: 'POST', ...commentBody(fields) }, fetchRef),
+	);
+}
+export async function updateComment(id, fields, fetchRef) {
+	return commentResult(
+		await send(`/comments/${id}`, { method: 'PATCH', ...commentBody(fields) }, fetchRef),
+	);
+}
+export async function deleteComment(id, version, fetchRef) {
+	const result = await send(
+		`/comments/${id}${query([['expected_version', version]])}`,
+		{ method: 'DELETE' },
+		fetchRef,
+	);
+	return result.status === 'ok' ? { status: 'ok' } : result;
+}
+export async function reactToContent(kind, id, reaction, fetchRef) {
+	if (!['posts', 'comments'].includes(kind) || !['like', 'dislike'].includes(reaction))
+		return { status: 'rejected' };
+	const result = await send(`/${kind}/${id}/${reaction}`, { method: 'POST' }, fetchRef);
+	if (result.status !== 'ok') return result;
+	const data = result.data;
+	const key = kind === 'posts' ? 'post_id' : 'comment_id';
+	return data?.[key] === id &&
+		REACTIONS.has(data.reaction) &&
+		count(data.likes_count) !== null &&
+		count(data.dislikes_count) !== null
+		? {
+				status: 'ok',
+				reaction: data.reaction,
+				likes: data.likes_count,
+				dislikes: data.dislikes_count,
+			}
+		: { status: 'unavailable' };
+}
+export async function fetchNavigation(id, { feed = 'all', categoryId = null } = {}, fetchRef) {
+	const result = await send(
+		`/posts/${id}/nav${query([
+			['category_id', categoryId],
+			['feed', feed === 'following' ? feed : null],
+		])}`,
+		{},
+		fetchRef,
+	);
+	if (result.status !== 'ok') return result;
+	const data = result.data;
+	const nullableId = (value) => value === null || isValidId(value);
+	return data && ['category_id', 'prev_id', 'next_id'].every((key) => nullableId(data[key]))
+		? {
+				status: 'ok',
+				navigation: { category_id: data.category_id, prev_id: data.prev_id, next_id: data.next_id },
+			}
+		: { status: 'unavailable' };
+}
+export async function fetchProfilePosts(id, options = {}, fetchRef) {
+	return postList(await send(`/users/${id}/posts${listQuery(options)}`, {}, fetchRef));
+}
+export async function fetchProfileComments(id, options = {}, fetchRef) {
+	return commentList(await send(`/users/${id}/comments${listQuery(options)}`, {}, fetchRef));
+}
+function activityComment(value) {
+	const comment = normalizeComment(value);
+	const post = value?.post;
+	const categories = normalizeCategories(post?.categories);
+	if (
+		!comment ||
+		!post ||
+		!isValidId(post.id) ||
+		post.id !== comment.post_id ||
+		!isValidId(post.author_id) ||
+		typeof post.author !== 'string' ||
+		!(post.title === null || typeof post.title === 'string') ||
+		!categories ||
+		count(post.likes) === null ||
+		count(post.dislikes) === null ||
+		!REACTIONS.has(post.my_reaction)
+	)
+		return null;
+	return {
+		...comment,
+		post: {
+			id: post.id,
+			author_id: post.author_id,
+			author: post.author,
+			title: post.title,
+			image_url: safeMediaUrl(post.image_url),
+			categories,
+			likes: post.likes,
+			dislikes: post.dislikes,
+			my_reaction: post.my_reaction,
+		},
+	};
+}
+export async function fetchActivity({ status = 'all', ...options } = {}, fetchRef) {
+	const params = new URLSearchParams(listQuery(options).slice(1));
+	if (status !== 'all') params.set('status', status);
+	const result = await send(`/users/activity${params.size ? `?${params}` : ''}`, {}, fetchRef);
+	if (result.status !== 'ok') return result;
+	const activity = {};
+	for (const key of ['created_posts', 'liked_posts', 'disliked_posts', 'comments']) {
+		const section = result.data?.[key];
+		const items = Array.isArray(section?.items)
+			? section.items.map(key === 'comments' ? activityComment : normalizePost)
+			: null;
+		const pagination = normalizePagination({ pagination: section?.pagination });
+		if (!items || items.includes(null) || !pagination) return { status: 'unavailable' };
+		activity[key] = { items, pagination };
+	}
+	return { status: 'ok', activity };
+}

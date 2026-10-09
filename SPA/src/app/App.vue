@@ -77,6 +77,7 @@ async function retrySession() {
 					<RouterLink to="/">Home</RouterLink>
 					<RouterLink :to="{ name: 'feed' }">Feed</RouterLink>
 					<RouterLink :to="{ name: 'people' }">People</RouterLink>
+					<RouterLink :to="{name:'activity'}">Activity</RouterLink>
 					<RouterLink :to="{ name: 'profile', params: { id: session.state.account.id } }">Profile</RouterLink>
 					<span class="site-nav__identity">{{ session.state.account.display_name }}</span>
 					<button class="site-nav__logout" type="button" :disabled="session.state.logoutPending" @click="signOut">

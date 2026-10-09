@@ -3,8 +3,10 @@ import { createRouter, createWebHistory } from 'vue-router';
 import LoginPage from '../features/auth/LoginPage.vue';
 import RegisterPage from '../features/auth/RegisterPage.vue';
 import { safeReturnPath } from '../features/auth/return-path.js';
+import ActivityPage from '../features/content/ActivityPage.vue';
 import ComposePage from '../features/content/ComposePage.vue';
 import { feedQuery, readFeedQuery, sameQuery } from '../features/content/content-utils.js';
+import DiscussionPage from '../features/content/DiscussionPage.vue';
 import EditPostPage from '../features/content/EditPostPage.vue';
 import FeedPage from '../features/content/FeedPage.vue';
 import MyPostsPage from '../features/content/MyPostsPage.vue';
@@ -15,6 +17,24 @@ import PeoplePage from '../features/social/PeoplePage.vue';
 import ProfilePage from '../features/social/ProfilePage.vue';
 
 export const routes = [
+	{
+		path: '/posts/:id([1-9]\\d*)',
+		name: 'post',
+		component: DiscussionPage,
+		meta: { title: 'Discussion', requiresAuth: true },
+	},
+	{
+		path: '/comments/:id([1-9]\\d*)',
+		name: 'comment',
+		component: DiscussionPage,
+		meta: { title: 'Comment', requiresAuth: true },
+	},
+	{
+		path: '/activity',
+		name: 'activity',
+		component: ActivityPage,
+		meta: { title: 'Your activity', requiresAuth: true },
+	},
 	{
 		path: '/',
 		name: 'home',

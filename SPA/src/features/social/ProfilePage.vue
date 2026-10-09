@@ -3,6 +3,8 @@ import { computed, inject } from 'vue';
 import { useRoute } from 'vue-router';
 
 // biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
+import ActivityPanel from '../content/ActivityPanel.vue';
+// biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
 import FollowControl from './FollowControl.vue';
 // biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
 import PrivacyControl from './PrivacyControl.vue';
@@ -104,6 +106,8 @@ const details = computed(() => {
 				</nav>
 
 				<PrivacyControl v-if="owner" :profile="subject.profile" />
+				<RouterLink v-if="owner" class="text-link" :to="{name:'activity'}">Your private activity</RouterLink>
+				<ActivityPanel :user-id="subject.id" />
 			</template>
 		</template>
 	</section>
