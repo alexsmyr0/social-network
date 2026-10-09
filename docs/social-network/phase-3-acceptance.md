@@ -1,6 +1,6 @@
 # Phase 3 integrated acceptance — SN-A14
 
-Implementation on `chbaikas/A14`, based on merged main `92df197` (A13 and B16 included). The [content contract](content-contract.md), [Phase 3 data plan](phase-3-data-plan.md) and [Phase 2–3 decisions](phase-2-3-decisions.md) control expectations. Status lives in the [tracker](ticket-tracker.md). Acceptance remains in progress until the required local and hosted gates pass.
+Implementation on `chbaikas/A14`, based on merged main `92df197` (A13 and B16 included). The [content contract](content-contract.md), [Phase 3 data plan](phase-3-data-plan.md) and [Phase 2–3 decisions](phase-2-3-decisions.md) control expectations. Status lives in the [tracker](ticket-tracker.md). The required local and hosted gates passed; SN-A14 is verified complete.
 
 ## Execution boundary
 
@@ -37,4 +37,20 @@ Groups, events and chat adaptation remain outside Phase 3. The inherited DM medi
 
 ## Verification record — 2026-10-09
 
-The initial exploratory run found an acceptance assertion passing a null optional title to `toContain`; it was corrected to compare the unique post body. This was a test defect; no application behavior changed. The next focused run passed all **11/11** then-present A14 journeys, including both-image recreation, attachment cleanup and desktop/360px keyboard journeys. Local log: `.tmp/a14-focused-2.log`. Two additional focused journeys now cover the real draft editor and filtered totals/navigation; their final results and complete local/hosted records will be recorded after execution. No hosted success or final acceptance is claimed yet.
+The initial exploratory run found an acceptance assertion passing a null optional title to `toContain`; it was corrected to compare the unique post body. This was a test defect; no application behavior changed. The next focused run passed all **11/11** then-present A14 journeys, including both-image recreation, attachment cleanup and desktop/360px keyboard journeys. Local log: `.tmp/a14-focused-2.log`. The expanded exploratory `make test-images` run passed all **13/13 A14** journeys, the backend image smoke and legacy media recovery/static-denial smoke. Its overall result was **28/29**, because the concurrently running native Playwright gate removed shared `test-results` trace artifacts while an A11 API call used them (`ENOENT`). This was an execution error, not a passing complete image gate or an application failure. Final `make check` runs sequentially, matching normal local/CI use; its result is recorded separately below. Log: `.tmp/a14-images.log`.
+
+`make test` passed with exit 0: builds, Biome, gofmt, vet, native Go and configured race suites, Vitest **1177/1177**, native Playwright **47/47** without retries. Log: `.tmp/a14-native.log`. Visual inspection of `.tmp/a14-desktop.png` and `.tmp/a14-360px.png` confirmed readable selected-audience posts, comment controls, upload controls and no horizontal overflow; keyboard submission and logout/back protections passed.
+
+The first push attempt was rejected by automatic approval review because trust/authorization for the destination was not established. A read-only GitHub check confirmed the configured origin `alexsmyr0/social-network` is public and the authenticated project collaborator has WRITE permission. Approval review then allowed the same branch push; implementation commit `209e2d0` is published. Hosted `make check` subsequently passed; the completion record below unlocks B17. No second contract/fixture approval is required.
+
+### Final local gate
+
+On 2026-10-09, `make check` passed with **exit 0** on implementation commit `209e2d0` (subsequent working-tree edits are evidence documentation only). The serial gate passed builds, Biome, gofmt, vet, Go/migration/media suites and scoped race checks, Vitest **1177/1177**, native Playwright **47/47**, both image builds, backend account/session/avatar persistence smoke, legacy-media import/recovery/static denial, integration Playwright **29/29** including all **13/13 A14 journeys**, stopped-backend outage handling and disposable container/network/volume cleanup. No test retries or unexplained skips occurred. Log: `.tmp/a14-final-check.log`. The exploratory artifact collision did not recur when running the normal serial gate.
+
+### Hosted gate
+
+[PR #31](https://github.com/alexsmyr0/social-network/pull/31) triggers [CI run 37913944905](https://github.com/alexsmyr0/social-network/actions/runs/37913944905) on full implementation revision `209e2d0f714ae4946fd1469c88c2e7bb8391b704`. The fresh Ubuntu runner passed the complete `make check` gate: Go/build/format/lint/vet/race, Vitest **1177/1177**, native Playwright **47/47**, both image builds, backend persistence smoke, legacy media recovery/static denial, integration Playwright **29/29** including **13/13 A14**, outage and cleanup. No browser retries or unexplained skips occurred. The Go cache restore emitted a nonfatal tar warning; dependencies, builds and every check completed successfully. Downloaded log: `.tmp/a14-hosted-check.log`.
+
+### Completion and handoff
+
+Local and hosted checks cover the same application/test implementation `209e2d0f714ae4946fd1469c88c2e7bb8391b704`. Subsequent completion changes update documentation only and pass fixture/link/anchor/status/dependency validation, docs-consistency **10/10**, and whitespace checks. All required Phase 3 acceptance surfaces and preserved bonuses have executable evidence above. SN-A14 is complete; SN-B17 may begin Phase 4 contracts. No group, event or chat implementation is claimed.
