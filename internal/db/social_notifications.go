@@ -15,13 +15,23 @@ type NoticeTarget struct {
 	CommentID *int64  `json:"comment_id,omitempty"`
 	Title     *string `json:"title,omitempty"`
 	Excerpt   *string `json:"excerpt,omitempty"`
+	// Group invitation/request notices carry the exact entry identity and the
+	// public group reference; resolved entries keep their historical ID here.
+	InvitationID *int64       `json:"invitation_id,omitempty"`
+	RequestID    *int64       `json:"request_id,omitempty"`
+	Group        *NoticeGroup `json:"group,omitempty"`
+}
+
+type NoticeGroup struct {
+	ID    int64  `json:"id"`
+	Title string `json:"title"`
 }
 
 // Content targets always carry the current nullable post title; follow-request
-// targets never do.
+// and group targets never do.
 func (t NoticeTarget) MarshalJSON() ([]byte, error) {
 	type alias NoticeTarget
-	if t.Kind == "follow_request" {
+	if t.Kind == "follow_request" || strings.HasPrefix(t.Kind, "group_") {
 		return json.Marshal(alias(t))
 	}
 	return json.Marshal(struct {
@@ -51,13 +61,28 @@ type SocialNotificationsPage struct {
 const noticeJoins = ` FROM notifications n
  JOIN users a ON a.id=n.actor_id AND a.is_active=1
  JOIN users v ON v.id=n.recipient_id AND v.is_active=1
+ LEFT JOIN groups g ON g.id=n.group_id
  LEFT JOIN comments c ON c.id=n.comment_id
  LEFT JOIN posts p ON p.id=COALESCE(n.post_id,c.post_id)
  LEFT JOIN users u ON u.id=p.author_id `
 
-var visibleNotice = `n.recipient_id=? AND (n.type='follow_request' OR
+// Group invitation/request notices belong to their recipient and stay listable
+// after membership loss: they reveal only public group metadata, never content.
+var visibleNotice = `n.recipient_id=? AND (n.type IN ('follow_request','group_invitation','group_join_request') OR
  (p.id IS NOT NULL AND p.status='published' AND ` + strings.ReplaceAll(contentPermission, "?1", "n.recipient_id") + `
  AND (c.id IS NULL OR EXISTS(SELECT 1 FROM users ca WHERE ca.id=c.user_id AND ca.is_active=1))))`
+
+// A group notice is actionable only while its exact entry still exists for the
+// recipient: the invitee of a live invitation whose inviter is still an active
+// member, or the creator holding a live request from that requester.
+const groupActionable = `CASE n.type
+ WHEN 'group_invitation' THEN EXISTS(SELECT 1 FROM group_invitations i
+   JOIN group_memberships im ON im.group_id=i.group_id AND im.user_id=i.inviter_id
+   JOIN users iu ON iu.id=im.user_id AND iu.is_active=1
+   WHERE i.id=n.group_entry_id AND i.invitee_id=n.recipient_id AND i.group_id=n.group_id)
+ WHEN 'group_join_request' THEN EXISTS(SELECT 1 FROM group_join_requests r JOIN groups rg ON rg.id=r.group_id
+   WHERE r.id=n.group_entry_id AND rg.creator_id=n.recipient_id AND r.requester_id=n.actor_id)
+ ELSE 0 END`
 
 func ListSocialNotifications(ctx context.Context, database *sql.DB, viewer int64, page, perPage int) (SocialNotificationsPage, error) {
 	result := SocialNotificationsPage{Notifications: []SocialNotice{}}
@@ -70,7 +95,8 @@ func ListSocialNotifications(ctx context.Context, database *sql.DB, viewer int64
 		return result, err
 	}
 	rows, err := tx.QueryContext(ctx, `SELECT n.id,n.type,n.created_at,n.is_read,n.actor_id,n.follow_id,n.follow_state,p.id,n.comment_id,p.title,c.body,
- EXISTS(SELECT 1 FROM follows f WHERE f.id=n.follow_id AND f.follower_id=n.actor_id AND f.followed_id=n.recipient_id AND f.state='pending')`+noticeJoins+`WHERE `+visibleNotice+` ORDER BY n.created_at DESC,n.id DESC LIMIT ? OFFSET ?`, viewer, perPage, (page-1)*perPage)
+ EXISTS(SELECT 1 FROM follows f WHERE f.id=n.follow_id AND f.follower_id=n.actor_id AND f.followed_id=n.recipient_id AND f.state='pending'),
+ n.group_id,n.group_entry_id,n.group_state,g.title,`+groupActionable+noticeJoins+`WHERE `+visibleNotice+` ORDER BY n.created_at DESC,n.id DESC LIMIT ? OFFSET ?`, viewer, perPage, (page-1)*perPage)
 	if err != nil {
 		return result, err
 	}
@@ -81,10 +107,10 @@ func ListSocialNotifications(ctx context.Context, database *sql.DB, viewer int64
 	items := []item{}
 	for rows.Next() {
 		var x item
-		var follow, post, comment sql.NullInt64
-		var state, title, body sql.NullString
-		var actionable bool
-		if err := rows.Scan(&x.notice.ID, &x.notice.Type, &x.notice.CreatedAt, &x.notice.IsRead, &x.actor, &follow, &state, &post, &comment, &title, &body, &actionable); err != nil {
+		var follow, post, comment, group, entry sql.NullInt64
+		var state, title, body, groupState, groupTitle sql.NullString
+		var actionable, groupLive bool
+		if err := rows.Scan(&x.notice.ID, &x.notice.Type, &x.notice.CreatedAt, &x.notice.IsRead, &x.actor, &follow, &state, &post, &comment, &title, &body, &actionable, &group, &entry, &groupState, &groupTitle, &groupLive); err != nil {
 			rows.Close()
 			return result, err
 		}
@@ -94,6 +120,16 @@ func ListSocialNotifications(ctx context.Context, database *sql.DB, viewer int64
 			n.Target = NoticeTarget{Kind: "follow_request", FollowID: &follow.Int64, State: state.String}
 			if state.String == "pending" && actionable {
 				n.Actions = []string{"accept", "decline"}
+			}
+		} else if n.Type == "group_invitation" || n.Type == "group_join_request" {
+			n.Target = NoticeTarget{Kind: n.Type, State: groupState.String, Group: &NoticeGroup{ID: group.Int64, Title: groupTitle.String}}
+			if n.Type == "group_invitation" {
+				n.Target.InvitationID = &entry.Int64
+			} else {
+				n.Target.RequestID = &entry.Int64
+			}
+			if groupState.String == "pending" && groupLive {
+				n.Actions = []string{"accept", "refuse"}
 			}
 		} else {
 			n.Target = NoticeTarget{Kind: "post", PostID: &post.Int64}

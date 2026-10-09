@@ -58,6 +58,12 @@ func socialQuery(r *http.Request, pagination, search bool) (int, int, string, *A
 	if err != nil {
 		return 0, 0, "", err
 	}
+	return socialQueryValues(values, pagination, search)
+}
+
+// socialQueryValues validates an already parsed query: every key appears once
+// and only allowed keys are accepted. Routes with extra keys remove them first.
+func socialQueryValues(values url.Values, pagination, search bool) (int, int, string, *APIError) {
 	for k, v := range values {
 		if len(v) != 1 || !(pagination && (k == "page" || k == "per_page") || search && k == "q") {
 			return 0, 0, "", NewError("BAD_REQUEST", "invalid query", 400)
@@ -130,6 +136,19 @@ func socialError(w http.ResponseWriter, r *http.Request, err error) {
 		e = NewError("STALE_FOLLOW", "Relationship changed; refresh before acting", 409)
 	case errors.Is(err, db.ErrStaleProfile):
 		e = NewError("STALE_PROFILE", "Profile changed; refresh before acting", 409)
+	case errors.Is(err, db.ErrStaleInvitation):
+		e = NewError("STALE_INVITATION", "Invitation changed; refresh before acting", 409)
+	case errors.Is(err, db.ErrStaleJoinRequest):
+		e = NewError("STALE_JOIN_REQUEST", "Request changed; refresh before acting", 409)
+	case errors.Is(err, db.ErrStaleMembership):
+		e = NewError("STALE_MEMBERSHIP", "Membership changed; refresh before acting", 409)
+	case errors.Is(err, db.ErrAlreadyMember):
+		e = NewError("ALREADY_MEMBER", "Already a member", 409)
+	case errors.Is(err, db.ErrCreatorCannotLeave):
+		e = NewError("CREATOR_CANNOT_LEAVE", "The creator cannot leave the group", 409)
+	case errors.Is(err, db.ErrSelfInvite):
+		e = NewError("SELF_INVITE", "Cannot invite yourself", 400)
+		e.Fields = map[string]string{"user_id": "SELF_INVITE"}
 	case db.IsTemporaryDatabaseError(err):
 		e = NewError("SERVICE_UNAVAILABLE", "database is busy; retry", 503)
 	}
