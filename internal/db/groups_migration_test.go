@@ -11,7 +11,8 @@ import (
 	"testing/fstest"
 )
 
-// groupPhase3Files is the schema as shipped before B18: every migration except 000006.
+// groupPhase3Files is the schema as shipped before B18: every migration except
+// 000006 and B19's 000007, which builds on it.
 func groupPhase3Files(t *testing.T) fstest.MapFS {
 	t.Helper()
 	files := fstest.MapFS{}
@@ -20,7 +21,7 @@ func groupPhase3Files(t *testing.T) fstest.MapFS {
 		t.Fatal(err)
 	}
 	for _, name := range names {
-		if strings.Contains(name, "000006_") {
+		if strings.Contains(name, "000006_") || strings.Contains(name, "000007_") {
 			continue
 		}
 		b, err := migrationFS.ReadFile(name)
@@ -140,7 +141,7 @@ func TestGroupMigrationUpgradePreservesPhase3Data(t *testing.T) {
 	}
 	var version, dirty int
 	upgraded.QueryRow(`SELECT version,dirty FROM schema_migrations`).Scan(&version, &dirty)
-	if version != 6 || dirty != 0 {
+	if version != 7 || dirty != 0 {
 		t.Fatalf("version %d dirty %d", version, dirty)
 	}
 	rows, err := upgraded.Query(`PRAGMA foreign_key_check`)
@@ -371,8 +372,22 @@ func TestGroupDownMigrationRefusesLossyRemovalAndRoundTripsWhenEmpty(t *testing.
 		}
 		return tx.Commit()
 	}
+	// B19's migration sits on top of B18's: its objects reference the group tables.
+	groupPostsDown, err := migrationFS.ReadFile("migrations/sqlite/000007_group_posts.down.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	groupPostsUp, _ := migrationFS.ReadFile("migrations/sqlite/000007_group_posts.up.sql")
 	database := groupTestDB(t)
 	mustExec(t, database, `INSERT INTO groups(creator_id,title,description,title_search)VALUES(1,'Chess','Games','chess')`)
+	if err := run(database, groupPostsDown); err != nil {
+		t.Fatalf("group post down migration: %v", err)
+	}
+	defer func() {
+		if err := run(database, groupPostsUp); err != nil {
+			t.Fatalf("group post up migration after round trip: %v", err)
+		}
+	}()
 	if err := run(database, down); err == nil {
 		t.Fatal("down migration discarded group history")
 	}

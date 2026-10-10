@@ -63,9 +63,6 @@ func replyOf(response *httptest.ResponseRecorder) raceReply {
 func TestGroupConcurrentRacesPreserveOneValidResult(t *testing.T) {
 	pack := loadGroupPack(t)
 	for _, race := range pack.Races {
-		if !groupRoute(race.Ops["A"].Request.Path) || !groupRoute(race.Ops["B"].Request.Path) {
-			continue // content writers are B19
-		}
 		t.Run(race.Name, func(t *testing.T) {
 			for round := 0; round < 12; round++ {
 				handler, conn := socialAPI(t)

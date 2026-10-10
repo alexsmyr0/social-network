@@ -28,7 +28,8 @@ func mediaID(raw string) (int64, bool) {
 		return 0, false
 	}
 	s := strings.TrimPrefix(raw, "/api/v1/media/")
-	if s == "" {
+	// Only the canonical decimal spelling names an object: "01" is an alias.
+	if s == "" || s[0] == '0' {
 		return 0, false
 	}
 	for _, c := range s {
