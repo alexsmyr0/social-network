@@ -3,6 +3,7 @@ import { computed, inject, nextTick, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { sessionKey } from '../auth/session-state.js';
+import { groupsKey } from '../groups/group-state.js';
 // biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
 import SocialAvatar from '../social/SocialAvatar.vue';
 import { socialKey } from '../social/social-state.js';
@@ -11,10 +12,12 @@ import { notificationsKey } from './notification-state.js';
 const notices = inject(notificationsKey, null);
 const session = inject(sessionKey);
 const social = inject(socialKey, null);
+const groups = inject(groupsKey, null);
 const route = useRoute();
 const open = ref(false);
 const kind = ref('notices');
 const reviewMessage = ref('');
+const reviewTone = ref('error');
 const trigger = ref(null);
 const heading = ref(null);
 const panel = ref(null);
@@ -75,14 +78,68 @@ onUnmounted(() => {
 	document.removeEventListener('pointerdown', onOutside);
 });
 
-// biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 async function decide(person, followId, decision) {
 	const outcome = await social.decideRequest(person.id, followId, decision);
 	if (outcome.kind === 'superseded' || outcome.kind === 'unauthenticated') return;
 	reviewMessage.value = outcome.message ?? '';
+	reviewTone.value = 'error';
 	await nextTick();
 	// A resolved row disappears; return focus to the stable panel heading.
 	heading.value?.focus();
+}
+
+// Group actions address the exact invitation or request ID the notice names;
+// the server rechecks the decision-maker and current state, so a resolved or
+// foreign entry is reported as stale and never shown as a membership success.
+const isGroupNotice = (notice) =>
+	notice.type === 'group_invitation' || notice.type === 'group_join_request';
+const groupActionKey = (notice) =>
+	notice.type === 'group_invitation'
+		? `invitation-${notice.target.invitation_id}`
+		: `request-${notice.target.request_id}`;
+const actionBusy = (notice) =>
+	isGroupNotice(notice)
+		? Boolean(groups?.isPending(groupActionKey(notice)))
+		: Boolean(social.state.pendingFollows[notice.actor.id]);
+// biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
+function actionLabel(notice, decision) {
+	if (notice.type === 'follow_request')
+		return `${decision === 'accept' ? 'Accept' : 'Decline'} follow request from ${notice.actor.display_name}`;
+	const verb = decision === 'accept' ? 'Accept' : 'Refuse';
+	return notice.type === 'group_invitation'
+		? `${verb} invitation to ${notice.target.group.title} from ${notice.actor.display_name}`
+		: `${verb} ${notice.actor.display_name}’s request to join ${notice.target.group.title}`;
+}
+// biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
+const decisionText = (notice, decision) =>
+	decision === 'accept' ? 'Accept' : notice.type === 'follow_request' ? 'Decline' : 'Refuse';
+
+async function decideGroup(notice, decision) {
+	if (!groups || actionBusy(notice)) return;
+	const { group } = notice.target;
+	const invitation = notice.type === 'group_invitation';
+	const outcome = invitation
+		? await groups.decideInvitation(notice.target.invitation_id, decision)
+		: await groups.decideJoinRequest(notice.target.request_id, decision);
+	if (['superseded', 'unauthenticated', 'busy'].includes(outcome.status)) return;
+	const name = notice.actor.display_name;
+	const success = invitation
+		? decision === 'accept'
+			? `You joined ${group.title}.`
+			: `Invitation to ${group.title} refused.`
+		: decision === 'accept'
+			? `${name} joined ${group.title}.`
+			: `${name}’s request to join ${group.title} was refused.`;
+	reviewMessage.value = outcome.status === 'ok' ? success : outcome.message;
+	reviewTone.value = outcome.status === 'ok' ? 'success' : 'error';
+	await nextTick();
+	heading.value?.focus();
+}
+
+// biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
+function act(notice, decision) {
+	if (isGroupNotice(notice)) return decideGroup(notice, decision);
+	return decide(notice.actor, notice.target.follow_id, decision);
 }
 
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
@@ -105,9 +162,34 @@ const LABELS = {
 	comment_like: 'Liked your comment',
 	comment_dislike: 'Disliked your comment',
 };
+const GROUP_LABELS = {
+	group_invitation: {
+		pending: 'Invited you to join',
+		accepted: 'Invitation accepted',
+		refused: 'Invitation refused',
+		cancelled: 'Invitation cancelled · the inviter left the group',
+		superseded: 'Invitation closed · you joined another way',
+	},
+	group_join_request: {
+		pending: 'Asked to join',
+		accepted: 'Join request accepted',
+		refused: 'Join request refused',
+		superseded: 'Join request closed · they joined another way',
+	},
+};
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
-const noticeLabel = (notice) =>
-	notice.type === 'follow_request' ? LABELS[notice.target.state] : LABELS[notice.type];
+function noticeLabel(notice) {
+	if (notice.type === 'follow_request') return LABELS[notice.target.state];
+	if (GROUP_LABELS[notice.type]) return GROUP_LABELS[notice.type][notice.target.state];
+	return LABELS[notice.type];
+}
+// biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
+function contextLink(notice) {
+	const { target } = notice;
+	if (target.group) return { name: 'group', params: { id: target.group.id } };
+	if (target.kind === 'comment') return { name: 'comment', params: { id: target.comment_id } };
+	return { name: 'post', params: { id: target.post_id } };
+}
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 function dateLabel(value) {
 	const date = new Date(value);
@@ -135,7 +217,7 @@ function dateLabel(value) {
 				<button type="button" :aria-pressed="kind === 'requests'" @click="kind = 'requests'">Follow requests<span v-if="state.requestPagination"> ({{ state.requestPagination.total }})</span></button>
 			</div>
 			<div class="notification-panel__body" :aria-busy="state.status === 'loading'">
-				<p v-if="reviewMessage" class="field-error" role="alert">{{ reviewMessage }}</p>
+				<p v-if="reviewMessage" :class="reviewTone === 'success' ? 'notification-confirmation' : 'field-error'" :role="reviewTone === 'success' ? 'status' : 'alert'">{{ reviewMessage }}</p>
 				<p v-if="state.message" class="field-error" role="alert">{{ state.message }}</p>
 				<p v-if="state.status === 'loading' || state.status === 'idle'" role="status">Loading notifications…</p>
 				<div v-else-if="state.status === 'unavailable'" class="social-state" role="alert">
@@ -153,12 +235,13 @@ function dateLabel(value) {
 							<div class="notice__content">
 								<RouterLink :to="{ name: 'profile', params: { id: notice.actor.id } }">{{ notice.actor.display_name }}</RouterLink>
 								<p>{{ noticeLabel(notice) }}</p>
-								<RouterLink v-if="notice.target.kind !== 'follow_request'" :to="notice.target.kind === 'comment' ? {name:'comment',params:{id:notice.target.comment_id}} : {name:'post',params:{id:notice.target.post_id}}" class="notice__context">{{ notice.target.title || 'Untitled post' }}<span v-if="notice.target.excerpt"> · {{ notice.target.excerpt }}</span></RouterLink>
+								<RouterLink v-if="notice.target.group" :to="contextLink(notice)" class="notice__context">{{ notice.target.group.title }}</RouterLink>
+								<RouterLink v-else-if="notice.target.kind !== 'follow_request'" :to="contextLink(notice)" class="notice__context">{{ notice.target.title || 'Untitled post' }}<span v-if="notice.target.excerpt"> · {{ notice.target.excerpt }}</span></RouterLink>
 								<time :datetime="notice.created_at">{{ dateLabel(notice.created_at) }}</time>
 								<div v-if="notice.actions.length" class="notice__actions">
-									<button v-for="decision in notice.actions" :key="decision" class="button" :class="decision === 'accept' ? 'button--primary' : 'button--secondary'" type="button" :aria-label="`${decision === 'accept' ? 'Accept' : 'Decline'} follow request from ${notice.actor.display_name}`" :disabled="Boolean(social.state.pendingFollows[notice.actor.id])" @click="decide(notice.actor, notice.target.follow_id, decision)">{{ decision === 'accept' ? 'Accept' : 'Decline' }}</button>
+									<button v-for="decision in notice.actions" :key="decision" class="button" :class="decision === 'accept' ? 'button--primary' : 'button--secondary'" type="button" :aria-label="actionLabel(notice, decision)" :disabled="actionBusy(notice)" @click="act(notice, decision)">{{ decisionText(notice, decision) }}</button>
 								</div>
-								<p v-if="social.state.followMessages[notice.actor.id]" class="field-error" role="alert">{{ social.state.followMessages[notice.actor.id] }}</p>
+								<p v-if="notice.type === 'follow_request' && social.state.followMessages[notice.actor.id]" class="field-error" role="alert">{{ social.state.followMessages[notice.actor.id] }}</p>
 								<button v-if="!notice.is_read" class="notice-read" type="button" :disabled="readBusy" :aria-label="`Mark notification from ${notice.actor.display_name} read`" @click="markRead(notice.id)">Mark read</button>
 							</div>
 						</li>

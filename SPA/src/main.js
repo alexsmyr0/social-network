@@ -4,6 +4,7 @@ import App from './app/App.vue';
 import { createAppRouter } from './app/router.js';
 import { createSessionState, sessionKey } from './features/auth/session-state.js';
 import { contentKey, createContentState } from './features/content/content-state.js';
+import { createGroupState, groupsKey } from './features/groups/group-state.js';
 import {
 	createNotificationState,
 	notificationsKey,
@@ -14,6 +15,7 @@ import {
 	socialKey,
 } from './features/social/social-state.js';
 import './styles/content.css';
+import './styles/groups.css';
 import './styles/notifications.css';
 import './styles/main.css';
 import './styles/registration.css';
@@ -32,6 +34,7 @@ const social = createSocialState({
 
 const notifications = createNotificationState({ session, social });
 const content = createContentState({ session, social });
+const groups = createGroupState({ session, social });
 
 logoutChannel?.addEventListener('message', (event) => {
 	if (event.data !== 'logged-out') return;
@@ -49,5 +52,6 @@ app
 	.provide(socialKey, social)
 	.provide(notificationsKey, notifications)
 	.provide(contentKey, content)
+	.provide(groupsKey, groups)
 	.use(router)
 	.mount('#app');

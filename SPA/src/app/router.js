@@ -10,6 +10,10 @@ import DiscussionPage from '../features/content/DiscussionPage.vue';
 import EditPostPage from '../features/content/EditPostPage.vue';
 import FeedPage from '../features/content/FeedPage.vue';
 import MyPostsPage from '../features/content/MyPostsPage.vue';
+import GroupCreatePage from '../features/groups/GroupCreatePage.vue';
+import GroupPage from '../features/groups/GroupPage.vue';
+import GroupsPage from '../features/groups/GroupsPage.vue';
+import { groupsQuery, readGroupsQuery } from '../features/groups/group-utils.js';
 import NotFoundPage from '../features/migration/NotFoundPage.vue';
 import HomePage from '../features/shell/HomePage.vue';
 import FollowListPage from '../features/social/FollowListPage.vue';
@@ -64,6 +68,39 @@ export const routes = [
 		name: 'edit-post',
 		component: EditPostPage,
 		meta: { title: 'Edit post', requiresAuth: true },
+	},
+	{
+		path: '/groups',
+		name: 'groups',
+		component: GroupsPage,
+		meta: { title: 'Groups', requiresAuth: true },
+	},
+	{
+		path: '/groups/new',
+		name: 'group-new',
+		component: GroupCreatePage,
+		meta: { title: 'New group', requiresAuth: true },
+	},
+	{
+		path: '/groups/:id([1-9]\\d*)',
+		name: 'group',
+		component: GroupPage,
+		props: { section: 'about' },
+		meta: { title: 'Group', requiresAuth: true },
+	},
+	{
+		path: '/groups/:id([1-9]\\d*)/members',
+		name: 'group-members',
+		component: GroupPage,
+		props: { section: 'members' },
+		meta: { title: 'Group members', requiresAuth: true },
+	},
+	{
+		path: '/groups/:id([1-9]\\d*)/requests',
+		name: 'group-requests',
+		component: GroupPage,
+		props: { section: 'requests' },
+		meta: { title: 'Join requests', requiresAuth: true },
 	},
 	{
 		path: '/people',
@@ -134,15 +171,18 @@ export function createAppRouter(history = createWebHistory(), session) {
 		});
 	}
 
-	// Malformed, repeated or unknown feed filters recover to the nearest valid
+	// Malformed, repeated or unknown feed and group filters recover to the nearest valid
 	// route state, so a shared or hand-edited link always lands on a working
 	// view. Runs before views mount, so they never redirect themselves.
 	router.beforeEach((to) => {
-		if (to.name !== 'feed') return true;
-		const canonical = feedQuery(readFeedQuery(to.query));
+		if (to.name !== 'feed' && to.name !== 'groups') return true;
+		const canonical =
+			to.name === 'feed'
+				? feedQuery(readFeedQuery(to.query))
+				: groupsQuery(readGroupsQuery(to.query));
 		return sameQuery(to.query, canonical)
 			? true
-			: { name: 'feed', query: canonical, replace: true };
+			: { name: to.name, query: canonical, replace: true };
 	});
 
 	router.afterEach((to) => {

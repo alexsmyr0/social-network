@@ -1,0 +1,407 @@
+/* SN-A15 group discovery and membership. Reuses the social view, person list,
+   pager and badge patterns; only group-specific arrangement lives here. */
+
+.groups-view__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: end;
+	justify-content: space-between;
+	gap: 1.25rem 2rem;
+}
+
+.groups-view .button,
+.group-view .button,
+.group-create-view .button {
+	color: var(--ink);
+	cursor: pointer;
+}
+
+.groups-view .button--primary,
+.group-view .button--primary,
+.group-create-view .button--primary {
+	color: #1e1815;
+}
+
+.groups-view .button[aria-disabled="true"],
+.group-view .button[aria-disabled="true"],
+.group-create-view .button[aria-disabled="true"] {
+	cursor: wait;
+	opacity: 0.65;
+}
+
+.button--danger {
+	background: #a63225;
+	box-shadow: 4px 4px 0 var(--forest);
+	color: var(--paper-bright);
+}
+
+.groups-view .button--danger,
+.group-view .button--danger {
+	color: var(--paper-bright);
+}
+
+.groups-tabs {
+	display: inline-flex;
+	flex-wrap: wrap;
+	margin: 0 0 1.5rem;
+	border: 1px solid var(--ink);
+	background: var(--paper-bright);
+}
+
+.groups-tabs a {
+	min-width: 7rem;
+	min-height: 2.75rem;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.5rem 1.1rem;
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.groups-tabs a + a {
+	border-left: 1px solid var(--ink);
+}
+
+.groups-tabs a[aria-current="page"] {
+	background: var(--forest);
+	color: var(--paper-bright);
+}
+
+.group-feedback:focus {
+	outline: none;
+}
+
+.group-feedback:focus-visible {
+	outline: 3px solid var(--coral);
+	outline-offset: 4px;
+}
+
+.group-feedback__text {
+	margin: 0 0 1.25rem;
+	padding: 0.85rem 1rem;
+	border: 1px solid var(--ink);
+	background: var(--paper-bright);
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+.group-feedback__text--success {
+	border-color: var(--forest);
+	background: rgba(40, 94, 80, 0.12);
+	color: var(--forest);
+}
+
+.group-feedback__text--error {
+	border-color: #a63225;
+	background: rgba(239, 106, 76, 0.12);
+	color: #76291f;
+}
+
+.group-list {
+	display: grid;
+	gap: 1.25rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.group-card {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: start;
+	gap: 1rem 1.5rem;
+	padding: 1.35rem 1.5rem;
+	border: 1px solid var(--ink);
+	background: var(--paper-bright);
+	box-shadow: 6px 6px 0 rgba(23, 62, 53, 0.12);
+}
+
+.group-card__meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.35rem;
+	margin: 0;
+	color: var(--ink-soft);
+	font-size: 0.82rem;
+}
+
+.group-card__badge {
+	margin-left: 0.4rem;
+	background: rgba(40, 94, 80, 0.12);
+	color: var(--forest);
+}
+
+.group-card__title {
+	margin: 0.4rem 0 0.35rem;
+	font-family: var(--serif);
+	font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+	font-weight: 500;
+	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
+}
+
+.group-card__title a {
+	text-decoration-color: var(--coral);
+	text-decoration-thickness: 0.12rem;
+	text-underline-offset: 0.25rem;
+}
+
+.group-card__description,
+.group-about__description,
+.invitation__description {
+	margin: 0;
+	overflow-wrap: anywhere;
+	white-space: pre-line;
+}
+
+.membership-actions {
+	display: grid;
+	justify-items: end;
+	gap: 0.6rem;
+	min-width: 0;
+}
+
+.membership-actions__state {
+	margin: 0;
+	color: var(--forest);
+	font-size: 0.85rem;
+	font-weight: 700;
+}
+
+.membership-actions__buttons {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.6rem;
+}
+
+.membership-invitations {
+	display: grid;
+	gap: 0.75rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.membership-invitations p {
+	margin: 0 0 0.35rem;
+	font-size: 0.88rem;
+}
+
+.invitation-list {
+	margin: 0 0 2rem;
+	padding: 1.25rem 1.5rem;
+	border: 1px solid var(--coral-dark);
+	background: rgba(239, 106, 76, 0.08);
+}
+
+.invitation-list h2,
+.group-section h2 {
+	margin: 0 0 0.85rem;
+	font-family: var(--serif);
+	font-size: 1.45rem;
+	font-weight: 500;
+}
+
+.invitation-list ul {
+	display: grid;
+	gap: 0.85rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.invitation {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 0.75rem 1rem;
+}
+
+.invitation__body p {
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+
+.invitation__description {
+	color: var(--ink-soft);
+	font-size: 0.85rem;
+}
+
+.group-view__head h1 {
+	overflow-wrap: anywhere;
+}
+
+.group-view__meta {
+	margin: 0.4rem 0 0.75rem;
+	color: var(--ink-soft);
+}
+
+.group-section {
+	margin: 0 0 2rem;
+	padding: 1.5rem;
+	border: 1px solid var(--ink);
+	background: var(--paper-bright);
+}
+
+.group-about .membership-actions {
+	justify-items: start;
+	margin-top: 1.25rem;
+}
+
+.group-about__private {
+	margin: 1rem 0 0;
+	color: var(--ink-soft);
+	font-size: 0.9rem;
+}
+
+.group-leave {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.75rem;
+	margin-top: 1.5rem;
+	padding-top: 1.25rem;
+	border-top: 1px solid var(--line);
+}
+
+.group-leave p {
+	flex-basis: 100%;
+	margin: 0;
+}
+
+.group-member__actions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: end;
+	align-items: center;
+	gap: 0.6rem;
+	max-width: 22rem;
+}
+
+.group-member__actions p {
+	flex-basis: 100%;
+	margin: 0;
+	font-size: 0.85rem;
+	text-align: right;
+}
+
+.group-invite > p {
+	margin: 0 0 1rem;
+	color: var(--ink-soft);
+}
+
+.group-form {
+	display: grid;
+	gap: 1.25rem;
+	max-width: 46rem;
+	color: var(--ink);
+}
+
+.group-form__summary:focus {
+	outline: none;
+}
+
+.group-form__field {
+	display: grid;
+	gap: 0.4rem;
+}
+
+.group-form__field label {
+	font-weight: 700;
+}
+
+.group-form__field input,
+.group-form__field textarea {
+	width: 100%;
+	min-height: 3rem;
+	padding: 0.75rem 0.9rem;
+	border: 1px solid var(--ink);
+	background: var(--paper-bright);
+	color: var(--ink);
+	font: inherit;
+}
+
+.group-form__field input:focus,
+.group-form__field textarea:focus {
+	outline: 3px solid var(--coral);
+	outline-offset: 2px;
+}
+
+.group-form__count {
+	margin: 0;
+	color: var(--ink-soft);
+	font-size: 0.78rem;
+}
+
+.group-form__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1rem;
+}
+
+.notification-confirmation {
+	margin: 0 0 0.75rem;
+	color: var(--forest);
+	font-weight: 700;
+}
+
+@media (max-width: 640px) {
+	.group-card,
+	.invitation {
+		grid-template-columns: minmax(0, 1fr);
+		padding: 1.1rem;
+	}
+
+	.invitation {
+		padding: 0;
+	}
+
+	.invitation .avatar {
+		display: none;
+	}
+
+	.membership-actions,
+	.group-about .membership-actions {
+		justify-items: stretch;
+	}
+
+	.membership-actions__buttons .button,
+	.group-leave .button,
+	.group-form__actions .button {
+		flex: 1 1 8rem;
+	}
+
+	.group-section {
+		padding: 1.1rem;
+	}
+
+	.group-member {
+		grid-template-columns: auto minmax(0, 1fr);
+	}
+
+	.group-member__actions {
+		grid-column: 1 / -1;
+		justify-content: stretch;
+		max-width: none;
+	}
+
+	.group-member__actions p {
+		text-align: left;
+	}
+
+	.group-member__actions .button {
+		flex: 1 1 8rem;
+	}
+
+	.groups-tabs {
+		display: flex;
+	}
+
+	.groups-tabs a {
+		flex: 1 1 0;
+		min-width: 0;
+		padding-inline: 0.6rem;
+	}
+}
