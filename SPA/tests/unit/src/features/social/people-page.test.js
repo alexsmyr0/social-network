@@ -552,6 +552,7 @@ describe('stale data and session changes', () => {
 			['Home', '/'],
 			['Feed', '/feed'],
 			['People', '/people'],
+			['Groups', '/groups'],
 			['Activity', '/activity'],
 			['Profile', '/users/7'],
 		]);

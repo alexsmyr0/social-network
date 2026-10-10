@@ -19,6 +19,7 @@ export default defineConfig({
 		'a10-notifications.test.js',
 		'a12-publishing.test.js',
 		'a13-discussions.test.js',
+		'a15-groups.test.js',
 		'b07-transport.test.js',
 		'b13-media.test.js',
 	],

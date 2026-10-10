@@ -223,6 +223,8 @@ export async function setProfileVisibility({ visibility, expectedVersion }, fetc
 
 const NOTICE_TYPES = new Set([
 	'follow_request',
+	'group_invitation',
+	'group_join_request',
 	'post_like',
 	'post_dislike',
 	'comment',
@@ -248,6 +250,47 @@ function normalizeRequestNotice(base, target, actions) {
 	};
 }
 
+const GROUP_NOTICES = {
+	group_invitation: {
+		entry: 'invitation_id',
+		states: new Set(['pending', 'accepted', 'refused', 'cancelled', 'superseded']),
+	},
+	group_join_request: {
+		entry: 'request_id',
+		states: new Set(['pending', 'accepted', 'refused', 'superseded']),
+	},
+};
+
+// Group notices carry only public group metadata and the exact entry ID the
+// actions address. Only a pending notice keeps actions; marking it read never
+// resolves it.
+function normalizeGroupNotice(base, target, actions) {
+	const rule = GROUP_NOTICES[base.type];
+	const group = target.group;
+	if (
+		target.kind !== base.type ||
+		!isValidId(target[rule.entry]) ||
+		!rule.states.has(target.state) ||
+		!group ||
+		!isValidId(group.id) ||
+		typeof group.title !== 'string'
+	)
+		return null;
+	return {
+		...base,
+		target: {
+			kind: target.kind,
+			[rule.entry]: target[rule.entry],
+			group: { id: group.id, title: group.title },
+			state: target.state,
+		},
+		actions:
+			target.state === 'pending' && Array.isArray(actions)
+				? actions.filter((action) => action === 'accept' || action === 'refuse')
+				: [],
+	};
+}
+
 export function normalizeNotice(value) {
 	if (
 		!value ||
@@ -268,6 +311,7 @@ export function normalizeNotice(value) {
 		actor,
 	};
 	if (value.type === 'follow_request') return normalizeRequestNotice(base, target, value.actions);
+	if (GROUP_NOTICES[value.type]) return normalizeGroupNotice(base, target, value.actions);
 	if (!isValidId(target.post_id) || !['post', 'comment'].includes(target.kind)) return null;
 	const content = { kind: target.kind, post_id: target.post_id, title: nullableText(target.title) };
 	if (target.kind === 'comment') {
