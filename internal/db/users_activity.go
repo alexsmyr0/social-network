@@ -20,6 +20,9 @@ type UserActivityCommentPost struct {
 	Likes         int            `json:"likes"`
 	Dislikes      int            `json:"dislikes"`
 	MyReaction    int            `json:"my_reaction"`
+	// Group is the parent post's group scope (nil for personal posts); only the
+	// social projection reports it.
+	Group *PostGroup `json:"-"`
 }
 
 type UserActivityComment struct {
@@ -52,12 +55,14 @@ func (c UserActivityComment) MarshalJSON() ([]byte, error) {
 		ParentCommentID *int64 `json:"parent_comment_id"`
 		Post            struct {
 			postAlias
-			Title *string `json:"title"`
+			Title *string    `json:"title"`
+			Group *PostGroup `json:"group"`
 		} `json:"post"`
 	}{alias: alias(c), ParentCommentID: c.ParentCommentID, Post: struct {
 		postAlias
-		Title *string `json:"title"`
-	}{postAlias(c.Post), c.Post.NullableTitle}})
+		Title *string    `json:"title"`
+		Group *PostGroup `json:"group"`
+	}{postAlias(c.Post), c.Post.NullableTitle, c.Post.Group}})
 }
 
 type ListUserCommentsWithPostParams struct {

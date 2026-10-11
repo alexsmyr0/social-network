@@ -53,7 +53,7 @@ func TestPublishingAudienceMatrix(t *testing.T) {
 					} else if !errors.Is(err, sql.ErrNoRows) {
 						t.Fatalf("denied %v", err)
 					}
-					feed, err := PublishingFeed(ctx, database, 3, 1, 1, "all", "all", 0, false)
+					feed, err := PublishingFeed(ctx, database, 3, 1, 1, "all", "all", 0, 0, false)
 					want := 0
 					if allowed {
 						want = 1
@@ -232,18 +232,18 @@ func TestPublishingFollowingCategoryAndDrafts(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	result, err := PublishingFeed(ctx, database, 3, 1, 1, "following", "all", 1, false)
+	result, err := PublishingFeed(ctx, database, 3, 1, 1, "following", "all", 1, 0, false)
 	if err != nil || result.Total != 0 {
 		t.Fatalf("initial following %+v %v", result, err)
 	}
 	if _, _, err := CreateFollow(ctx, database, 3, 1); err != nil {
 		t.Fatal(err)
 	}
-	result, err = PublishingFeed(ctx, database, 3, 1, 1, "following", "all", 1, false)
+	result, err = PublishingFeed(ctx, database, 3, 1, 1, "following", "all", 1, 0, false)
 	if err != nil || result.Total != 1 || result.Posts[0].AuthorID != 1 {
 		t.Fatalf("older following %+v %v", result, err)
 	}
-	d, err := LatestPublishingDraft(ctx, database, 1)
+	d, err := LatestPublishingDraft(ctx, database, 1, 0)
 	if err != nil || d != nil {
 		t.Fatalf("empty latest %v %v", d, err)
 	}
@@ -252,11 +252,11 @@ func TestPublishingFollowingCategoryAndDrafts(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	result, err = PublishingFeed(ctx, database, 1, 1, 50, "all", "draft", 0, true)
+	result, err = PublishingFeed(ctx, database, 1, 1, 50, "all", "draft", 0, 0, true)
 	if err != nil || result.Total != 2 {
 		t.Fatalf("multiple drafts %+v %v", result, err)
 	}
-	d, err = LatestPublishingDraft(ctx, database, 1)
+	d, err = LatestPublishingDraft(ctx, database, 1, 0)
 	if err != nil || d == nil || d.ID != result.Posts[0].ID {
 		t.Fatalf("latest %+v %v", d, err)
 	}

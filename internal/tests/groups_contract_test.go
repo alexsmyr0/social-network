@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"strconv"
@@ -18,10 +19,10 @@ import (
 	"forum/internal/db"
 )
 
-// B18 replays the approved phase-4 pack against the real router and SQLite
-// schema. Content routes (posts, comments, reactions, media) belong to B19 and
-// are filtered out; every group, invitation, request, membership and group
-// notice case is replayed.
+// B18 and B19 replay the whole approved phase-4 pack against the real router and
+// SQLite schema: groups, invitations, requests, memberships and group notices
+// (B18), and group posts, drafts, comments, reactions, media, feeds, activity,
+// navigation and content notices (B19). Nothing is filtered by owner.
 
 type groupRequest struct {
 	Method, Path, Encoding string
@@ -34,9 +35,11 @@ type groupRequest struct {
 	Headers map[string]*string
 }
 type groupResponse struct {
-	Status  int
-	Headers map[string]string
-	Body    json.RawMessage
+	Status       int
+	Headers      map[string]string
+	Body         json.RawMessage
+	BytesFixture string `json:"bytes_fixture"`
+	EmptyBody    bool   `json:"empty_body"`
 }
 type groupSignal struct {
 	Type       string
@@ -93,29 +96,6 @@ func loadGroupPack(t *testing.T) groupPack {
 		t.Fatal(err)
 	}
 	return pack
-}
-
-func groupRoute(path string) bool {
-	path = strings.Split(path, "?")[0]
-	for _, prefix := range []string{"/api/v1/groups", "/api/v1/group-invitations/", "/api/v1/group-join-requests/", "/api/v1/group-memberships/", "/api/v1/users/me/group-invitations"} {
-		if path == prefix || strings.HasPrefix(path, prefix) {
-			return true
-		}
-	}
-	return false
-}
-
-// groupNoticeCases are the notification cases that depend only on group notices;
-// notices for group content need B19's post group_id.
-var groupNoticeCases = map[string]bool{
-	"notices-invitee-pending": true, "notices-creator-pending-request": true,
-	"notices-invitee-resolved-states": true, "notices-creator-resolved-states": true,
-	"notice-read-one-keeps-actions": true, "notice-read-all-keeps-pending-request": true,
-	"notice-foreign-read": true,
-}
-
-func groupOwned(c groupCase) bool {
-	return groupRoute(c.Request.Path) || groupNoticeCases[c.Name]
 }
 
 // mergeGroupState applies a fixture given-patch to the base state: object
@@ -196,17 +176,94 @@ func seedGroupFixture(t *testing.T, conn *sql.DB, state map[string]any, clock st
 	for key, r := range records(state, "group_join_requests") {
 		fixtureExec(t, conn, `INSERT INTO group_join_requests(id,group_id,requester_id,created_at)VALUES(?,?,?,?)`, key, r["group_id"], r["requester_id"], r["created_at"])
 	}
+	seedGroupContent(t, conn, state)
 	for key, n := range records(state, "notifications") {
 		switch n["type"] {
 		case "group_invitation", "group_join_request":
 			fixtureExec(t, conn, `INSERT INTO notifications(id,recipient_id,actor_id,type,group_id,group_entry_id,group_state,is_read,created_at)VALUES(?,?,?,?,?,?,?,?,?)`, key, n["recipient_id"], n["actor_id"], n["type"], n["group_id"], n["entry_id"], n["state"], n["is_read"], n["created_at"])
+		default:
+			fixtureExec(t, conn, `INSERT INTO notifications(id,recipient_id,actor_id,type,post_id,comment_id,is_read,created_at)VALUES(?,?,?,?,?,?,?,?)`, key, n["recipient_id"], n["actor_id"], n["type"], n["post_id"], n["comment_id"], n["is_read"], n["created_at"])
 		}
 	}
 	next, _ := state["next_ids"].(map[string]any)
-	for _, table := range []string{"groups", "group_memberships", "group_invitations", "group_join_requests", "notifications"} {
-		if v, ok := next[table].(float64); ok {
+	for key, table := range map[string]string{"groups": "groups", "group_memberships": "group_memberships", "group_invitations": "group_invitations", "group_join_requests": "group_join_requests", "notifications": "notifications", "posts": "posts", "comments": "comments", "reactions": "reactions", "media": "media_objects"} {
+		if v, ok := next[key].(float64); ok {
 			setSequence(t, conn, table, v)
 		}
+	}
+}
+
+// seedGroupContent inserts the content part of a fixture world: categories,
+// media bytes, posts (group posts keep the inert stored audience), comments and
+// reactions. The membership trigger is lifted while posts whose authors have
+// since left their group are seeded, exactly as the creator trigger is above.
+func seedGroupContent(t *testing.T, conn *sql.DB, state map[string]any) {
+	t.Helper()
+	if categories := records(state, "categories"); len(categories) > 0 {
+		keep := []any{}
+		for key := range categories {
+			keep = append(keep, key)
+		}
+		fixtureExec(t, conn, `DELETE FROM categories WHERE id NOT IN (`+strings.TrimSuffix(strings.Repeat("?,", len(keep)), ",")+`)`, keep...)
+		for key, c := range categories {
+			fixtureExec(t, conn, `UPDATE categories SET name=?,created_at=? WHERE id=?`, c["name"], c["created_at"], key)
+		}
+	}
+	if media := records(state, "media"); len(media) > 0 {
+		root, err := db.AvatarRoot(conn)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(root, "objects"), 0700); err != nil {
+			t.Fatal(err)
+		}
+		for key, m := range media {
+			image, err := os.ReadFile(filepath.Join("../..", m["fixture"].(string)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			object := "fixture" + key + ".png"
+			fixtureExec(t, conn, `INSERT INTO media_objects(id,source_key,object_key,mime_type,byte_count,state)VALUES(?,?,?,'image/png',?,?)`, key, "fixture:"+key, object, len(image), m["state"])
+			if m["state"] == "ready" {
+				if err := os.WriteFile(filepath.Join(root, "objects", object), image, 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+	}
+	var trigger string
+	if err := conn.QueryRow(`SELECT sql FROM sqlite_master WHERE type='trigger' AND name='group_post_insert'`).Scan(&trigger); err != nil {
+		t.Fatal(err)
+	}
+	fixtureExec(t, conn, `DROP TRIGGER group_post_insert`)
+	for key, p := range records(state, "posts") {
+		audience, group := p["audience"], p["group_id"]
+		if group != nil {
+			audience = "public"
+		}
+		fixtureExec(t, conn, `INSERT INTO posts(id,author_id,group_id,title,body,image_url,status,audience,content_version,created_at,updated_at)VALUES(?,?,?,?,?,?,?,?,?,?,?)`, key, p["author_id"], group, p["title"], p["body"], p["image_url"], p["status"], audience, p["version"], p["created_at"], p["updated_at"])
+		categories, _ := p["categories"].([]any)
+		for _, v := range categories {
+			fixtureExec(t, conn, `INSERT INTO post_categories VALUES(?,?)`, key, v)
+		}
+		selected, _ := p["selected_follow_ids"].([]any)
+		for _, follow := range selected {
+			fixtureExec(t, conn, `INSERT INTO post_selected_followers VALUES(?,?)`, key, follow)
+		}
+	}
+	fixtureExec(t, conn, trigger)
+	comments := records(state, "comments")
+	keys := make([]string, 0, len(comments))
+	for key := range comments {
+		keys = append(keys, key)
+	}
+	sort.Slice(keys, func(i, j int) bool { a, _ := strconv.Atoi(keys[i]); b, _ := strconv.Atoi(keys[j]); return a < b })
+	for _, key := range keys {
+		c := comments[key]
+		fixtureExec(t, conn, `INSERT INTO comments(id,post_id,user_id,parent_comment_id,body,image_url,content_version,created_at,updated_at)VALUES(?,?,?,?,?,?,?,?,?)`, key, c["post_id"], c["user_id"], c["parent_comment_id"], c["body"], c["image_url"], c["version"], c["created_at"], c["updated_at"])
+	}
+	for key, r := range records(state, "reactions") {
+		fixtureExec(t, conn, `INSERT INTO reactions(id,user_id,post_id,comment_id,value)VALUES(?,?,?,?,?)`, key, r["user_id"], r["post_id"], r["comment_id"], r["value"])
 	}
 }
 
@@ -299,7 +356,7 @@ func wantSignals(signals []groupSignal) []string {
 func groupStateSnapshot(t *testing.T, conn *sql.DB) map[string]string {
 	t.Helper()
 	out := map[string]string{}
-	for _, table := range []string{"groups", "group_memberships", "group_invitations", "group_join_requests", "notifications"} {
+	for _, table := range []string{"groups", "group_memberships", "group_invitations", "group_join_requests", "notifications", "posts", "comments", "reactions", "media_objects"} {
 		rows, err := conn.Query(`SELECT * FROM ` + table + ` ORDER BY id`)
 		if err != nil {
 			t.Fatal(err)
@@ -328,10 +385,13 @@ func groupStateSnapshot(t *testing.T, conn *sql.DB) map[string]string {
 
 var groupOwnedTables = map[string]bool{
 	"groups": true, "group_memberships": true, "group_invitations": true, "group_join_requests": true, "notifications": true,
+	"posts": true, "comments": true, "reactions": true,
 }
 
 var groupColumn = map[string]map[string]string{
 	"notifications": {"entry_id": "group_entry_id", "state": "group_state"},
+	"posts":         {"version": "content_version", "audience": "CASE WHEN group_id IS NULL THEN audience ELSE 'group' END"},
+	"comments":      {"version": "content_version"},
 }
 
 // assertGroupState checks the deep-subset postconditions. Timestamps equal to the
@@ -359,6 +419,23 @@ func assertGroupState(t *testing.T, conn *sql.DB, expect map[string]map[string]m
 			}
 			for field, expected := range want {
 				if s, ok := expected.(string); ok && s == clock {
+					continue
+				}
+				if table == "posts" && field == "categories" {
+					ids := []any{}
+					rows, err := conn.Query(`SELECT category_id FROM post_categories WHERE post_id=? ORDER BY category_id`, id)
+					if err != nil {
+						t.Fatal(err)
+					}
+					for rows.Next() {
+						var c int64
+						rows.Scan(&c)
+						ids = append(ids, float64(c))
+					}
+					rows.Close()
+					if want, _ := expected.([]any); !reflect.DeepEqual(ids, append([]any{}, want...)) {
+						t.Errorf("posts.%s.categories = %v want %v", id, ids, expected)
+					}
 					continue
 				}
 				column := field
@@ -398,7 +475,7 @@ func normalizeGroupResponse(got, want any, mutation bool) {
 			delete(wm, "message")
 		}
 		for k, v := range gm {
-			if mutation && (k == "created_at" || k == "joined_at") {
+			if mutation && (k == "created_at" || k == "joined_at" || k == "updated_at") {
 				gm[k] = wm[k]
 			} else {
 				normalizeGroupResponse(v, wm[k], mutation)
@@ -438,9 +515,19 @@ func assertGroupResponse(t *testing.T, response *httptest.ResponseRecorder, want
 			t.Errorf("header %s=%q want %q", k, response.Header().Get(k), v)
 		}
 	}
+	if want.BytesFixture != "" {
+		expected, err := os.ReadFile(filepath.Join("../..", want.BytesFixture))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(response.Body.Bytes(), expected) {
+			t.Errorf("media bytes differ from %s (%d vs %d bytes)", want.BytesFixture, response.Body.Len(), len(expected))
+		}
+		return
+	}
 	if len(want.Body) == 0 {
-		if want.Status == http.StatusNoContent && response.Body.Len() != 0 {
-			t.Errorf("204 carried a body")
+		if (want.Status == http.StatusNoContent || want.EmptyBody) && response.Body.Len() != 0 {
+			t.Errorf("empty response carried a body")
 		}
 		return
 	}
@@ -461,9 +548,6 @@ func TestGroupContractFixtures(t *testing.T) {
 	pack := loadGroupPack(t)
 	ran := 0
 	for _, c := range pack.Cases {
-		if !groupOwned(c) {
-			continue
-		}
 		ran++
 		t.Run(c.Name, func(t *testing.T) {
 			handler, conn := socialAPI(t)
@@ -483,10 +567,10 @@ func TestGroupContractFixtures(t *testing.T) {
 			}
 		})
 	}
-	if ran < 180 {
-		t.Fatalf("fixture ownership filter unexpectedly ran only %d cases", ran)
+	if ran != len(pack.Cases) || ran != 389 {
+		t.Fatalf("replayed %d of %d pack cases, want all 389", ran, len(pack.Cases))
 	}
-	t.Logf("%d B18 fixtures passed", ran)
+	t.Logf("%d B18/B19 fixtures passed", ran)
 }
 
 func TestGroupContractSequences(t *testing.T) {
@@ -497,9 +581,6 @@ func TestGroupContractSequences(t *testing.T) {
 			seedGroupFixture(t, conn, mergeGroupState(pack.State, seq.Given), pack.Clock)
 			signals := captureGroupSignals(t)
 			for i, step := range seq.Steps {
-				if !groupRoute(step.Request.Path) {
-					continue // content steps belong to B19
-				}
 				signals.mu.Lock()
 				signals.list = nil
 				signals.mu.Unlock()
@@ -521,9 +602,6 @@ func TestGroupContractSequences(t *testing.T) {
 func TestGroupContractRacesBothOrders(t *testing.T) {
 	pack := loadGroupPack(t)
 	for _, race := range pack.Races {
-		if !groupRoute(race.Ops["A"].Request.Path) || !groupRoute(race.Ops["B"].Request.Path) {
-			continue
-		}
 		for order, outcome := range race.Outcomes {
 			t.Run(race.Name+"/"+order, func(t *testing.T) {
 				handler, conn := socialAPI(t)

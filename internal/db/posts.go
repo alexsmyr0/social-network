@@ -35,6 +35,14 @@ type Post struct {
 	Dislikes            int            `json:"dislikes"`
 	MyReaction          int            `json:"my_reaction"`
 	Categories          []PostCategory `json:"categories"`
+	// Group is the post's immutable group scope; nil for personal posts.
+	Group *PostGroup `json:"-"`
+}
+
+// PostGroup is the public group reference carried by group posts and drafts.
+type PostGroup struct {
+	ID    int64  `json:"id"`
+	Title string `json:"title"`
 }
 
 type PostCategory struct {
@@ -781,6 +789,7 @@ func (p Post) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(struct {
 		alias
-		Title *string `json:"title"`
-	}{alias(p), p.NullableTitle})
+		Title *string    `json:"title"`
+		Group *PostGroup `json:"group"`
+	}{alias(p), p.NullableTitle, p.Group})
 }

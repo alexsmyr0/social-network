@@ -24,6 +24,8 @@ B18 owns group persistence, discovery, member lists, invitations, join requests,
 
 ## B19 handoff
 
+Delivered in [Backend group content](backend-group-content.md); the seams below describe what B18 supplied.
+
 - **Predicate seams.** `db.GroupMemberSQL(groupExpr, userExpr)` is the SQL membership predicate (active user, current membership); `db.IsGroupMember` is its query form. The shared content predicate must choose by `p.group_id IS NULL` (personal rules) versus membership (group rules), never OR them.
 - **Notice seam.** `visibleNotice` in `social_notifications.go` treats `follow_request`, `group_invitation` and `group_join_request` as always visible to their recipient; group-content notices must additionally require current membership at list, count, unread, read-one and read-all time, and no notice is inserted for a recipient who is not a current member.
 - **Invalidation seam.** Content changes keep the existing all-authenticated `social.invalidate`; membership transitions already invalidate the affected users and current members through `fireSocialInvalidation`.

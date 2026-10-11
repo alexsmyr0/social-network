@@ -121,7 +121,14 @@ func WriteDiscussionComment(ctx context.Context, database *sql.DB, viewer, post,
 		if err := tx.QueryRowContext(ctx, `SELECT author_id FROM posts WHERE id=?`, post).Scan(&owner); err != nil {
 			return Comment{}, err
 		}
-		if owner != viewer {
+		notify := owner != viewer
+		if notify {
+			// Group activity only notifies a current member (never a departed author).
+			if notify, err = canReceiveContentNotice(ctx, tx, owner, "post", post); err != nil {
+				return Comment{}, err
+			}
+		}
+		if notify {
 			// Notice insert and dedup share the comment's transaction.
 			result, err := tx.ExecContext(ctx, `INSERT INTO notifications(recipient_id,actor_id,type,post_id,comment_id) VALUES(?,?,'comment',?,NULL) ON CONFLICT DO NOTHING`, owner, viewer, post)
 			if err != nil {
@@ -221,8 +228,14 @@ func ToggleDiscussionReaction(ctx context.Context, database *sql.DB, viewer, id 
 	}
 	var notified int64
 	if result.Reaction != 0 {
-		if notified, err = handleReactionNotificationTx(ctx, tx, owner, viewer, id, result.Reaction, kind); err != nil {
+		notify, err := canReceiveContentNotice(ctx, tx, owner, kind, id)
+		if err != nil {
 			return result, err
+		}
+		if notify {
+			if notified, err = handleReactionNotificationTx(ctx, tx, owner, viewer, id, result.Reaction, kind); err != nil {
+				return result, err
+			}
 		}
 	}
 	column := "post_id"

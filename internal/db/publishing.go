@@ -27,6 +27,9 @@ type PublishingInput struct {
 	UploadedImage                    bool
 	CategoryIDs, SelectedFollowerIDs []int64
 	HasCategories, HasSelections     bool
+	// GroupID scopes a new post or draft to a group; it is create-only. Group
+	// posts take no personal audience or follower selection.
+	GroupID int64
 }
 
 func selectedAccountsTx(ctx context.Context, tx *sql.Tx, post int64) ([]int64, error) {
@@ -74,12 +77,21 @@ func validatePublishingIDs(ids []int64, max int, field string) error {
 	return nil
 }
 func WritePublishingPost(ctx context.Context, database *sql.DB, viewer, id int64, in PublishingInput, draftOnly bool) (Post, error) {
+	if in.GroupID != 0 {
+		if id != 0 {
+			return Post{}, contentField("group_id", "IMMUTABLE")
+		}
+		if err := groupScopeFields(in); err != nil {
+			return Post{}, err
+		}
+	}
 	tx, err := BeginSocialWrite(ctx, database)
 	if err != nil {
 		return Post{}, err
 	}
 	defer tx.Rollback()
 	old := Post{AuthorID: viewer, Body: "", Status: "published", Audience: "public", Categories: []PostCategory{}}
+	group := in.GroupID
 	oldIDs := []int64{}
 	oldSelections := []int64{}
 	if draftOnly {
@@ -102,7 +114,14 @@ func WritePublishingPost(ctx context.Context, database *sql.DB, viewer, id int64
 		for _, c := range old.Categories {
 			oldIDs = append(oldIDs, c.ID)
 		}
-		oldSelections = *old.SelectedFollowerIDs
+		if old.Group != nil {
+			if err := groupScopeFields(in); err != nil {
+				return Post{}, err
+			}
+			group = old.Group.ID
+		} else {
+			oldSelections = *old.SelectedFollowerIDs
+		}
 	} else {
 		var active bool
 		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE id=? AND is_active=1)`, viewer).Scan(&active); err != nil {
@@ -111,8 +130,21 @@ func WritePublishingPost(ctx context.Context, database *sql.DB, viewer, id int64
 		if !active {
 			return Post{}, sql.ErrNoRows
 		}
+		if group != 0 {
+			// Membership is read under the write lock, so a concurrent removal either
+			// commits first (this is a 404) or after this post (which is retained).
+			if err := requireGroupMember(ctx, tx, viewer, group); err != nil {
+				return Post{}, err
+			}
+		}
 	}
-	title, body, status, audience, image := old.NullableTitle, old.Body, old.Status, old.Audience, old.ImageURL
+	// The stored audience of a group post is the inert 'public'; the reported
+	// "group" scope is never written back.
+	storedAudience := old.Audience
+	if group != 0 {
+		storedAudience = "public"
+	}
+	title, body, status, audience, image := old.NullableTitle, old.Body, old.Status, storedAudience, old.ImageURL
 	if in.HasTitle {
 		title = in.Title
 	}
@@ -165,7 +197,7 @@ func WritePublishingPost(ctx context.Context, database *sql.DB, viewer, id int64
 			return Post{}, contentField("selected_follower_ids", "INVALID_SELECTION")
 		}
 		selections = []int64{}
-	} else if old.Audience != "selected" && !in.HasSelections {
+	} else if storedAudience != "selected" && !in.HasSelections {
 		return Post{}, contentField("selected_follower_ids", "INVALID_SELECTION")
 	}
 	publishing := status == "published" && (id == 0 || old.Status != "published")
@@ -208,12 +240,16 @@ func WritePublishingPost(ctx context.Context, database *sql.DB, viewer, id int64
 			return Post{}, contentField("body", "CONTENT_REQUIRED")
 		}
 	}
-	unchanged := id != 0 && reflect.DeepEqual(title, old.NullableTitle) && body == old.Body && status == old.Status && audience == old.Audience && reflect.DeepEqual(image, old.ImageURL) && reflect.DeepEqual(cats, oldIDs) && reflect.DeepEqual(selections, oldSelections)
+	unchanged := id != 0 && reflect.DeepEqual(title, old.NullableTitle) && body == old.Body && status == old.Status && audience == storedAudience && reflect.DeepEqual(image, old.ImageURL) && reflect.DeepEqual(cats, oldIDs) && reflect.DeepEqual(selections, oldSelections)
 	if unchanged {
 		return old, nil
 	}
 	if id == 0 {
-		result, e := tx.ExecContext(ctx, `INSERT INTO posts(author_id,title,body,status,audience,image_url) VALUES(?,?,?,?,?,?)`, viewer, title, body, status, audience, image)
+		var scope any
+		if group != 0 {
+			scope = group
+		}
+		result, e := tx.ExecContext(ctx, `INSERT INTO posts(author_id,title,body,status,audience,image_url,group_id) VALUES(?,?,?,?,?,?,?)`, viewer, title, body, status, audience, image, scope)
 		if e != nil {
 			return Post{}, e
 		}
@@ -228,7 +264,7 @@ func WritePublishingPost(ctx context.Context, database *sql.DB, viewer, id int64
 		if old.Version >= MaxSocialID {
 			return Post{}, ErrStaleContent
 		}
-		if in.HasSelections || audience != old.Audience {
+		if in.HasSelections || audience != storedAudience {
 			if _, err := tx.ExecContext(ctx, `DELETE FROM post_selected_followers WHERE post_id=?`, id); err != nil {
 				return Post{}, err
 			}
@@ -251,7 +287,7 @@ func WritePublishingPost(ctx context.Context, database *sql.DB, viewer, id int64
 	if err := insertPostCategoriesTx(ctx, tx, id, cats); err != nil {
 		return Post{}, err
 	}
-	if audience == "selected" && (old.Version == 0 || in.HasSelections || audience != old.Audience) {
+	if audience == "selected" && (old.Version == 0 || in.HasSelections || audience != storedAudience) {
 		if !in.HasSelections && !publishing {
 			followIDs, err = selectionFollowsTx(ctx, tx, viewer, selections)
 			if err != nil {
@@ -279,6 +315,33 @@ func WritePublishingPost(ctx context.Context, database *sql.DB, viewer, id int64
 	fireSocialInvalidation()
 	cleanupPublishingMedia(ctx, database)
 	return p, nil
+}
+
+// groupScopeFields rejects personal audience controls on group content: group
+// access is current membership and nothing else.
+func groupScopeFields(in PublishingInput) error {
+	if in.Audience != nil {
+		return contentField("audience", "GROUP_SCOPE")
+	}
+	if in.HasSelections {
+		return contentField("selected_follower_ids", "GROUP_SCOPE")
+	}
+	return nil
+}
+
+// CheckGroupPostRequest is the early guard for a group-scoped create: the field
+// rules and current membership, evaluated before any upload is staged. The write
+// transaction repeats the membership decision under the social write lock.
+func CheckGroupPostRequest(ctx context.Context, database *sql.DB, viewer int64, in PublishingInput) error {
+	if err := groupScopeFields(in); err != nil {
+		return err
+	}
+	tx, err := database.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	return requireGroupMember(ctx, tx, viewer, in.GroupID)
 }
 func cleanupPublishingMedia(ctx context.Context, database *sql.DB) {
 	if err := CleanupMedia(ctx, database, false); err != nil {
@@ -315,7 +378,7 @@ func DeletePublishingPost(ctx context.Context, database *sql.DB, viewer, id, exp
 	cleanupPublishingMedia(ctx, database)
 	return nil
 }
-func PublishingFeed(ctx context.Context, database *sql.DB, viewer int64, page, per int, feed, status string, category int64, mine bool) (ListPostsResult, error) {
+func PublishingFeed(ctx context.Context, database *sql.DB, viewer int64, page, per int, feed, status string, category, group int64, mine bool) (ListPostsResult, error) {
 	extra := ` AND p.status='published'`
 	args := []any{}
 	if mine {
@@ -332,29 +395,59 @@ func PublishingFeed(ctx context.Context, database *sql.DB, viewer int64, page, p
 		extra += ` AND EXISTS(SELECT 1 FROM post_categories pc WHERE pc.post_id=p.id AND pc.category_id=?)`
 		args = append(args, category)
 	}
-	return socialPostPage(ctx, database, viewer, page, per, extra, args...)
+	if group != 0 {
+		extra += ` AND p.group_id=?`
+		args = append(args, group)
+	}
+	tx, err := database.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return ListPostsResult{Posts: []Post{}}, err
+	}
+	defer tx.Rollback()
+	if group != 0 {
+		// The membership decision and the page share one read snapshot.
+		if err := requireGroupMember(ctx, tx, viewer, group); err != nil {
+			return ListPostsResult{Posts: []Post{}}, err
+		}
+	}
+	result, err := socialPostPageTx(ctx, tx, viewer, page, per, extra, args...)
+	if err != nil {
+		return result, err
+	}
+	return result, tx.Commit()
 }
 
 type PublishingDraft struct {
-	ID                  int64   `json:"id"`
-	Title               *string `json:"title"`
-	Body                string  `json:"body"`
-	ImageURL            *string `json:"image_url"`
-	CategoryIDs         []int64 `json:"category_ids"`
-	UpdatedAt           string  `json:"updated_at"`
-	Audience            string  `json:"audience"`
-	Version             int64   `json:"version"`
-	SelectedFollowerIDs []int64 `json:"selected_follower_ids"`
+	ID                  int64      `json:"id"`
+	Title               *string    `json:"title"`
+	Body                string     `json:"body"`
+	ImageURL            *string    `json:"image_url"`
+	CategoryIDs         []int64    `json:"category_ids"`
+	UpdatedAt           string     `json:"updated_at"`
+	Audience            string     `json:"audience"`
+	Version             int64      `json:"version"`
+	SelectedFollowerIDs []int64    `json:"selected_follower_ids"`
+	Group               *PostGroup `json:"group"`
 }
 
-func LatestPublishingDraft(ctx context.Context, database *sql.DB, viewer int64) (*PublishingDraft, error) {
+// LatestPublishingDraft returns the newest draft of the given scope: personal
+// drafts when group is 0, otherwise that group's drafts, which only a current
+// member (necessarily the author) can reach.
+func LatestPublishingDraft(ctx context.Context, database *sql.DB, viewer, group int64) (*PublishingDraft, error) {
 	tx, err := database.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback()
 	var id int64
-	err = tx.QueryRowContext(ctx, `SELECT id FROM posts WHERE author_id=? AND status='draft' ORDER BY updated_at DESC,id DESC LIMIT 1`, viewer).Scan(&id)
+	if group != 0 {
+		if err := requireGroupMember(ctx, tx, viewer, group); err != nil {
+			return nil, err
+		}
+		err = tx.QueryRowContext(ctx, `SELECT id FROM posts WHERE author_id=? AND status='draft' AND group_id=? ORDER BY updated_at DESC,id DESC LIMIT 1`, viewer, group).Scan(&id)
+	} else {
+		err = tx.QueryRowContext(ctx, `SELECT id FROM posts WHERE author_id=? AND status='draft' AND group_id IS NULL ORDER BY updated_at DESC,id DESC LIMIT 1`, viewer).Scan(&id)
+	}
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -369,6 +462,10 @@ func LatestPublishingDraft(ctx context.Context, database *sql.DB, viewer int64) 
 	for _, c := range p.Categories {
 		cats = append(cats, c.ID)
 	}
-	d := &PublishingDraft{p.ID, p.NullableTitle, p.Body, p.ImageURL, cats, p.UpdatedAt, p.Audience, p.Version, *p.SelectedFollowerIDs}
+	selected := []int64{}
+	if p.SelectedFollowerIDs != nil {
+		selected = *p.SelectedFollowerIDs
+	}
+	d := &PublishingDraft{p.ID, p.NullableTitle, p.Body, p.ImageURL, cats, p.UpdatedAt, p.Audience, p.Version, selected, p.Group}
 	return d, tx.Commit()
 }

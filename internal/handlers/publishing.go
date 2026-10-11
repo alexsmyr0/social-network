@@ -24,20 +24,20 @@ func publishingError(w http.ResponseWriter, r *http.Request, err error) {
 		socialError(w, r, err)
 	}
 }
-func publishingQuery(r *http.Request, kind string) (page, per int, feed, status string, category, expected int64, e *APIError) {
+func publishingQuery(r *http.Request, kind string) (page, per int, feed, status string, category, expected, group int64, e *APIError) {
 	values, e := urlQuery(r)
 	if e != nil {
 		return
 	}
 	page, per, feed, status = 1, 20, "all", "all"
 	for k, v := range values {
-		allowed := kind == "feed" && (k == "page" || k == "per_page" || k == "feed" || k == "category_id") || kind == "mine" && (k == "page" || k == "per_page" || k == "status") || kind == "delete" && k == "expected_version"
+		allowed := kind == "feed" && (k == "page" || k == "per_page" || k == "feed" || k == "category_id" || k == "group_id") || kind == "mine" && (k == "page" || k == "per_page" || k == "status") || kind == "delete" && k == "expected_version" || kind == "draft" && k == "group_id"
 		if !allowed || len(v) != 1 {
 			e = NewError("BAD_REQUEST", "invalid query", 400)
 			return
 		}
 		switch k {
-		case "page", "per_page", "category_id", "expected_version":
+		case "page", "per_page", "category_id", "expected_version", "group_id":
 			n, err := socialID(v[0])
 			if err != nil {
 				e = err
@@ -58,6 +58,8 @@ func publishingQuery(r *http.Request, kind string) (page, per int, feed, status 
 				per = int(n)
 			case "category_id":
 				category = n
+			case "group_id":
+				group = n
 			case "expected_version":
 				expected = n
 			}
@@ -190,6 +192,15 @@ func readContentFields(w http.ResponseWriter, r *http.Request, keys []string) (f
 				return
 			}
 			switch {
+			case k == "group_id":
+				// Decimal digits only; zero and range are field errors checked with JSON.
+				for _, c := range values[0] {
+					if c < '0' || c > '9' {
+						e = NewError("BAD_REQUEST", "invalid ID", 400)
+						return
+					}
+				}
+				fields[k] = json.RawMessage(values[0])
 			case contentIDFields[k]:
 				if _, err := socialID(values[0]); err != nil {
 					e = err
@@ -227,7 +238,7 @@ func readContentFields(w http.ResponseWriter, r *http.Request, keys []string) (f
 // validated here but staged only after resource ownership has been checked.
 func parsePublishing(w http.ResponseWriter, r *http.Request, edit, draft bool) (in db.PublishingInput, image imageUpdateRequest, cleanup func(), e *APIError) {
 	cleanup = func() {}
-	keys := []string{"title", "body", "category_ids", "image_url", "remove_image", "audience", "selected_follower_ids"}
+	keys := []string{"title", "body", "category_ids", "image_url", "remove_image", "audience", "selected_follower_ids", "group_id"}
 	if edit {
 		keys = append(keys, "expected_version")
 	}
@@ -243,6 +254,11 @@ func parsePublishing(w http.ResponseWriter, r *http.Request, edit, draft bool) (
 	}
 	image.HasImageUpload = upload
 	if e != nil {
+		return
+	}
+	if _, ok := fields["group_id"]; ok && edit {
+		// Group scope is create-only: no move into, out of or between groups.
+		e = socialFieldError("group_id", "IMMUTABLE")
 		return
 	}
 	if edit {
@@ -307,6 +323,8 @@ func parsePublishing(w http.ResponseWriter, r *http.Request, edit, draft bool) (
 		case "selected_follower_ids":
 			in.HasSelections = true
 			in.SelectedFollowerIDs, e = publishingIDs(raw, k, 500)
+		case "group_id":
+			in.GroupID, e = socialJSONInteger(raw, k, "INVALID_ID")
 		case "expected_version":
 			in.ExpectedVersion, e = socialID(string(raw))
 		case "image_url":
@@ -369,7 +387,7 @@ func (p *PostsHandler) publishingList(w http.ResponseWriter, r *http.Request, mi
 	if mine {
 		kind = "mine"
 	}
-	page, per, feed, status, cat, _, e := publishingQuery(r, kind)
+	page, per, feed, status, cat, _, group, e := publishingQuery(r, kind)
 	if e != nil {
 		WriteError(w, r, e)
 		return
@@ -379,7 +397,7 @@ func (p *PostsHandler) publishingList(w http.ResponseWriter, r *http.Request, mi
 		return
 	}
 	viewer, _ := db.SocialViewer(r.Context())
-	result, err := db.PublishingFeed(r.Context(), p.conn, viewer, page, per, feed, status, cat, mine)
+	result, err := db.PublishingFeed(r.Context(), p.conn, viewer, page, per, feed, status, cat, group, mine)
 	if err != nil {
 		publishingError(w, r, err)
 		return
@@ -387,7 +405,7 @@ func (p *PostsHandler) publishingList(w http.ResponseWriter, r *http.Request, mi
 	WriteOK(w, result.Posts, &Meta{Pagination: makePaginationMeta(page, per, result.Total)})
 }
 func (p *PostsHandler) publishingDetail(w http.ResponseWriter, r *http.Request, id int64) {
-	if _, _, _, _, _, _, e := publishingQuery(r, ""); e != nil {
+	if _, _, _, _, _, _, _, e := publishingQuery(r, ""); e != nil {
 		WriteError(w, r, e)
 		return
 	}
@@ -403,7 +421,7 @@ func (p *PostsHandler) publishingDetail(w http.ResponseWriter, r *http.Request, 
 	WriteOK(w, post, nil)
 }
 func (p *PostsHandler) publishingWrite(w http.ResponseWriter, r *http.Request, id int64, draft bool) {
-	if _, _, _, _, _, _, e := publishingQuery(r, ""); e != nil {
+	if _, _, _, _, _, _, _, e := publishingQuery(r, ""); e != nil {
 		WriteError(w, r, e)
 		return
 	}
@@ -420,6 +438,13 @@ func (p *PostsHandler) publishingWrite(w http.ResponseWriter, r *http.Request, i
 		return
 	}
 	viewer, _ := db.SocialViewer(r.Context())
+	if id == 0 && in.GroupID != 0 {
+		// A group scope is checked before any upload is staged; the write repeats it.
+		if err := db.CheckGroupPostRequest(r.Context(), p.conn, viewer, in); err != nil {
+			publishingError(w, r, err)
+			return
+		}
+	}
 	// A nonnull submitted URL can only retain this exact resource's URL. Pending
 	// uploads cannot be claimed through JSON by guessing their media ID.
 	if id != 0 || image.ImageURL != nil {
@@ -467,7 +492,7 @@ func (p *PostsHandler) publishingWrite(w http.ResponseWriter, r *http.Request, i
 	}
 }
 func (p *PostsHandler) publishingDelete(w http.ResponseWriter, r *http.Request, id int64, draft bool) {
-	_, _, _, _, _, expected, e := publishingQuery(r, "delete")
+	_, _, _, _, _, expected, _, e := publishingQuery(r, "delete")
 	if e != nil {
 		WriteError(w, r, e)
 		return
@@ -488,7 +513,8 @@ func (p *PostsHandler) publishingDraft(w http.ResponseWriter, r *http.Request) {
 		p.publishingWrite(w, r, 0, true)
 		return
 	}
-	if _, _, _, _, _, _, e := publishingQuery(r, ""); e != nil {
+	_, _, _, _, _, _, group, e := publishingQuery(r, "draft")
+	if e != nil {
 		WriteError(w, r, e)
 		return
 	}
@@ -497,7 +523,7 @@ func (p *PostsHandler) publishingDraft(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	viewer, _ := db.SocialViewer(r.Context())
-	draft, err := db.LatestPublishingDraft(r.Context(), p.conn, viewer)
+	draft, err := db.LatestPublishingDraft(r.Context(), p.conn, viewer, group)
 	if err != nil {
 		publishingError(w, r, err)
 		return

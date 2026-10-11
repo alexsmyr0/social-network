@@ -345,6 +345,13 @@ func normalizePublishingResponse(got, want any, mutation bool) {
 			delete(gm, "message")
 			delete(wm, "message")
 		}
+		// Phase 4 adds a nullable group scope to posts and drafts. Personal content
+		// keeps the Phase 3 contract otherwise, so a null scope is not a difference.
+		if scope, has := gm["group"]; has && scope == nil {
+			if _, expected := wm["group"]; !expected {
+				delete(gm, "group")
+			}
+		}
 		for k, v := range gm {
 			if mutation && (k == "created_at" || k == "updated_at" || k == "accepted_at") {
 				gm[k] = wm[k]

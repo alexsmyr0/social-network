@@ -334,7 +334,7 @@ func (p *PostsHandler) socialWriteComment(w http.ResponseWriter, r *http.Request
 }
 
 func (p *PostsHandler) socialDeleteComment(w http.ResponseWriter, r *http.Request, id int64) {
-	_, _, _, _, _, expected, e := publishingQuery(r, "delete")
+	_, _, _, _, _, expected, _, e := publishingQuery(r, "delete")
 	if e == nil {
 		e = socialEmptyBody(r)
 	}
@@ -364,17 +364,22 @@ func (p *PostsHandler) socialReaction(w http.ResponseWriter, r *http.Request, id
 }
 
 func (p *PostsHandler) socialNavigation(w http.ResponseWriter, r *http.Request, post int64) {
-	_, _, values, e := discussionQuery(r, false, "category_id", "feed")
+	_, _, values, e := discussionQuery(r, false, "category_id", "feed", "group_id")
 	if e == nil {
 		e = socialEmptyBody(r)
 	}
-	var category int64
+	var category, group int64
 	var categoryID *int64
 	if e == nil {
 		if raw, ok := values["category_id"]; ok {
 			if category, e = socialID(raw[0]); e == nil {
 				categoryID = &category
 			}
+		}
+	}
+	if e == nil {
+		if raw, ok := values["group_id"]; ok {
+			group, e = socialID(raw[0])
 		}
 	}
 	following := false
@@ -391,7 +396,7 @@ func (p *PostsHandler) socialNavigation(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	viewer, _ := db.SocialViewer(r.Context())
-	nav, err := db.SocialPostNavigation(r.Context(), p.conn, viewer, post, category, following)
+	nav, err := db.SocialPostNavigation(r.Context(), p.conn, viewer, post, category, group, following)
 	if err != nil {
 		publishingError(w, r, err)
 		return

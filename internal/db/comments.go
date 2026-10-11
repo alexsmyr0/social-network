@@ -28,6 +28,25 @@ type Comment struct {
 	Likes           int     `json:"likes"`
 	Dislikes        int     `json:"dislikes"`
 	MyReaction      int     `json:"my_reaction"`
+	// Post is the parent post projection a profile comment list attaches to
+	// comments on group posts, so the group scope stays visible. It is nil (and
+	// omitted) everywhere else, including every personal-post comment.
+	Post *CommentParent `json:"post,omitempty"`
+}
+
+// CommentParent is the activity-style parent post of a profile comment on a
+// group post.
+type CommentParent struct {
+	ID         int64          `json:"id"`
+	AuthorID   int64          `json:"author_id"`
+	Author     string         `json:"author"`
+	Title      *string        `json:"title"`
+	ImageURL   *string        `json:"image_url"`
+	Categories []PostCategory `json:"categories"`
+	Likes      int            `json:"likes"`
+	Dislikes   int            `json:"dislikes"`
+	MyReaction int            `json:"my_reaction"`
+	Group      *PostGroup     `json:"group"`
 }
 
 // A stored version marks the social wire shape: parent_comment_id is always

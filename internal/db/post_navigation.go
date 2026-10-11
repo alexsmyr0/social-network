@@ -23,7 +23,7 @@ func GetPostNavigationByCategory(
 	categoryID int64,
 ) (*PostNavigation, error) {
 	if viewer, ok := SocialViewer(ctx); ok {
-		return socialNavigation(ctx, db, viewer, postID, categoryID, false)
+		return socialNavigation(ctx, db, viewer, postID, categoryID, 0, false)
 	}
 	var nav PostNavigation
 
@@ -78,8 +78,10 @@ func GetPostNavigationByCategory(
 	return &nav, nil
 }
 
-// SocialPostNavigation resolves optional category and Following filters. The
-// source post must itself be readable, published and inside both filters.
-func SocialPostNavigation(ctx context.Context, db *sql.DB, viewer, postID, categoryID int64, following bool) (*PostNavigation, error) {
-	return socialNavigation(ctx, db, viewer, postID, categoryID, following)
+// SocialPostNavigation resolves optional category, group and Following filters.
+// The source post must itself be readable, published and inside every filter.
+// A group scope requires current membership; without one, neighbours come from
+// the viewer's home scope (readable personal posts plus member groups' posts).
+func SocialPostNavigation(ctx context.Context, db *sql.DB, viewer, postID, categoryID, groupID int64, following bool) (*PostNavigation, error) {
+	return socialNavigation(ctx, db, viewer, postID, categoryID, groupID, following)
 }
