@@ -12,7 +12,10 @@ import { groupsKey } from './group-state.js';
 // after this confirms membership, and a signal, reconnect, focus, route or
 // account change discards the group before refetching, so a removed member
 // never keeps a stale "member" view.
-export function useGroup() {
+// `retain` keeps the last confirmed group through invalidations while the
+// refetch runs, for screens that hold the member's own unsent work (a composer).
+// A source change, session clear or failed read still discards it.
+export function useGroup({ retain = false } = {}) {
 	const session = inject(sessionKey);
 	const social = inject(socialKey);
 	const groups = inject(groupsKey);
@@ -22,7 +25,7 @@ export function useGroup() {
 
 	const resource = useSocialResource(
 		async () => (groupId.value ? groups.api.fetchGroup(groupId.value) : { status: 'not-found' }),
-		{ social, sources: () => [groupId.value, viewerId.value] },
+		{ social, sources: () => [groupId.value, viewerId.value], retain },
 	);
 	const group = computed(() => resource.result.value?.group ?? null);
 	const role = computed(() => group.value?.viewer.role ?? 'none');
@@ -32,12 +35,14 @@ export function useGroup() {
 	return { ...resource, groupId, viewerId, group, role, isMember, isCreator };
 }
 
-// Sections a role may open. Nonmembers see discovery metadata only; the
-// member list is members-only and join-request review is creator-only.
+// Sections a role may open. Nonmembers see discovery metadata only; posts and
+// the member list are members-only and join-request review is creator-only.
 export function groupSections(role) {
 	const sections = [{ name: 'group', label: 'About' }];
-	if (role === 'creator' || role === 'member')
+	if (role === 'creator' || role === 'member') {
+		sections.push({ name: 'group-posts', label: 'Posts' });
 		sections.push({ name: 'group-members', label: 'Members' });
+	}
 	if (role === 'creator') sections.push({ name: 'group-requests', label: 'Join requests' });
 	return sections;
 }

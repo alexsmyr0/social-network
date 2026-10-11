@@ -11,7 +11,7 @@ import { useSocialResource } from '../social/use-social-resource.js';
 import CommentCard from './CommentCard.vue';
 import CommentForm from './CommentForm.vue';
 import { contentKey } from './content-state.js';
-import { readFeedQuery } from './content-utils.js';
+import { feedQuery, readFeedQuery, readGroupScope } from './content-utils.js';
 import PostCard from './PostCard.vue';
 import ReactionControl from './ReactionControl.vue';
 
@@ -22,6 +22,8 @@ const session = inject(sessionKey);
 const reply = ref(null);
 const page = computed(() => parsePage(route.query.page));
 const filters = computed(() => readFeedQuery(route.query));
+// The group this discussion was opened from, when the link says so.
+const originGroup = computed(() => readGroupScope(route.query));
 const viewerId = computed(() => session.state.account?.id);
 const { status, result, reload } = useSocialResource(
 	async () => {
@@ -39,9 +41,15 @@ const { status, result, reload } = useSocialResource(
 		if (postResult.status !== 'ok') return postResult;
 		const thread = await content.api.fetchComments(id, { page: page.value });
 		if (thread.status !== 'ok') return thread;
+		// Previous/Next stay inside the group the reader came from, but only when
+		// the post really belongs to it; otherwise the home scope applies.
+		const groupId =
+			originGroup.value && postResult.post.group?.id === originGroup.value
+				? originGroup.value
+				: null;
 		const nav =
 			postResult.post.status === 'published'
-				? await content.api.fetchNavigation(id, filters.value)
+				? await content.api.fetchNavigation(id, { ...filters.value, groupId })
 				: null;
 		if (nav?.status === 'unauthenticated') return nav;
 		return {
@@ -51,6 +59,7 @@ const { status, result, reload } = useSocialResource(
 			pagination: thread.pagination,
 			focused,
 			navigation: nav?.status === 'ok' ? nav.navigation : null,
+			navGroup: groupId,
 			navUnavailable: nav?.status === 'unavailable',
 		};
 	},
@@ -64,8 +73,22 @@ function neighbour(id) {
 	const query = {};
 	if (filters.value.feed === 'following') query.feed = 'following';
 	if (filters.value.categoryId) query.category = String(filters.value.categoryId);
+	if (result.value?.navGroup) query.group = String(result.value.navGroup);
 	return { name: 'post', params: { id }, query };
 }
+// Where "back" goes: the post's group when it has one, otherwise the feed.
+const backLink = computed(() => {
+	const group = post.value?.group;
+	if (!group) return { name: 'feed' };
+	return {
+		name: 'group-posts',
+		params: { id: group.id },
+		query: feedQuery({ ...filters.value, page: 1 }),
+	};
+});
+const backLabel = computed(() =>
+	post.value?.group ? `Back to ${post.value.group.title}` : 'Back to feed',
+);
 watch(
 	() => result.value?.focused?.id,
 	async (id) => {
@@ -90,7 +113,7 @@ async function saved() {
 </script>
 <template>
  <section class="social-view discussion-view" data-screen="discussion" :aria-busy="status === 'loading'">
-  <header class="social-view__head"><p class="eyebrow">Discussion</p><h1 id="discussion-heading" tabindex="-1">A place to <em>talk.</em></h1><RouterLink class="text-link" :to="{name:'feed'}">Back to feed</RouterLink></header>
+  <header class="social-view__head"><p class="eyebrow">Discussion</p><h1 id="discussion-heading" tabindex="-1">A place to <em>talk.</em></h1><RouterLink class="text-link" :to="backLink">{{ backLabel }}</RouterLink></header>
   <p v-if="status === 'loading'" role="status" class="social-status">Loading discussion…</p>
   <div v-else-if="status === 'not-found' || status === 'rejected'" class="social-state" role="status"><h2>This discussion isn’t available.</h2><p>It may have been deleted, or you may no longer have access.</p></div>
   <div v-else-if="status === 'unavailable'" class="social-state" role="alert"><h2>We can’t load this discussion right now.</h2><button class="button button--secondary" type="button" @click="reload('hard')">Try again</button></div>

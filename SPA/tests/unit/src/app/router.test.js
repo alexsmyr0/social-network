@@ -31,6 +31,42 @@ describe('Vue route contract', () => {
 		expect(router.currentRoute.value.fullPath).toBe(path);
 	});
 
+	test.each([
+		['/groups/301/posts', 'group-posts'],
+		['/groups/301/posts/new', 'group-compose'],
+		['/groups/301/posts?feed=following&category=2&page=3', 'group-posts'],
+	])('resolves the group content route %s', async (path, expectedName) => {
+		const router = createAppRouter(createMemoryHistory());
+		await router.push(path);
+
+		expect(router.currentRoute.value.name).toBe(expectedName);
+		expect(router.currentRoute.value.fullPath).toBe(path);
+		expect(router.currentRoute.value.params.id).toBe('301');
+	});
+
+	test('group post filters recover to the nearest valid state and keep the group', async () => {
+		const router = createAppRouter(createMemoryHistory());
+		await router.push('/groups/301/posts?feed=nope&category=abc&page=0&x=1');
+
+		expect(router.currentRoute.value.name).toBe('group-posts');
+		expect(router.currentRoute.value.params.id).toBe('301');
+		expect(router.currentRoute.value.fullPath).toBe('/groups/301/posts');
+		await router.push('/groups/301/posts?feed=following&feed=all&category=2&category=3');
+		expect(router.currentRoute.value.fullPath).toBe('/groups/301/posts?feed=following&category=2');
+	});
+
+	test.each([
+		'/groups/0/posts',
+		'/groups/007/posts',
+		'/groups/abc/posts/new',
+		'/groups/301/posts/old',
+	])('rejects the malformed group content address %s', async (path) => {
+		const router = createAppRouter(createMemoryHistory());
+		await router.push(path);
+
+		expect(router.currentRoute.value.name).toBe('not-found');
+	});
+
 	test('uses the catch-all route for an unknown address', async () => {
 		const router = createAppRouter(createMemoryHistory());
 		await router.push('/not-a-real-place');

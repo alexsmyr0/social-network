@@ -245,6 +245,64 @@
 	background: var(--paper-bright);
 }
 
+/* SN-A16: the group's posts reuse post cards, filters and pager; the section
+   supplies only its head and drops the framed box so cards are not nested. */
+.group-section.group-posts {
+	padding: 0;
+	border: 0;
+	background: transparent;
+}
+
+.group-posts__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: end;
+	justify-content: space-between;
+	gap: 0.75rem 2rem;
+	margin-bottom: 1rem;
+}
+
+.group-posts__head h2 {
+	margin-bottom: 0.35rem;
+}
+
+.group-posts__head > div {
+	min-width: 0;
+}
+
+/* A group title is user text and may have no break opportunity. */
+.group-posts__lede,
+.compose-view .eyebrow,
+.compose-view .social-view__head h1,
+.compose-view .social-view__lede,
+.compose-view .draft-banner p,
+.compose-view .form-alert,
+.edit-view__meta,
+.edit-view .social-view__lede,
+.edit-view .social-state,
+.discussion-view .social-view__head .text-link,
+.content-flash,
+.composer__scope-title,
+.comment-group {
+	overflow-wrap: anywhere;
+}
+
+.group-posts__lede {
+	max-width: 42rem;
+	margin: 0;
+	color: var(--ink-soft);
+	font-size: 0.92rem;
+}
+
+.group-posts .button {
+	color: var(--ink);
+	cursor: pointer;
+}
+
+.group-posts .button--primary {
+	color: #1e1815;
+}
+
 .group-about .membership-actions {
 	justify-items: start;
 	margin-top: 1.25rem;
@@ -375,6 +433,18 @@
 
 	.group-section {
 		padding: 1.1rem;
+	}
+
+	.group-section.group-posts {
+		padding: 0;
+	}
+
+	.group-posts__head .feed-view__actions {
+		width: 100%;
+	}
+
+	.group-posts__head .button {
+		flex: 1 1 8rem;
 	}
 
 	.group-member {

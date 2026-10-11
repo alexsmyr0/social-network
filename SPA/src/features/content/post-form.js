@@ -59,8 +59,10 @@ export function seedForm(form, post) {
 	form.categoryIds = post.categories
 		? post.categories.map((category) => category.id)
 		: [...(post.category_ids ?? [])];
-	form.audience = post.audience;
-	form.selectedIds = sortedIds(post.selected_follower_ids ?? []);
+	// A group post has no personal audience; the form keeps the default so
+	// nothing personal is ever sent for it.
+	form.audience = post.audience === 'group' ? 'public' : post.audience;
+	form.selectedIds = post.audience === 'group' ? [] : sortedIds(post.selected_follower_ids ?? []);
 	form.existingImageUrl = post.image_url;
 	form.removeImage = false;
 	form.errors = {};
@@ -107,7 +109,10 @@ function selectionProblem(form, { publishing, eligibleIds }) {
 // request; the server remains the authority and its field errors still apply.
 // `publishing` is a transition to published (it needs recipients for a
 // Selected audience); `requireContent` covers any edit that stays visible.
-export function validateForm(form, { publishing, requireContent = publishing, eligibleIds }) {
+export function validateForm(
+	form,
+	{ publishing, requireContent = publishing, eligibleIds, group = false },
+) {
 	const errors = {};
 	for (const field of ['title', 'body']) {
 		const problem = textProblem(field, form[field]);
@@ -117,7 +122,8 @@ export function validateForm(form, { publishing, requireContent = publishing, el
 	if (requireContent && !errors.body && normalizeText(form.body) === '' && !keepsImage(form)) {
 		errors.body = fieldMessage('body', 'CONTENT_REQUIRED');
 	}
-	const selection = selectionProblem(form, { publishing, eligibleIds });
+	// Group content has no recipients to choose; membership decides access.
+	const selection = group ? '' : selectionProblem(form, { publishing, eligibleIds });
 	if (selection) errors.selected_follower_ids = selection;
 	// A rejected image choice stays explained but does not block saving the
 	// rest of the post without it.
@@ -133,13 +139,15 @@ function audienceFields(form) {
 }
 
 // A new post or draft sends only what the author supplied; defaults (public,
-// no title, no categories) are left to the server.
-export function createFields(form) {
+// no title, no categories) are left to the server. Content for a group sends
+// the group instead of an audience: the server rejects both together.
+export function createFields(form, { groupId = null } = {}) {
 	const fields = { body: normalizeText(form.body) };
 	const title = normalizeTitle(form.title);
 	if (title !== null) fields.title = title;
 	if (form.categoryIds.length > 0) fields.categoryIds = sortedIds(form.categoryIds);
-	if (form.audience !== 'public') Object.assign(fields, audienceFields(form));
+	if (groupId !== null) fields.groupId = groupId;
+	else if (form.audience !== 'public') Object.assign(fields, audienceFields(form));
 	if (form.image) fields.image = form.image;
 	return fields;
 }
@@ -157,6 +165,9 @@ export function changeFields(form, base) {
 	if (!sameIds(form.categoryIds, baseCategories)) fields.categoryIds = sortedIds(form.categoryIds);
 	if (form.image) fields.image = form.image;
 	else if (form.removeImage && base.image_url) fields.removeImage = true;
+	// Group content never changes audience or recipients, and `group_id` is
+	// create-only, so an edit sends neither.
+	if (base.group) return fields;
 	if (form.audience !== base.audience) Object.assign(fields, audienceFields(form));
 	else if (
 		form.audience === 'selected' &&
@@ -181,6 +192,7 @@ export function rebaseForm(form, base, latest) {
 	// attachment follows the server.
 	form.existingImageUrl = latest.image_url;
 	if (!latest.image_url) form.removeImage = false;
+	if (latest.group) return;
 	const before = base.selected_follower_ids ?? [];
 	const now = latest.selected_follower_ids ?? [];
 	if (form.audience === base.audience && sameIds(form.selectedIds, before)) {

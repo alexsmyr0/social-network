@@ -3,10 +3,10 @@ import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import {
 	AUDIENCE_LABELS,
+	discussionQuery,
 	feedQuery,
 	// biome-ignore lint/correctness/noUnusedImports: used by Vue template
 	formatPostDate,
-	readFeedQuery,
 	STATUS_LABELS,
 } from './content-utils.js';
 
@@ -20,9 +20,7 @@ const route = useRoute();
 const discussionLink = computed(() => ({
 	name: 'post',
 	params: { id: props.post.id },
-	query: ['feed', 'post'].includes(route.name)
-		? feedQuery({ ...readFeedQuery(route.query), page: 1 })
-		: {},
+	query: discussionQuery(route, props.post),
 }));
 const own = computed(() => props.post.author_id === props.viewerId);
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
@@ -60,9 +58,14 @@ watch(
 	},
 );
 
+// A category chip never leaves the post's own scope: a group post filters that
+// group's posts (members only), a personal post filters the home feed.
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 function categoryLink(categoryId) {
-	return { name: 'feed', query: feedQuery({ feed: 'all', categoryId, page: 1 }) };
+	const query = feedQuery({ feed: 'all', categoryId, page: 1 });
+	return props.post.group
+		? { name: 'group-posts', params: { id: props.post.group.id }, query }
+		: { name: 'feed', query };
 }
 </script>
 
@@ -74,7 +77,8 @@ function categoryLink(categoryId) {
 				<time :datetime="post.created_at">{{ formatPostDate(post.created_at) }}</time>
 			</p>
 			<p class="post-card__badges">
-				<span class="badge badge--audience" :data-audience="post.audience">{{ audienceLabel }}</span>
+				<RouterLink v-if="post.group" class="badge badge--group" :to="{ name: 'group-posts', params: { id: post.group.id } }" :aria-label="`Group post in ${post.group.title}`">Group · {{ post.group.title }}</RouterLink>
+				<span v-else class="badge badge--audience" :data-audience="post.audience">{{ audienceLabel }}</span>
 				<span v-if="statusLabel" class="badge badge--status" :data-status="post.status">{{ statusLabel }}</span>
 			</p>
 		</header>

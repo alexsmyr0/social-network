@@ -85,7 +85,7 @@ function feedInvocation(url) {
 const READS = {
 	'GET /api/v1/posts/mine': (url) => (f) =>
 		api.fetchMyPosts({ status: url.searchParams.get('status') ?? 'all' }, f),
-	'GET /api/v1/posts/draft': () => (f) => api.fetchLatestDraft(f),
+	'GET /api/v1/posts/draft': () => (f) => api.fetchLatestDraft({}, f),
 	'GET /api/v1/posts/:id': (_url, id) => (f) => api.fetchPost(id, f),
 	'GET /api/v1/categories': () => (f) => api.fetchCategories(f),
 	'DELETE /api/v1/posts/:id': (url, id) => (f) =>

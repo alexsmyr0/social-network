@@ -35,7 +35,7 @@ Every group read reuses `useSocialResource`. Signals, reconnect, focus, route an
 |---|---|
 | Strict group client (normalization, redaction, pinned conflicts) | `SPA/src/api/groups.js`; group notice types in `SPA/src/api/social.js` |
 | Shared guarded writes and messages | `SPA/src/features/groups/group-state.js` (provided as `groupsKey` in `main.js`) |
-| Routed group and role, section rules | `use-group.js` (`useGroup`, `groupSections`), `GroupNav.vue` — **A16 entry point**: add a posts section/route that calls `useGroup()` and mounts group content only while `isMember` |
+| Routed group and role, section rules | `use-group.js` (`useGroup`, `groupSections`), `GroupNav.vue` — **A16 entry point** (done in [frontend group content](frontend-group-content.md)): the posts section and composer call `useGroup()` and mount group content only while `isMember` |
 | Outcome reporting | `use-group-feedback.js`, `GroupFeedback.vue` |
 | Views | `GroupsPage.vue`, `GroupCard.vue`, `InvitationList.vue`, `GroupCreatePage.vue`, `GroupPage.vue`, `MembershipActions.vue`, `GroupMembers.vue`, `GroupRequests.vue`, `GroupInvitePanel.vue` |
 | Shell, routes and notices | `SPA/src/app/App.vue`, `SPA/src/app/router.js` (group filter canonicalization), `NotificationCenter.vue` |

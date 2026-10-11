@@ -42,6 +42,7 @@ async function remove() {
 <template>
  <article :id="`comment-${comment.id}`" class="comment-card" :data-comment-id="comment.id" tabindex="-1">
   <header class="post-card__byline"><RouterLink :to="{name:'profile',params:{id:comment.user_id}}">{{ comment.username }}</RouterLink><time :datetime="comment.created_at">{{ formatPostDate(comment.created_at) }}</time></header>
+  <p v-if="comment.post?.group" class="comment-group"><RouterLink class="badge badge--group" :to="{name:'group-posts',params:{id:comment.post.group.id}}">Group · {{ comment.post.group.title }}</RouterLink></p>
   <p v-if="comment.parent_comment_id" class="comment-parent"><RouterLink :to="{name:'comment',params:{id:comment.parent_comment_id}}">Reply to comment #{{ comment.parent_comment_id }}</RouterLink></p>
   <CommentForm v-if="editing && interactive && own" :post-id="comment.post_id" :comment="comment" @saved="editing = false" @cancel="editing = false" />
   <template v-else>
