@@ -1,6 +1,6 @@
 # Track B — Backend, Data and Shared Tooling
 
-Dev 2 owns backend, storage and shared run/CI tooling for Phases 1–4. Status and handoffs live in the [tracker](ticket-tracker.md); follow the [ticket-writing rules](ticket-rules.md). Larger work packages follow the [Phase 2–3 decisions](phase-2-3-decisions.md) and [Phase 4 decisions](phase-4-decisions.md), including preservation of inherited features. Phase 5 remains pending.
+Dev 2 owns backend, storage and shared run/CI tooling for Phases 1–5. Status and handoffs live in the [tracker](ticket-tracker.md); follow the [ticket-writing rules](ticket-rules.md). Larger work packages follow the [Phase 2–3 decisions](phase-2-3-decisions.md) and [Phase 4 decisions](phase-4-decisions.md), including preservation of inherited features. Phase 5 tickets follow the [Phase 5 analysis](phase-5-decisions.md); its product decisions need owner approval in SN-B20 before consumers start.
 
 Output filenames are planned artifacts under this section, not existing files. Decision tickets require recorded owner approval. Test commands are recorded when executed; do not invent framework-specific commands before selection.
 
@@ -487,3 +487,109 @@ Verification Gate:
 - Drafts remain author-only plus membership; publication changes preserve discussions, and forged group/parent associations or concurrent removal cannot commit unauthorized mutations.
 - Direct/raw media URLs, notices, aggregate counts and activity cannot bypass membership; referenced files survive upgrade, restart and cleanup after author departure.
 - Focused content/media/race regressions and realtime invalidation checks pass; SN-A17 supplies real browser acceptance without becoming this producer's prerequisite.
+
+## SN-B20 — Publish event and messaging contracts
+
+Source: [Groups](requirements.md#groups), [chat](requirements.md#chat), [notifications](requirements.md#notifications), [Phase 5 proposals](phase-5-decisions.md#proposed-decisions-all-pending-owner-approval) | Phase: 5 | Type: contract
+
+Goal: Give both tracks owner-approved event and messaging decisions, interfaces, migration mappings and independent fixtures.
+
+Scope: Decisions, contract and data handoff; event implementation belongs to SN-B21, private messages to SN-B22, group chat to SN-B23. Group-chat images, event editing and blocking stay outside unless the owner adds them.
+
+Depends on: SN-A17
+
+Blocks: SN-B21, SN-B22, SN-A18, SN-A19
+
+External gate: One owner approval of every Phase 5 product decision and of the concrete interfaces and fixture handoff. A rejected proposal is revised here before any consumer starts.
+
+Work:
+
+- Put each proposed Phase 5 decision to the owner with its alternative and record the outcome in `phase-5-decisions.md`.
+- Write planned `events-chat-contract.md` for event create/list/respond, DM send/history/roster/read cursors, group-chat history/send and WebSocket frames, with errors, pagination, size bounds and duplicate/stale outcomes.
+- Write planned `phase-5-data-plan.md` for events, responses, read cursors and group messages. Include the notification-type rebuild, migration order for B21–B23, and preservation of existing private messages and DM media.
+- Supply planned `fixtures/phase-5-contract.json` and a validator covering the delivery and membership matrices, event transitions and the unfollow/refollow and removal/readmission journeys.
+
+Verification Gate:
+
+- The owner records one approval of decisions and handoff; both tracks can implement from matching schemas, examples and errors without reopening approved architecture.
+- The DM matrix covers every follow state (none, either direction, mutual, pending) by recipient profile and online/offline for permission and live-versus-stored delivery. The group matrices cover outsider, invitee, requester, member, creator and departed roles.
+- The upgrade mapping preserves existing message IDs, bodies and image associations. Every event and chat path names its permission check, atomic effects and invalidation.
+- Fixture validator, link and graph checks pass; no application validation is claimed.
+
+## SN-B21 — Implement group events, responses and event notices
+
+Source: [Groups](requirements.md#groups), [notifications](requirements.md#notifications), [migrations](requirements.md#migrate) | Phase: 5 | Type: implementation
+
+Goal: Let group members create events, respond Going or Not going, and be notified.
+
+Scope: Event schema, APIs and event notices; group chat belongs to SN-B23, private messages to SN-B22, the UI to SN-A18.
+
+Depends on: SN-B20
+
+Blocks: SN-A21
+
+Work:
+
+- Apply the approved event and response migration plus the notification-type rebuild without resets. Preserve earlier notices, IDs and read state.
+- Implement member-only creation with validated title, description and start time, paginated list and detail ordered by start time, and one changeable response per member with the viewer's choice and counts.
+- Reuse the shared membership decision on every read and write, including direct URLs and aggregates. Keep events after their creator leaves; exclude departed members' responses from counts.
+- Insert one notice for each current member except the creator in the creation transaction and signal after commit. Hide notices and excerpts once membership is lost.
+
+Verification Gate:
+
+- Migration, repository and API tests cover fresh, upgrade, repeated and failed startup, preserved notifications, and field validation.
+- Outsiders, invitees, requesters and departed members get no event data from list, detail, response or notice paths. Forged group or event IDs fail, and a response racing removal commits nothing for the removed member.
+- Notice tests prove exact recipients, rollback silence, no retroactive notices for later joiners, restart durability and missed-signal recovery.
+- Focused Go, API and race checks pass with recorded revisions; endpoints hand off to SN-A21.
+
+## SN-B22 — Enforce relationship rules for private messages
+
+Source: [Chat](requirements.md#chat), [WebSocket](requirements.md#app), [Phase 5 proposals](phase-5-decisions.md#proposed-decisions-all-pending-owner-approval) | Phase: 5 | Type: implementation
+
+Goal: Make private messaging follow the approved relationship, delivery, history and unread rules.
+
+Scope: DM permission, offline storage, roster, history, DM images, read cursors and frames; group chat belongs to SN-B23, the UI to SN-A19.
+
+Depends on: SN-B20
+
+Blocks: SN-B23
+
+Work:
+
+- Apply the approved DM migration for read cursors and indexes, preserving existing messages, IDs and image associations.
+- Check the current accepted follow relationship inside the send transaction. Replace the offline rejection with durable storage, push live only under the approved follow or public-profile rule, and keep body-or-image, emoji and size bounds.
+- Replace the all-user roster with existing conversations plus messageable people. Keep history and DM images participant-only after relationship loss, block new sends, and filter presence by profile visibility.
+- Add unread counts and mark-read cursors separate from notifications. Recheck permission at every frame delivery and signal relationship changes with a payload-free invalidation.
+
+Verification Gate:
+
+- Real-socket tests replay the delivery matrix: permitted and denied sends, live versus stored delivery, offline send visible once after reconnect, ordering and duplicate submissions.
+- Pending requesters, outsiders and third parties receive no history, roster entry, count or image. After both users unfollow, sends fail while participant history stays readable; refollow restores sending.
+- Cursor tests cover per-conversation counts, idempotent mark-read, multiple sessions and restart; message counts never change notification counts.
+- Migration, restart, `-race` and a concurrent unfollow-versus-send test pass, with DM image upload and replay regressions.
+
+## SN-B23 — Implement group chat and shared realtime delivery
+
+Source: [Chat](requirements.md#chat), [Groups](requirements.md#groups), [WebSocket](requirements.md#app) | Phase: 5 | Type: implementation
+
+Goal: Give each group a members-only persisted chat delivered over the existing socket.
+
+Scope: Group message storage, APIs, frames, read cursors and membership invalidation; DM rules belong to SN-B22, the UI to SN-A20.
+
+Depends on: SN-B22
+
+Blocks: SN-A21
+
+Work:
+
+- Apply the approved group-message and cursor migration. Each group has one room, including groups created in earlier phases.
+- Implement paginated history, text and emoji sending with the contract bounds, and per-member read cursors, reusing SN-B22 frames and unread logic.
+- Check current membership in the send and read transactions and at every frame delivery. Leave or removal stops delivery and hides the room while messages remain for members; readmission restores access.
+- Fan out to every session of each member with bounded buffers, recover missed frames by refetch, and record the harness handoff. B owns shared runtime and CI changes.
+
+Verification Gate:
+
+- Role tests cover creator, member, invitee, requester, outsider, departed and removed users for history, send, frames and cursors. Private-profile authors expose no extra fields.
+- Concurrent leave or removal versus send leaves no message committed or delivered after revocation. Retained messages, ordering and readmission pass.
+- Multi-session real-socket tests deliver exactly one frame to each member session and none to others. Reconnect refetch restores missed messages and indicators stay separate from notices.
+- Migration, restart, `-race` and prior-phase regressions pass; SN-A21 supplies browser acceptance without becoming a prerequisite.

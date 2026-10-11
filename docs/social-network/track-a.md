@@ -1,6 +1,6 @@
 # Track A — Frontend and Integration
 
-Dev 1 owns frontend, active documentation and integrated acceptance for Phases 1–4. Status and handoffs live in the [tracker](ticket-tracker.md); follow the [ticket-writing rules](ticket-rules.md). Larger work packages follow the [Phase 2–3 decisions](phase-2-3-decisions.md) and [Phase 4 decisions](phase-4-decisions.md), including preservation of inherited features. Phase 5 remains pending.
+Dev 1 owns frontend, active documentation and integrated acceptance for Phases 1–5. Status and handoffs live in the [tracker](ticket-tracker.md); follow the [ticket-writing rules](ticket-rules.md). Larger work packages follow the [Phase 2–3 decisions](phase-2-3-decisions.md) and [Phase 4 decisions](phase-4-decisions.md), including preservation of inherited features. Phase 5 tickets follow the [Phase 5 analysis](phase-5-decisions.md); its product decisions need owner approval in SN-B20 before consumers start.
 
 Output filenames are planned artifacts under this section, not existing files. Decision tickets require recorded owner approval. Test commands are recorded when executed; do not invent framework-specific commands before selection.
 
@@ -418,7 +418,7 @@ Scope: Phase 4 browser/API/media acceptance and earlier-phase regressions; Phase
 
 Depends on: SN-A16, SN-B19
 
-Blocks: None
+Blocks: SN-B20
 
 External gate: Successful local and hosted shared gates, with B owning harness/CI changes.
 
@@ -435,3 +435,109 @@ Verification Gate:
 - Membership loss immediately denies subsequent content/API/media access, including departed authors; remaining members retain contributions. Fresh admission works without restoring cancelled invitation actions.
 - Privacy and membership matrices agree across feeds, direct URLs, aggregates and notices; versioned upgrades/restarts preserve existing personal and group records/media without resets.
 - Required local/hosted checks, keyboard/mobile/desktop flows and prior-phase regressions pass. Skipped Docker checks or unfinished Phase 5 planning cannot count as acceptance evidence.
+
+## SN-A18 — Build group events and responses
+
+Source: [Groups](requirements.md#groups), [notifications](requirements.md#notifications), [Phase 5 proposals](phase-5-decisions.md#proposed-decisions-all-pending-owner-approval) | Phase: 5 | Type: implementation
+
+Goal: Let group members create, find and answer events from the group view and from notices.
+
+Scope: Vue event views and event notices in the global notification modules; chat belongs to SN-A19/A20, real-service acceptance to SN-A21.
+
+Depends on: SN-B20
+
+Blocks: SN-A21
+
+Work:
+
+- Add paginated event list, detail and creation inside the group view. Validate title, description and date/time as the contract does, show times in the viewer's zone, and prevent duplicate submission.
+- Add Going and Not going controls that show the viewer's current choice and counts, allow changing it, and reconcile stale or failed responses.
+- Show event notices in the existing global panel with navigation to the event, hiding them when membership is lost.
+- Use SN-B20 fixtures for outsider, member, creator and departed roles. Clear protected event state on membership or session change and provide loading, empty and error recovery.
+
+Verification Gate:
+
+- Fixture journeys create an event, receive its notice, open it and answer, then change the answer. Counts and the viewer's choice stay consistent after reload and stale responses.
+- Outsiders, invitees and departed members see no event content, controls or notice excerpts, including through direct routes and cached state after account or membership changes.
+- Invalid fields recover with focus on the first error, and a lost response never double-creates an event.
+- Keyboard, 360px/desktop and failure-recovery checks pass against fixtures; real services remain SN-A21.
+
+## SN-A19 — Build private messaging
+
+Source: [Chat](requirements.md#chat), [notifications](requirements.md#notifications), [Phase 5 proposals](phase-5-decisions.md#proposed-decisions-all-pending-owner-approval) | Phase: 5 | Type: implementation
+
+Goal: Let permitted users chat privately with live delivery, emoji, history and indicators distinct from notifications.
+
+Scope: Vue conversation list, conversation view, presence, DM images and the global message indicator; group chat belongs to SN-A20, server rules to SN-B22.
+
+Depends on: SN-B20
+
+Blocks: SN-A20
+
+Work:
+
+- Port the roster into Vue as existing conversations plus messageable people, with last-message previews, unread counts and presence shown only where the profile is visible.
+- Build the conversation view with older-message paging, text and emoji entry, JPEG/PNG/GIF attachments, sending, failed and retry states, and a read-only history state with the composer disabled when the relationship is lost.
+- Extend the session-owned socket lifecycle for message frames: live append, reconnect refetch, multi-tab consistency and mark-read. Show a message badge on every page, visually separate from the notification badge.
+- Drive all states from SN-B20 fixtures. Clear conversations, drafts and cached images on logout or account change.
+
+Verification Gate:
+
+- Fixture journeys replay the delivery matrix: permitted and denied sends, live versus stored messages, offline send appearing after reconnect, unread counts and mark-read.
+- Relationship loss disables sending but keeps history readable; a stranger or pending requester never appears in the list, history or image routes.
+- Emoji, image-only messages, long text and rapid sends render safely without duplicate or reordered entries; message and notification badges never merge.
+- Keyboard, 360px/desktop, outage and reconnect checks pass against fixtures; real services remain SN-A21.
+
+## SN-A20 — Build group chat
+
+Source: [Chat](requirements.md#chat), [Groups](requirements.md#groups), [Phase 5 proposals](phase-5-decisions.md#proposed-decisions-all-pending-owner-approval) | Phase: 5 | Type: implementation
+
+Goal: Let group members chat in their group's room using the shared messaging components.
+
+Scope: Group room view, per-group indicators and membership-loss handling, reusing SN-A19 components; DM behavior stays in SN-A19, server enforcement in SN-B23.
+
+Depends on: SN-A19
+
+Blocks: SN-A21
+
+Work:
+
+- Add a group chat route and entry from the group view with paged history, text and emoji entry, and sending, failed and retry states, reusing the SN-A19 message list, composer and emoji picker.
+- Show per-group unread counts in the message indicator and group navigation, separate from the notification badge. Apply the same socket, reconnect and multi-tab lifecycle.
+- Remove the room, composer and cached messages immediately when membership is lost. Show a fresh room after readmission and members-only notices to everyone else.
+- Use SN-B20 fixtures for creator, member, invitee, outsider and departed roles; keep author names within existing profile-field restrictions.
+
+Verification Gate:
+
+- Fixture journeys send and receive in a group room across two members, mark messages read, and recover missed messages after reconnect.
+- Outsiders, invitees and departed members cannot render the room, history, counts or cached messages through direct routes, back navigation or account switching.
+- Removal during an open room disables the composer and clears content without a false send success; readmission restores access.
+- Keyboard, 360px/desktop and failure-recovery checks pass against fixtures; real services remain SN-A21.
+
+## SN-A21 — Accept events and messaging end to end
+
+Source: [Groups](requirements.md#groups), [chat](requirements.md#chat), [notifications](requirements.md#notifications), [Docker](requirements.md#docker), [Phase 5 boundary](roadmap.md#phase-5-boundary-and-exit) | Phase: 5 | Type: acceptance
+
+Goal: Prove event and chat journeys, permissions and indicators across the real application.
+
+Scope: Phase 5 browser/API/media acceptance and earlier-phase regressions; Phase 6 final delivery remains pending.
+
+Depends on: SN-A18, SN-A20, SN-B21, SN-B23
+
+Blocks: None
+
+External gate: Successful local and hosted shared gates, with B owning harness/CI changes.
+
+Work:
+
+- Extend the shared browser hook with followers, mutual follows, public and private recipients, strangers, and group creator, member, removed and outsider accounts. Exercise event creation, notices and responses and live DM and group chat across separate browser sessions.
+- Change relationships and membership (unfollow, refollow, profile toggle, leave, remove, readmit) and verify sending, history, images, events, notices and indicators follow current permissions, including offline sending.
+- Recreate containers with retained data and media, upgrade earlier-phase data, and verify messages, events, cursors, notices, image bytes and session cleanup alongside preserved DM image, presence and history journeys.
+- Write planned `phase-5-acceptance.md` with commands, revisions, hosted links and failure evidence; update tracker and context only from passing results.
+
+Verification Gate:
+
+- The approved delivery matrix passes with real sockets: only eligible pairs send, live delivery follows the approved rule, and strangers cannot read history or images through UI, API or media URLs.
+- Event creation notifies exactly the current members, responses persist and change, and outsiders and departed members lose event and chat access immediately while stored contributions remain for members.
+- Message indicators stay distinct from notifications, survive reload and restart, and clear only on read. Upgrades and restarts preserve earlier personal, group, DM and media records.
+- Required local/hosted checks, keyboard/mobile/desktop flows and prior-phase regressions pass. Skipped Docker checks cannot count as acceptance evidence.
