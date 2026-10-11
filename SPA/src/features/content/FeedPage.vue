@@ -72,7 +72,7 @@ const emptyMessage = computed(() => {
 	if (filters.value.feed === 'following') {
 		return {
 			title: 'Nothing from people you follow yet.',
-			body: 'Posts you’re allowed to see from the people you follow appear here. Your own posts stay in the Everyone view.',
+			body: 'Posts you’re allowed to see from the people you follow appear here, including their posts in groups you share. Your own posts stay in the Everyone view.',
 		};
 	}
 	if (filters.value.categoryId) {
@@ -98,7 +98,8 @@ function filterLink(changes) {
 				<h1>What your circle is <em>sharing.</em></h1>
 				<p class="social-view__lede">
 					Newest first. You only see posts their authors allowed you to see — public posts,
-					followers-only posts from people you follow, and posts shared with you.
+					followers-only posts from people you follow, and posts shared with you — plus every
+					post in the groups you currently belong to.
 				</p>
 			</div>
 			<p class="feed-view__actions">

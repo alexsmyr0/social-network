@@ -15,6 +15,7 @@ export const AUDIENCE_LABELS = Object.freeze({
 	public: 'Public',
 	followers: 'Followers',
 	selected: 'Selected followers',
+	group: 'Group members',
 });
 
 export const STATUS_LABELS = Object.freeze({
@@ -68,6 +69,8 @@ const FIELD_MESSAGES = {
 		'Some selected people can’t receive this post. They may no longer follow you — review the recipients.',
 	INVALID_STATUS: 'That publication status isn’t available.',
 	INVALID_IMAGE: 'That image couldn’t be used. Choose a valid JPEG, PNG or GIF.',
+	GROUP_SCOPE: 'Group posts follow the group’s membership. They don’t have a separate audience.',
+	IMMUTABLE: 'A post can’t move between a group and your profile after it is created.',
 };
 
 export function fieldMessage(field, code) {
@@ -97,6 +100,26 @@ export function feedQuery({ feed, categoryId, page }) {
 	if (categoryId) next.category = String(categoryId);
 	if (page > 1) next.page = String(page);
 	return next;
+}
+
+// A discussion opened from a group remembers that group so Previous/Next stay
+// inside it. Only a positive decimal ID counts; the server still requires
+// current membership, so a guessed value reveals nothing.
+export function readGroupScope(query) {
+	const value = Array.isArray(query.group) ? query.group[0] : query.group;
+	return parseUserId(value);
+}
+
+// Query that carries the feed filters (and the group, when there is one) from
+// a list into a discussion and back.
+export function discussionQuery(route, post) {
+	if (!['feed', 'post', 'group-posts'].includes(route.name)) return {};
+	const query = feedQuery({ ...readFeedQuery(route.query), page: 1 });
+	const groupId =
+		route.name === 'group-posts' ? parseUserId(route.params.id) : readGroupScope(route.query);
+	// Scope Previous/Next only when the post actually belongs to that group.
+	if (groupId && post?.group?.id === groupId) query.group = String(groupId);
+	return query;
 }
 
 export function readStatusQuery(value) {

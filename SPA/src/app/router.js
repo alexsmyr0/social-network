@@ -10,6 +10,7 @@ import DiscussionPage from '../features/content/DiscussionPage.vue';
 import EditPostPage from '../features/content/EditPostPage.vue';
 import FeedPage from '../features/content/FeedPage.vue';
 import MyPostsPage from '../features/content/MyPostsPage.vue';
+import GroupComposePage from '../features/groups/GroupComposePage.vue';
 import GroupCreatePage from '../features/groups/GroupCreatePage.vue';
 import GroupPage from '../features/groups/GroupPage.vue';
 import GroupsPage from '../features/groups/GroupsPage.vue';
@@ -87,6 +88,19 @@ export const routes = [
 		component: GroupPage,
 		props: { section: 'about' },
 		meta: { title: 'Group', requiresAuth: true },
+	},
+	{
+		path: '/groups/:id([1-9]\\d*)/posts',
+		name: 'group-posts',
+		component: GroupPage,
+		props: { section: 'posts' },
+		meta: { title: 'Group posts', requiresAuth: true },
+	},
+	{
+		path: '/groups/:id([1-9]\\d*)/posts/new',
+		name: 'group-compose',
+		component: GroupComposePage,
+		meta: { title: 'New group post', requiresAuth: true },
 	},
 	{
 		path: '/groups/:id([1-9]\\d*)/members',
@@ -171,18 +185,19 @@ export function createAppRouter(history = createWebHistory(), session) {
 		});
 	}
 
-	// Malformed, repeated or unknown feed and group filters recover to the nearest valid
-	// route state, so a shared or hand-edited link always lands on a working
-	// view. Runs before views mount, so they never redirect themselves.
+	// Malformed, repeated or unknown feed, group-feed and group filters recover
+	// to the nearest valid route state, so a shared or hand-edited link always
+	// lands on a working view. Runs before views mount, so they never redirect
+	// themselves.
 	router.beforeEach((to) => {
-		if (to.name !== 'feed' && to.name !== 'groups') return true;
+		if (to.name !== 'feed' && to.name !== 'group-posts' && to.name !== 'groups') return true;
 		const canonical =
-			to.name === 'feed'
-				? feedQuery(readFeedQuery(to.query))
-				: groupsQuery(readGroupsQuery(to.query));
+			to.name === 'groups'
+				? groupsQuery(readGroupsQuery(to.query))
+				: feedQuery(readFeedQuery(to.query));
 		return sameQuery(to.query, canonical)
 			? true
-			: { name: to.name, query: canonical, replace: true };
+			: { name: to.name, params: to.params, query: canonical, replace: true };
 	});
 
 	router.afterEach((to) => {

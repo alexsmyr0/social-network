@@ -19,22 +19,42 @@ import {
 } from './post-form.js';
 import { useComposerResources } from './use-composer-resources.js';
 
+// A group scope turns this into a group post: the group (already confirmed as
+// the viewer's by GroupComposePage) replaces the personal audience, and no
+// followers or profile are read for it.
+const props = defineProps({
+	group: { type: Object, default: null },
+});
+const emit = defineEmits(['membership-lost']);
+
 const session = inject(sessionKey);
 const social = inject(socialKey);
 const content = inject(contentKey);
 const router = useRouter();
 
+// biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
+const groupScope = computed(() =>
+	props.group ? { id: props.group.id, title: props.group.title } : null,
+);
+const groupId = computed(() => props.group?.id ?? null);
+
 const form = createPostForm();
 const alertBox = ref(null);
 // "unknown" marks a create whose response was lost: it may have been saved.
 const alertKind = ref('');
-const resources = useComposerResources({ social, content, session });
+const resources = useComposerResources({
+	social,
+	content,
+	session,
+	personal: () => !props.group,
+});
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 const { categories, followers, eligibleIds, visibility } = resources;
-const latestDraft = useSocialResource(() => content.api.fetchLatestDraft(), {
-	social,
-	sources: () => session.state.account?.id ?? null,
-});
+// Personal and group drafts are separate: each scope finds only its own.
+const latestDraft = useSocialResource(
+	() => content.api.fetchLatestDraft({ groupId: groupId.value }),
+	{ social, sources: () => [session.state.account?.id ?? null, groupId.value] },
+);
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 const draft = computed(() => latestDraft.result.value?.draft ?? null);
 const busy = computed(() => content.isPending('new'));
@@ -69,6 +89,15 @@ async function handle(result, onSuccess) {
 		return;
 	}
 	if (result.status === 'not-found') {
+		if (props.group) {
+			// Members-only writes answer 404 once membership ends. Nothing was
+			// posted; the text stays so it can be copied.
+			emit('membership-lost');
+			await showAlert(
+				`You’re no longer a member of ${props.group.title}, so nothing was posted. Your text is still here.`,
+			);
+			return;
+		}
 		await showAlert('Something in this post is no longer available. Review it and try again.');
 		return;
 	}
@@ -80,13 +109,24 @@ async function handle(result, onSuccess) {
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 async function publish() {
 	if (busy.value) return;
-	if (!validateForm(form, { publishing: true, eligibleIds: eligibleIds.value })) {
+	if (
+		!validateForm(form, {
+			publishing: true,
+			eligibleIds: eligibleIds.value,
+			group: Boolean(props.group),
+		})
+	) {
 		await showAlert('Some details need attention before publishing.');
 		return;
 	}
-	const result = await content.createPost(createFields(form));
+	const result = await content.createPost(createFields(form, { groupId: groupId.value }));
 	await handle(result, async () => {
 		resetForm(form);
+		if (props.group) {
+			content.setFlash('group-posts', `Your post is published to ${props.group.title}.`);
+			await router.push({ name: 'group-posts', params: { id: props.group.id } });
+			return;
+		}
 		content.setFlash('feed', 'Your post is published.');
 		await router.push({ name: 'feed' });
 	});
@@ -95,22 +135,38 @@ async function publish() {
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 async function saveDraft() {
 	if (busy.value) return;
-	if (!validateForm(form, { publishing: false, eligibleIds: eligibleIds.value })) {
+	if (
+		!validateForm(form, {
+			publishing: false,
+			eligibleIds: eligibleIds.value,
+			group: Boolean(props.group),
+		})
+	) {
 		await showAlert('Some details need attention before saving.');
 		return;
 	}
-	const result = await content.createDraft(createFields(form));
+	const result = await content.createDraft(createFields(form, { groupId: groupId.value }));
 	await handle(result, async ({ draft: saved }) => {
 		resetForm(form);
-		content.setFlash('edit-post', 'Draft saved. Keep editing, or publish when it’s ready.');
+		content.setFlash(
+			'edit-post',
+			props.group
+				? `Draft saved. Only you can see it until you publish it to ${props.group.title}.`
+				: 'Draft saved. Keep editing, or publish when it’s ready.',
+		);
 		await router.replace({ name: 'edit-post', params: { id: saved.id } });
 	});
 }
 </script>
 
 <template>
-	<section class="social-view compose-view" data-screen="compose">
-		<header class="social-view__head">
+	<section class="social-view compose-view" data-screen="compose" :data-scope="group ? 'group' : 'personal'">
+		<header v-if="group" class="social-view__head">
+			<p class="eyebrow">New group post · {{ group.title }}</p>
+			<h1>Share with <em>{{ group.title }}.</em></h1>
+			<p class="social-view__lede">Add text, an image or both. Every current member of the group can read it.</p>
+		</header>
+		<header v-else class="social-view__head">
 			<p class="eyebrow">New post</p>
 			<h1>Share something <em>worth keeping.</em></h1>
 			<p class="social-view__lede">Add text, an image or both. Posts are Public unless you choose a smaller audience.</p>
@@ -118,7 +174,7 @@ async function saveDraft() {
 
 		<aside v-if="draft" class="draft-banner" data-latest-draft>
 			<p>
-				You have a saved draft{{ draft.title ? ` “${draft.title}”` : '' }}, last changed
+				You have a saved draft{{ group ? ` in ${group.title}` : '' }}{{ draft.title ? ` “${draft.title}”` : '' }}, last changed
 				<time :datetime="draft.updated_at">{{ formatPostDate(draft.updated_at) }}</time>.
 			</p>
 			<p class="draft-banner__actions">
@@ -147,6 +203,7 @@ async function saveDraft() {
 				:followers="followers"
 				:eligible-ids="eligibleIds"
 				:visibility="visibility"
+				:group="groupScope"
 				:disabled="busy"
 				id-prefix="compose"
 			/>
@@ -156,7 +213,8 @@ async function saveDraft() {
 					{{ busy ? 'Working…' : 'Publish' }}
 				</button>
 				<button class="button button--secondary" type="button" :aria-disabled="busy" @click="saveDraft">Save as draft</button>
-				<RouterLink class="text-link" :to="{ name: 'feed' }">Cancel</RouterLink>
+				<RouterLink v-if="group" class="text-link" :to="{ name: 'group-posts', params: { id: group.id } }">Cancel</RouterLink>
+				<RouterLink v-else class="text-link" :to="{ name: 'feed' }">Cancel</RouterLink>
 			</div>
 		</form>
 	</section>

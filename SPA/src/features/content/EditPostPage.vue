@@ -41,7 +41,14 @@ const alertKind = ref('');
 const alertBox = ref(null);
 const confirmingDelete = ref(false);
 
-const resources = useComposerResources({ social, content, session });
+// Recipients and profile visibility matter only for personal posts; a group
+// post's audience is its membership.
+const resources = useComposerResources({
+	social,
+	content,
+	session,
+	personal: () => !(base.value ?? latest.value)?.group,
+});
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 const { categories, followers, eligibleIds, visibility } = resources;
 const loader = useSocialResource(
@@ -50,10 +57,13 @@ const loader = useSocialResource(
 );
 
 const accountId = () => session.state.account?.id ?? null;
-// Only the author's own copy carries `selected_follower_ids`; anything else
-// is someone else's post, which never gains owner controls.
+// Only the author's own personal copy carries `selected_follower_ids`; anything
+// else is someone else's post, which never gains owner controls. A group post
+// has no recipients, so authorship alone decides, and the group creator's
+// removal power adds no edit rights over other members' posts.
 const ownedBy = (post) =>
-	post.author_id === accountId() && Array.isArray(post.selected_follower_ids);
+	post.author_id === accountId() &&
+	(Boolean(post.group) || Array.isArray(post.selected_follower_ids));
 
 function startOver() {
 	base.value = null;
@@ -112,13 +122,21 @@ const changedElsewhere = computed(
 );
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 const heading = computed(() => (status.value === 'draft' ? 'Edit draft' : 'Edit post'));
+const groupScope = computed(() => base.value?.group ?? null);
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 const statusNote = computed(() => {
-	if (status.value === 'draft') return 'Only you can see this draft until you publish it.';
+	const group = groupScope.value;
+	if (status.value === 'draft') {
+		return group
+			? `Only you can see this draft until you publish it to ${group.title}.`
+			: 'Only you can see this draft until you publish it.';
+	}
 	if (status.value === 'archived') {
 		return 'This post is archived. Only you can see it until you publish it again.';
 	}
-	return 'Changes appear to its audience as soon as you save.';
+	return group
+		? `Changes appear to the members of ${group.title} as soon as you save.`
+		: 'Changes appear to its audience as soon as you save.';
 });
 
 async function showAlert(message, kind = 'error') {
@@ -168,7 +186,9 @@ async function recoverConflict(action) {
 	const outcome = await refetch({ keepEdits: true });
 	if (outcome === 'ok') {
 		await showAlert(
-			`This post changed somewhere else. We loaded the latest version and kept your unsaved edits; people removed from its recipients meanwhile stay removed. Review it, then ${action} again.`,
+			groupScope.value
+				? `This post changed somewhere else. We loaded the latest version and kept your unsaved edits. Review it, then ${action} again.`
+				: `This post changed somewhere else. We loaded the latest version and kept your unsaved edits; people removed from its recipients meanwhile stay removed. Review it, then ${action} again.`,
 			'stale',
 		);
 	} else if (outcome === 'unavailable') {
@@ -210,7 +230,8 @@ const SUCCESS = {
 async function pendingChanges(action) {
 	const publishing = action === 'publish';
 	const requireContent = publishing || (action === 'save' && status.value !== 'draft');
-	if (!validateForm(form, { publishing, requireContent, eligibleIds: eligibleIds.value })) {
+	const group = Boolean(base.value.group);
+	if (!validateForm(form, { publishing, requireContent, eligibleIds: eligibleIds.value, group })) {
 		await showAlert('Some details need attention before saving.');
 		return null;
 	}
@@ -299,7 +320,7 @@ async function remove() {
 		<div v-else-if="phase === 'foreign'" class="social-state" data-state="foreign">
 			<p class="eyebrow">Edit post</p>
 			<h1>You can only edit your own posts.</h1>
-			<p>This post belongs to someone else.</p>
+			<p>This post belongs to someone else. Being in the same group doesn’t change that, even for the group’s creator.</p>
 			<RouterLink class="button button--secondary" :to="{ name: 'feed' }">Back to the feed</RouterLink>
 		</div>
 
@@ -312,18 +333,20 @@ async function remove() {
 		<template v-else>
 			<header class="social-view__head edit-view__head">
 				<p class="eyebrow">{{ phase === 'gone' ? 'Edit post' : heading }}</p>
-				<h1>{{ phase === 'gone' ? 'This post no longer exists.' : heading }}</h1>
+				<h1>{{ phase === 'gone' ? (groupScope ? 'This post is no longer open to you.' : 'This post no longer exists.') : heading }}</h1>
 				<p v-if="base" class="edit-view__meta">
 					<span class="badge badge--status" :data-status="base.status">{{ STATUS_LABELS[base.status] }}</span>
-					<span class="badge badge--audience" :data-audience="base.audience">{{ AUDIENCE_LABELS[base.audience] }}</span>
+					<RouterLink v-if="base.group" class="badge badge--group" :to="{ name: 'group-posts', params: { id: base.group.id } }">Group · {{ base.group.title }}</RouterLink>
+					<span v-else class="badge badge--audience" :data-audience="base.audience">{{ AUDIENCE_LABELS[base.audience] }}</span>
 					<span>Created <time :datetime="base.created_at">{{ formatPostDate(base.created_at) }}</time></span>
 				</p>
 				<p v-if="phase !== 'gone'" class="social-view__lede">{{ statusNote }}</p>
 			</header>
 
 			<div v-if="phase === 'gone'" class="social-state social-state--error" role="alert" data-state="gone">
-				<h2>It was deleted somewhere else.</h2>
-				<p>Your unsaved text is still shown below so you can copy it. Nothing more can be saved to this post.</p>
+				<h2>{{ groupScope ? 'You can no longer open this group post.' : 'It was deleted somewhere else.' }}</h2>
+				<p v-if="groupScope">You may have left or been removed from {{ groupScope.title }}, or the post was deleted. Your unsaved text is still shown below so you can copy it. Nothing more can be saved to this post.</p>
+				<p v-else>Your unsaved text is still shown below so you can copy it. Nothing more can be saved to this post.</p>
 				<RouterLink class="button button--secondary" :to="{ name: 'my-posts' }">Your posts</RouterLink>
 			</div>
 
@@ -356,6 +379,7 @@ async function remove() {
 						:followers="followers"
 						:eligible-ids="eligibleIds"
 						:visibility="visibility"
+						:group="groupScope"
 						:disabled="busy || phase === 'gone'"
 						id-prefix="edit"
 					/>

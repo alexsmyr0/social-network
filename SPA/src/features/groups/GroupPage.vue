@@ -12,6 +12,8 @@ import GroupMembers from './GroupMembers.vue';
 // biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
 import GroupNav from './GroupNav.vue';
 // biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
+import GroupPosts from './GroupPosts.vue';
+// biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
 import GroupRequests from './GroupRequests.vue';
 import { groupsKey } from './group-state.js';
 // biome-ignore lint/correctness/noUnusedImports: used by the Vue template
@@ -25,7 +27,7 @@ const props = defineProps({
 	section: {
 		type: String,
 		default: 'about',
-		validator: (value) => ['about', 'members', 'requests'].includes(value),
+		validator: (value) => ['about', 'posts', 'members', 'requests'].includes(value),
 	},
 });
 
@@ -48,10 +50,10 @@ watch(role, () => {
 });
 
 // A section the current role may not open shows why, without requesting
-// the members-only or creator-only list.
+// the members-only posts or list, or the creator-only requests.
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 const sectionAllowed = computed(() => {
-	if (props.section === 'members') return isMember.value;
+	if (props.section === 'members' || props.section === 'posts') return isMember.value;
 	if (props.section === 'requests') return isCreator.value;
 	return true;
 });
@@ -59,6 +61,12 @@ const sectionAllowed = computed(() => {
 const members = computed(() =>
 	group.value?.member_count === undefined ? '' : countLabel(group.value.member_count, 'member'),
 );
+// biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
+const restrictedTitle = computed(() => {
+	if (props.section === 'posts') return 'Only members can read group posts.';
+	if (props.section === 'members') return 'Only members can see who belongs.';
+	return 'Only the creator reviews join requests.';
+});
 const leavePending = computed(() =>
 	group.value ? groups.isPending(`membership-${group.value.viewer.membership_id}`) : false,
 );
@@ -115,6 +123,9 @@ async function leave() {
 					<p class="group-about__description">{{ group.description }}</p>
 					<MembershipActions :group="group" />
 					<p v-if="!isMember" class="group-about__private">Members, invitations and posts stay inside the group until you join.</p>
+					<p v-else class="group-about__private">
+						<RouterLink class="text-link" :to="{ name: 'group-posts', params: { id: group.id } }">Read the group’s posts <span aria-hidden="true">↗</span></RouterLink>
+					</p>
 					<div v-if="role === 'member'" class="group-leave">
 						<template v-if="confirmingLeave">
 							<p id="group-leave-warning">Leave {{ group.title }}? You’ll lose access to its members and posts. Your posts stay; any invitations you sent are cancelled.</p>
@@ -129,10 +140,11 @@ async function leave() {
 			</template>
 
 			<div v-else-if="!sectionAllowed" class="social-state" role="status" data-state="restricted">
-				<h2>{{ section === 'members' ? 'Only members can see who belongs.' : 'Only the creator reviews join requests.' }}</h2>
+				<h2>{{ restrictedTitle }}</h2>
 				<p>{{ isMember ? 'Ordinary members can invite people from the About page.' : 'Join by invitation or request to see members and posts.' }}</p>
 				<RouterLink class="button button--secondary" :to="{ name: 'group', params: { id: group.id } }">About this group</RouterLink>
 			</div>
+			<GroupPosts v-else-if="section === 'posts'" :group="group" :viewer-id="viewerId" />
 			<GroupMembers v-else-if="section === 'members'" :group="group" :viewer-id="viewerId" />
 			<GroupRequests v-else :group="group" :viewer-id="viewerId" />
 		</template>

@@ -13,6 +13,9 @@ const props = defineProps({
 	followers: { type: Object, required: true },
 	eligibleIds: { type: Array, default: null },
 	visibility: { type: String, default: null },
+	// `{id, title}` when the post belongs to a group. Membership then replaces
+	// the personal audience picker.
+	group: { type: Object, default: null },
 	disabled: { type: Boolean, default: false },
 	idPrefix: { type: String, default: 'post' },
 });
@@ -214,7 +217,19 @@ onUnmounted(() => clearImageChoice(props.form));
 			<p v-if="form.errors.category_ids" class="field-error">{{ form.errors.category_ids }}</p>
 		</fieldset>
 
-		<fieldset class="composer__group composer__audience" :class="{ 'form-field--error': form.errors.audience }">
+		<fieldset v-if="group" class="composer__group composer__scope" data-visibility="group">
+			<legend>Who can see this</legend>
+			<p class="composer__scope-title">
+				<strong>Members of {{ group.title }}</strong>
+			</p>
+			<p class="field-hint">
+				Everyone who is in the group when they open it can read this, whoever they follow and however
+				your profile is set. People who leave, or are removed, lose access straight away; what you
+				wrote here stays with the group.
+			</p>
+		</fieldset>
+
+		<fieldset v-else class="composer__group composer__audience" :class="{ 'form-field--error': form.errors.audience }">
 			<legend>Who can see this</legend>
 			<div class="audience-options">
 				<label v-for="option in audiences" :key="option.value" class="audience-option" :data-audience="option.value">

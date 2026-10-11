@@ -34,24 +34,29 @@ async function loadFollowers(api, userId) {
 // their profile visibility, which limits who a Public post reaches. All are
 // the viewer's own data, so invalidations refresh them without blanking the
 // form; an account change, session clear or failed read still discards them.
-export function useComposerResources({ social, content, session }) {
+// `personal` says whether the post being written has a personal audience. Group
+// content is addressed by membership, so its composer never reads the author's
+// followers or profile.
+export function useComposerResources({ social, content, session, personal = () => true }) {
 	const accountId = () => session.state.account?.id ?? null;
 	// Signed out, there is nobody's data to read; the session handler leaves.
 	const forAccount = (load) => () => {
 		const id = accountId();
-		return id === null ? Promise.resolve({ status: 'loading' }) : load(id);
+		return id === null || !personal() ? Promise.resolve({ status: 'loading' }) : load(id);
 	};
+	// A primitive, so the sources only change when the account or scope really does.
+	const personalSource = () => `${accountId()}:${personal()}`;
 	const categories = useSocialResource(() => content.api.fetchCategories(), {
 		social,
 		retain: true,
 	});
 	const followers = useSocialResource(
 		forAccount((id) => loadFollowers(social.api, id)),
-		{ social, sources: accountId, retain: true },
+		{ social, sources: personalSource, retain: true },
 	);
 	const profile = useSocialResource(
 		forAccount((id) => social.api.fetchProfile(id)),
-		{ social, sources: accountId, retain: true },
+		{ social, sources: personalSource, retain: true },
 	);
 
 	return {

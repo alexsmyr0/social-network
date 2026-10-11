@@ -2,7 +2,9 @@ import { isValidId } from './social.js';
 
 const API = '/api/v1';
 const STATUSES = new Set(['published', 'draft', 'archived']);
-const AUDIENCES = new Set(['public', 'followers', 'selected']);
+// `group` is the stored audience of group content: access follows current
+// membership, never an audience the author picked.
+const AUDIENCES = new Set(['public', 'followers', 'selected', 'group']);
 const REACTIONS = new Set([-1, 0, 1]);
 // Only checked same-origin media routes are rendered. A remote or otherwise
 // unexpected URL is dropped rather than handed to an <img>.
@@ -84,9 +86,22 @@ function normalizeCategories(value) {
 	return categories.includes(null) ? null : categories;
 }
 
+// Group scope is `{id, title}` for group content and null otherwise. A field a
+// Phase 3 response does not carry is personal content. An audience that
+// contradicts the scope is a malformed response, never a widened one.
+function normalizeGroupScope(value, audience) {
+	const scope = value === undefined ? null : value;
+	if (scope !== null) {
+		if (!scope || !isValidId(scope.id) || typeof scope.title !== 'string') return undefined;
+	}
+	if ((audience === 'group') !== (scope !== null)) return undefined;
+	return scope === null ? null : { id: scope.id, title: scope.title };
+}
+
 // Keeps exactly the contract's Post fields. `selected_follower_ids` exists
-// only on the author's own copy; any other key a response carries (follower
-// identities, emails, internal names) is dropped here.
+// only on the author's own personal copy; any other key a response carries
+// (follower identities, emails, internal names) is dropped here. Group posts
+// never carry recipients, so membership is the only audience they show.
 export function normalizePost(value) {
 	if (
 		!value ||
@@ -107,7 +122,8 @@ export function normalizePost(value) {
 		return null;
 	}
 	const categories = normalizeCategories(value.categories);
-	if (!categories) return null;
+	const group = normalizeGroupScope(value.group, value.audience);
+	if (!categories || group === undefined) return null;
 	const post = {
 		id: value.id,
 		author_id: value.author_id,
@@ -125,7 +141,9 @@ export function normalizePost(value) {
 		dislikes: value.dislikes,
 		my_reaction: value.my_reaction,
 	};
-	if (value.selected_follower_ids !== undefined) {
+	// Personal content has no `group` key at all, so Phase 3 shapes are unchanged.
+	if (group !== null) post.group = group;
+	if (group === null && value.selected_follower_ids !== undefined) {
 		const selected = idList(value.selected_follower_ids);
 		if (!selected) return null;
 		post.selected_follower_ids = selected;
@@ -147,8 +165,9 @@ export function normalizeDraft(value) {
 	}
 	const categoryIds = idList(value.category_ids);
 	const selected = idList(value.selected_follower_ids);
-	if (!categoryIds || !selected) return null;
-	return {
+	const group = normalizeGroupScope(value.group, value.audience);
+	if (!categoryIds || !selected || group === undefined) return null;
+	const draft = {
 		id: value.id,
 		title: value.title,
 		body: value.body,
@@ -157,8 +176,10 @@ export function normalizeDraft(value) {
 		updated_at: value.updated_at,
 		audience: value.audience,
 		version: value.version,
-		selected_follower_ids: selected,
+		// A group draft has no personal recipients, whatever a response carries.
+		selected_follower_ids: group === null ? selected : [],
 	};
+	return group === null ? draft : { ...draft, group };
 }
 
 function normalizePagination(meta) {
@@ -196,7 +217,7 @@ function postResult(result) {
 // Default values are omitted so the request matches the contract's canonical
 // form: `feed=all` and page 1 are implied.
 export async function fetchFeed(
-	{ feed = 'all', categoryId = null, page = 1, perPage } = {},
+	{ feed = 'all', categoryId = null, groupId = null, page = 1, perPage } = {},
 	fetchRef,
 ) {
 	const path = `/posts${query([
@@ -204,6 +225,7 @@ export async function fetchFeed(
 		['per_page', perPage],
 		['feed', feed === 'following' ? 'following' : null],
 		['category_id', categoryId],
+		['group_id', groupId],
 	])}`;
 	return postList(await send(path, {}, fetchRef));
 }
@@ -221,8 +243,10 @@ export async function fetchPost(postId, fetchRef) {
 	return postResult(await send(`/posts/${postId}`, {}, fetchRef));
 }
 
-export async function fetchLatestDraft(fetchRef) {
-	const result = await send('/posts/draft', {}, fetchRef);
+// Without a group this returns personal drafts only; a group draft is found
+// through that group (members only) so scopes never mix.
+export async function fetchLatestDraft({ groupId = null } = {}, fetchRef) {
+	const result = await send(`/posts/draft${query([['group_id', groupId]])}`, {}, fetchRef);
 	if (result.status !== 'ok') return result;
 	if (result.data === null) return { status: 'ok', draft: null };
 	const draft = normalizeDraft(result.data);
@@ -250,6 +274,9 @@ function wireFields(fields) {
 		wire.selected_follower_ids = [...fields.selectedFollowerIds];
 	}
 	if (fields.status !== undefined) wire.status = fields.status;
+	// Create-only: the server rejects `group_id` on any edit as IMMUTABLE, so
+	// the edit helpers never pass it.
+	if (fields.groupId !== undefined) wire.group_id = fields.groupId;
 	return wire;
 }
 
@@ -279,8 +306,17 @@ export async function createPost(fields, fetchRef) {
 	return postResult(await send('/posts', { method: 'POST', ...body(fields) }, fetchRef));
 }
 
+// A post never changes group: `group_id` is create-only and the server rejects
+// it on any edit, so the edit helpers drop it rather than risk sending it.
+function editBody(fields) {
+	const { groupId: _groupId, ...edit } = fields;
+	return body(edit);
+}
+
 export async function updatePost(postId, fields, fetchRef) {
-	return postResult(await send(`/posts/${postId}`, { method: 'PATCH', ...body(fields) }, fetchRef));
+	return postResult(
+		await send(`/posts/${postId}`, { method: 'PATCH', ...editBody(fields) }, fetchRef),
+	);
 }
 
 export async function deletePost(postId, expectedVersion, fetchRef) {
@@ -301,7 +337,11 @@ export async function createDraft(fields, fetchRef) {
 
 // 204 carries no new version; callers reload the draft to obtain it.
 export async function updateDraft(postId, fields, fetchRef) {
-	const result = await send(`/posts/draft/${postId}`, { method: 'PUT', ...body(fields) }, fetchRef);
+	const result = await send(
+		`/posts/draft/${postId}`,
+		{ method: 'PUT', ...editBody(fields) },
+		fetchRef,
+	);
 	return result.status === 'ok' ? { status: 'ok' } : result;
 }
 
@@ -359,9 +399,15 @@ function listQuery({ page = 1, perPage } = {}) {
 		['per_page', perPage],
 	]);
 }
-function commentList(result) {
+// Profile comments on a group post carry the post's activity projection (with
+// its group); comments on personal posts carry none.
+function commentList(result, { projected = false } = {}) {
 	if (result.status !== 'ok') return result;
-	const comments = Array.isArray(result.data) ? result.data.map(normalizeComment) : null;
+	const comments = Array.isArray(result.data)
+		? result.data.map((item) =>
+				projected && item?.post !== undefined ? activityComment(item) : normalizeComment(item),
+			)
+		: null;
 	const pagination = normalizePagination(result.meta);
 	return comments && !comments.includes(null) && pagination
 		? { status: 'ok', comments, pagination }
@@ -422,11 +468,16 @@ export async function reactToContent(kind, id, reaction, fetchRef) {
 			}
 		: { status: 'unavailable' };
 }
-export async function fetchNavigation(id, { feed = 'all', categoryId = null } = {}, fetchRef) {
+export async function fetchNavigation(
+	id,
+	{ feed = 'all', categoryId = null, groupId = null } = {},
+	fetchRef,
+) {
 	const result = await send(
 		`/posts/${id}/nav${query([
 			['category_id', categoryId],
 			['feed', feed === 'following' ? feed : null],
+			['group_id', groupId],
 		])}`,
 		{},
 		fetchRef,
@@ -445,13 +496,18 @@ export async function fetchProfilePosts(id, options = {}, fetchRef) {
 	return postList(await send(`/users/${id}/posts${listQuery(options)}`, {}, fetchRef));
 }
 export async function fetchProfileComments(id, options = {}, fetchRef) {
-	return commentList(await send(`/users/${id}/comments${listQuery(options)}`, {}, fetchRef));
+	return commentList(await send(`/users/${id}/comments${listQuery(options)}`, {}, fetchRef), {
+		projected: true,
+	});
 }
 function activityComment(value) {
 	const comment = normalizeComment(value);
 	const post = value?.post;
 	const categories = normalizeCategories(post?.categories);
+	// The parent projection carries its group only for group posts.
+	const group = normalizeGroupScope(post?.group, post?.group == null ? 'public' : 'group');
 	if (
+		group === undefined ||
 		!comment ||
 		!post ||
 		!isValidId(post.id) ||
@@ -474,6 +530,7 @@ function activityComment(value) {
 			title: post.title,
 			image_url: safeMediaUrl(post.image_url),
 			categories,
+			...(group === null ? {} : { group }),
 			likes: post.likes,
 			dislikes: post.dislikes,
 			my_reaction: post.my_reaction,
