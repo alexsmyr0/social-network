@@ -1,6 +1,6 @@
 # Phase 4 integrated acceptance — SN-A17
 
-Implementation on `chbaikas/A17`, based on merged main `025c849` (A16 and B19 included). The [groups contract](groups-contract.md), [group content extension](groups-contract.md#group-content-extension), [Phase 4 data plan](phase-4-data-plan.md) and [Phase 4 decisions](phase-4-decisions.md) control expectations. Status lives in the [tracker](ticket-tracker.md). The local gate passed; the hosted gate is **pending** (nothing has been pushed), so the ticket is not marked complete.
+Implementation on `chbaikas/A17`, based on merged main `025c849` (A16 and B19 included). The [groups contract](groups-contract.md), [group content extension](groups-contract.md#group-content-extension), [Phase 4 data plan](phase-4-data-plan.md) and [Phase 4 decisions](phase-4-decisions.md) control expectations. Status lives in the [tracker](ticket-tracker.md). The local gate and [hosted `make check`](https://github.com/alexsmyr0/social-network/actions/runs/38614570240) passed on implementation `9b5c38323c6e242997811badfd9459fff75e70d4`. The ticket remains open because earlier-phase versioned upgrades through both images still lack acceptance evidence.
 
 ## Execution boundary
 
@@ -43,4 +43,6 @@ After these corrections, `make test-browser PLAYWRIGHT_ARGS=a17` passed **8/8**,
 
 `python3 docs/social-network/fixtures/validate-phase-4.py` fails with `Ticket count changed` (expects 36, the tracker has 44 since the Phase 5 tickets). It fails identically on main `025c849`, and this ticket does not change it. Docs-consistency (**10/10**), Biome and `git diff --check` pass.
 
-Not yet verified: the hosted `make check` run on the PR. The tracker row stays open until it passes. Phase 5 planning is not acceptance evidence and is untouched.
+Hosted verification: [hosted `make check`](https://github.com/alexsmyr0/social-network/actions/runs/38614570240) passed on PR #37 implementation `9b5c38323c6e242997811badfd9459fff75e70d4` on 2026-10-14: Vitest **2100/2100**, native Playwright **62/62**, integration **37/37** (including **8/8 A17**), both image builds, backend/media smoke, outage handling and cleanup. No retries.
+
+Remaining acceptance gap: container recreation uses the current images and current schema. Existing Go migration tests verify database upgrades, but [SN-A17](track-a.md#sn-a17--accept-groups-and-membership-end-to-end) and the [Phase 4 exit](roadmap.md#phase-4-boundary-and-exit) also require earlier-phase versioned upgrade evidence through both images, preserving records, permissions and exact media bytes. That journey is not implemented in this PR; SN-A17 remains in progress and SN-B20 cannot start. Phase 5 planning is not acceptance evidence and is untouched.
