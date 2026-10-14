@@ -205,6 +205,22 @@ async function checkAccess(actor, group, p, c, allowed, { author = null } = {}) 
 		expect((await result.json()).data.some((item) => item.id === p.id)).toBe(allowed);
 	else expect(result.status()).toBe(404);
 }
+// A negative assertion only counts once the route has finished loading: a
+// loading or error screen must not satisfy "content is absent".
+const settled = {
+	discussion: (page) => page.getByText('This discussion isn’t available.', { exact: true }),
+	edit: (page) => page.getByText('This post isn’t available to edit.', { exact: true }),
+	groupPosts: (page) => page.getByText('Only members can read group posts.', { exact: true }),
+	groupCompose: (page) => page.getByText('Only members can post here.', { exact: true }),
+	feed: (page) => page.locator('.feed-view .social-status').filter({ hasText: /^\d+ posts?$/u }),
+	activity: (page) =>
+		page.locator('.activity-panel .social-status').filter({ hasText: /^\d+ (posts?|comments?)$/u }),
+};
+async function absentAfterLoad(page, route, marker, text) {
+	await page.goto(route);
+	await expect(settled[marker](page)).toBeVisible();
+	await expect(page.locator('main')).not.toContainText(text);
+}
 const trigger = (page) => page.getByRole('button', { name: /^Notifications/u });
 const noOverflow = async (page) =>
 	expect(
@@ -272,7 +288,7 @@ test.describe('SN-A17 real Phase 4 acceptance', () => {
 				undefined,
 				'CREATOR_CANNOT_LEAVE',
 			);
-			// The creator cannot be removed or leave; nobody else sees the member list.
+			// Nonmembers see neither the member list nor the request queue.
 			await http(outsider, 'get', `/api/v1/groups/${group.id}/members`, undefined, 404);
 			await http(outsider, 'get', `/api/v1/groups/${group.id}/join-requests`, undefined, 404);
 
@@ -294,7 +310,12 @@ test.describe('SN-A17 real Phase 4 acceptance', () => {
 				await http(requester, 'post', `/api/v1/groups/${group.id}/join-requests`, undefined, 200)
 			).data;
 			expect(again.id).toBe(request.id);
-			// Only the creator decides: other people get 404, a bad ID 409 after resolution.
+			expect(
+				(await notices(creator)).filter(
+					(n) => n.target.kind === 'group_join_request' && n.target.request_id === request.id,
+				),
+			).toHaveLength(1);
+			// Only the creator decides: other people get 404; the resolved ID is 409 afterwards.
 			await http(
 				outsider,
 				'patch',
@@ -329,7 +350,7 @@ test.describe('SN-A17 real Phase 4 acceptance', () => {
 				{ decision: 'accept' },
 				'STALE_JOIN_REQUEST',
 			);
-			// The requester's open page learns of admission without a reload.
+			// The admitted requester now gets member controls.
 			await requester.page.goto(`/groups/${group.id}`);
 			await expect(requester.page.getByRole('button', { name: 'Leave group' })).toBeVisible();
 
@@ -345,6 +366,11 @@ test.describe('SN-A17 real Phase 4 acceptance', () => {
 				)
 			).data;
 			expect(duplicate.id).toBe(invitation.id);
+			expect(
+				(await notices(invitee)).filter(
+					(n) => n.target.kind === 'group_invitation' && n.target.invitation_id === invitation.id,
+				),
+			).toHaveLength(1);
 			await http(
 				outsider,
 				'post',
@@ -415,7 +441,10 @@ test.describe('SN-A17 real Phase 4 acceptance', () => {
 			).toBe('refused');
 			const again2 = await requestJoin(outsider, group);
 			expect(again2.id).not.toBe(refusedRequest.id);
+			// An ordinary member (not the creator) cannot remove anyone, nor the creator.
+			await admit(creator, group, member);
 			const members = (await http(creator, 'get', `/api/v1/groups/${group.id}/members`)).data;
+			await http(member, 'delete', `/api/v1/group-memberships/${own.id}`, undefined, 404);
 			const target = members.find((m) => m.id === invitee.account.id).membership;
 			await http(member, 'delete', `/api/v1/group-memberships/${target.id}`, undefined, 404);
 			await http(requester, 'delete', `/api/v1/group-memberships/${target.id}`, undefined, 404);
@@ -587,7 +616,7 @@ test.describe('SN-A17 real Phase 4 acceptance', () => {
 				await checkAccess(who, group, p, c, allowed, { author });
 			expect(
 				(await http(reader, 'get', `/api/v1/users/${author.account.id}/profile`)).data.access,
-			).not.toBe('full');
+			).toBe('teaser');
 			await http(reader, 'get', `/api/v1/users/${author.account.id}/posts`, undefined, 404);
 			// The follower has full profile access but no membership, so group posts are filtered.
 			expect(await ids(follower, `/api/v1/users/${author.account.id}/posts`)).not.toContain(p.id);
@@ -597,10 +626,13 @@ test.describe('SN-A17 real Phase 4 acceptance', () => {
 			await http(author, 'get', `/api/v1/posts/${draft.id}`);
 			await http(author, 'get', `/api/v1/posts/draft?group_id=${group.id}`);
 			// Browser: the nonmember sees no content on any route; the member does.
-			for (const route of [`/posts/${p.id}`, `/groups/${group.id}/posts`, '/feed', '/activity']) {
-				await follower.page.goto(route);
-				await expect(follower.page.locator('main')).not.toContainText(p.body);
-			}
+			for (const [route, marker] of [
+				[`/posts/${p.id}`, 'discussion'],
+				[`/groups/${group.id}/posts`, 'groupPosts'],
+				['/feed', 'feed'],
+				['/activity', 'activity'],
+			])
+				await absentAfterLoad(follower.page, route, marker, p.body);
 			await reader.page.goto(`/groups/${group.id}/posts`);
 			await expect(reader.page.locator(`[data-post-id="${p.id}"]`)).toContainText(p.body);
 			await reader.page.goto('/feed');
@@ -644,16 +676,14 @@ test.describe('SN-A17 real Phase 4 acceptance', () => {
 			expect(await ids(author, '/api/v1/posts/mine')).not.toContain(p.id);
 			expect(await ids(author, '/api/v1/posts/liked')).not.toContain(p.id);
 			expect((await notices(author)).filter((n) => n.target.post_id === p.id)).toEqual([]);
-			for (const route of [
-				`/posts/${p.id}`,
-				`/posts/${draft.id}/edit`,
-				`/groups/${group.id}/posts/new`,
-				'/feed',
-				'/activity',
-			]) {
-				await author.page.goto(route);
-				await expect(author.page.locator('main')).not.toContainText(p.body);
-			}
+			for (const [route, marker, text] of [
+				[`/posts/${p.id}`, 'discussion', p.body],
+				[`/posts/${draft.id}/edit`, 'edit', 'Author group draft'],
+				[`/groups/${group.id}/posts/new`, 'groupCompose', 'Author group draft'],
+				['/feed', 'feed', p.body],
+				['/activity', 'activity', p.body],
+			])
+				await absentAfterLoad(author.page, route, marker, text);
 			// Remaining members keep the contribution, its image, comments, likes and the author's name.
 			for (const who of [creator, reader]) {
 				const seen = (await http(who, 'get', `/api/v1/posts/${p.id}`)).data;
@@ -789,16 +819,34 @@ test.describe('SN-A17 real Phase 4 acceptance', () => {
 			const membership = await admit(creator, group, member);
 			const otherMembership = await admit(creator, group, other);
 			const p = await post(creator, group, { body: 'Open page post' });
+			// Pass-through socket route: every frame is the real server's. While
+			// `dropping` is set the browser receives nothing, then the connection is
+			// closed so the client must recover by reconnecting and refetching.
+			const connections = [];
+			let dropping = false;
+			await member.page.routeWebSocket(/\/ws$/u, (ws) => {
+				const server = ws.connectToServer();
+				server.onMessage((message) => {
+					if (!dropping) ws.send(message);
+				});
+				connections.push(ws);
+			});
 			await member.page.goto(`/groups/${group.id}/posts`);
 			await expect(member.page.locator(`[data-post-id="${p.id}"]`)).toBeVisible();
-			// Missed signal: the socket path is offline while removal commits, then reconnects.
-			await member.context.setOffline(true);
+			await expect.poll(() => connections.length).toBeGreaterThan(0);
+			const opened = connections.length;
+			// Missed signal: the removal's frame is dropped, so the open page still shows the post.
+			dropping = true;
 			await http(creator, 'delete', `/api/v1/group-memberships/${membership.id}`, undefined, 204);
-			await member.context.setOffline(false);
+			await member.page.waitForTimeout(1500);
+			await expect(member.page.locator(`[data-post-id="${p.id}"]`)).toBeVisible();
+			dropping = false;
+			await connections.at(-1).close();
+			await expect.poll(() => connections.length, { timeout: 30000 }).toBeGreaterThan(opened);
 			await expect(member.page.getByText('Only members can read group posts.')).toBeVisible({
 				timeout: 30000,
 			});
-			await expect(member.page.locator('main')).not.toContainText('Open page post');
+			await expect(member.page.locator(`[data-post-id="${p.id}"]`)).toHaveCount(0);
 			// Live signal: the other member is removed while the page is connected.
 			await other.page.goto(`/groups/${group.id}/posts`);
 			await expect(other.page.locator(`[data-post-id="${p.id}"]`)).toBeVisible();
@@ -813,11 +861,14 @@ test.describe('SN-A17 real Phase 4 acceptance', () => {
 				timeout: 15000,
 			});
 			// Session cleanup: sign out, back button and protected direct entry reveal nothing.
+			await creator.page.goto(`/posts/${p.id}?group=${group.id}`);
+			await expect(creator.page.locator('.discussion-view')).toContainText('Open page post');
 			await creator.page.goto(`/groups/${group.id}/posts`);
 			await expect(creator.page.locator(`[data-post-id="${p.id}"]`)).toBeVisible();
 			await creator.page.getByRole('button', { name: 'Sign out', exact: true }).click();
 			await expect(creator.page).toHaveURL(/\/login$/u);
 			await creator.page.goBack();
+			await expect(creator.page).toHaveURL(/\/login/u);
 			await expect(creator.page.locator(`[data-post-id="${p.id}"]`)).toHaveCount(0);
 			await creator.page.goto(`/groups/${group.id}/members`);
 			await expect(creator.page).toHaveURL(/\/login\?redirect=/u);
@@ -902,7 +953,7 @@ test('SN-A17 groups, notices, drafts and bytes survive recreation without resets
 		expect(await role(outsider, group)).toBe('member');
 		await outsider.page.goto(`/groups/${group.id}/posts`);
 		await expect(outsider.page.locator(`[data-post-id="${p.id}"]`)).toBeVisible();
-		// Missed-signal recovery: a page opened after restart receives later removals without reload.
+		// A page opened after recreation still receives the live removal signal.
 		const removed = (await http(creator, 'get', `/api/v1/groups/${group.id}/members`)).data.find(
 			(m) => m.id === outsider.account.id,
 		).membership;
@@ -910,7 +961,7 @@ test('SN-A17 groups, notices, drafts and bytes survive recreation without resets
 		await expect(outsider.page.getByText('Only members can read group posts.')).toBeVisible({
 			timeout: 20000,
 		});
-		// Group deletion of the departed author's text does not occur: the post remains for members.
+		// The departed author's post remains for current members.
 		expect((await http(creator, 'get', `/api/v1/posts/${p.id}`)).data.body).toBe(p.body);
 	} finally {
 		await dispose(all);
@@ -963,9 +1014,13 @@ for (const [label, viewport] of [
 				.getByRole('button', { name: new RegExp(`^Remove ${member.name}`, 'u') })
 				.click();
 			await creator.page.getByRole('button', { name: 'Confirm removal' }).click();
-			await expect(member.page.locator('main')).toBeVisible();
-			await member.page.goto(`/posts/${mine.id}`);
-			await expect(member.page.locator('main')).not.toContainText('Real group publication');
+			await expect(creator.page.locator('[data-membership-id]')).toHaveCount(1);
+			await absentAfterLoad(
+				member.page,
+				`/posts/${mine.id}`,
+				'discussion',
+				'Real group publication',
+			);
 			await http(member, 'get', `/api/v1/posts/${mine.id}`, undefined, 404);
 		} finally {
 			await dispose(all);
