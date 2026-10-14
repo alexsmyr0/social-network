@@ -13,6 +13,7 @@ export default defineConfig({
 		'a07-*.test.js',
 		'a11-*.test.js',
 		'a14-*.test.js',
+		'a17-*.test.js',
 	],
 	fullyParallel: false,
 	forbidOnly: !!process.env.CI,
