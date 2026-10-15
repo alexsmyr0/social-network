@@ -505,9 +505,9 @@ External gate: One owner approval of every Phase 5 product decision and of the c
 Work:
 
 - Put each proposed Phase 5 decision to the owner with its alternative and record the outcome in `phase-5-decisions.md`.
-- Write planned `events-chat-contract.md` for event create/list/respond, DM send/history/roster/read cursors, group-chat history/send and WebSocket frames, with errors, pagination, size bounds and duplicate/stale outcomes.
-- Write planned `phase-5-data-plan.md` for events, responses, read cursors and group messages. Include the notification-type rebuild, migration order for B21–B23, and preservation of existing private messages and DM media.
-- Supply planned `fixtures/phase-5-contract.json` and a validator covering the delivery and membership matrices, event transitions and the unfollow/refollow and removal/readmission journeys.
+- Write [draft events/chat contract](events-chat-contract.md) for event create/list/respond, DM send/history/roster/read cursors, group-chat history/send and WebSocket frames, with errors, pagination, size bounds and duplicate/stale outcomes.
+- Write [draft Phase 5 data plan](phase-5-data-plan.md) for events, responses, read cursors and group messages. Include the notification-type rebuild, migration order for B21–B23, and preservation of existing private messages and DM media.
+- Supply [draft fixture pack](fixtures/phase-5-contract.json) and [validator](fixtures/validate-phase-5.py) covering the delivery and membership matrices, event transitions and the unfollow/refollow and removal/readmission journeys.
 
 Verification Gate:
 

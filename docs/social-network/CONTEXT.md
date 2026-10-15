@@ -16,7 +16,7 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 | Understanding the complete delivery scope | [Roadmap](roadmap.md) | Six phases, requirement coverage, open decisions and phase boundaries |
 | Implementing profiles, follows, posts and audiences | [Phase 2–3 decisions](phase-2-3-decisions.md) | Owner-approved privacy, relationship/content behavior, architecture and inherited-feature preservation |
 | Implementing groups and membership | [Phase 4 decisions](phase-4-decisions.md) | Owner-approved discovery, admission/departure, group content and storage |
-| Planning events and messaging | [Phase 5 decisions](phase-5-decisions.md) | Requirement mapping, current-code findings and **unapproved** proposals for events, private messages and group chat; SN-B20 obtains owner approval |
+| Planning events and messaging | [Phase 5 decisions](phase-5-decisions.md), [draft contract](events-chat-contract.md), [data plan](phase-5-data-plan.md) | SN-B20 draft policy/interface/fixture handoff; one owner approval pending, including migration dependency correction |
 | Reviewing account/session interfaces | [Auth contract](auth-contract.md) | SN-B02 requests, responses, avatar flow, session policy and approved fixture handoff |
 | Reviewing storage and migration choices | [Data decision](data-decision.md) | Owner-approved SN-B08 schema, startup and legacy-data policy |
 | Running or recovering backend migrations | [Backend migrations](backend-migrations.md) | SN-B03 startup behavior, legacy refusal, failure recovery and verification |
@@ -47,7 +47,9 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 | Selecting or updating implementation work | [Ticket tracker](ticket-tracker.md) | Phase 1–5 status and dependencies for two developers; links to tracks A and B |
 | Creating or reviewing tickets | [Ticket rules](ticket-rules.md) | Compact format, larger Phase 2–4 scope, dependencies and verification; [latest audit](phase-5-ticket-audit.md), [Phase 4 audit](phase-4-ticket-audit.md), [Phase 2–3 audit](phase-2-3-ticket-audit.md), [Phase 1 audit](ticket-audit.md) |
 
-## Current checkpoint — 2026-10-11
+## Current checkpoint — 2026-10-15
+
+- Owner reported SN-A17 complete on 2026-10-15 and instructed SN-B20 to proceed. Fetched origin still resolved to `08aea11`, whose published A17 record retained the upgrade gap; this is an explicit owner completion report, not new runtime/hosted verification. SN-B20 on `asmyrogl/B20` prepares [event/chat contracts](events-chat-contract.md), [data mappings](phase-5-data-plan.md), [fixtures](fixtures/phase-5-contract.json) and an independent validator. Phase 5 policies and concrete handoff remain pending one owner approval; B21–B23/A18–A20 have not started. Older bullets below are historical checkpoints.
 
 - Documentation setup and code import are complete. SN-A03 provides the Vue framework shell and backend-health transport; SN-A04 adds contract-driven registration and SN-A05 adds login, session restoration, route gating and global logout against test-only fixtures. Real account/session/media integration remains SN-A07.
 - Imported all 302 tracked files from the clean sibling real-time-forum checkout at commit `c7be375`, preserving the social-network docs and this repository's Git identity.
