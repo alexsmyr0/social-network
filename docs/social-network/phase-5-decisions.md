@@ -62,3 +62,13 @@ DM image preservation and presence belong to SN-B22 and SN-A19. Deleting any exi
 4. Whether blocked, muted or reported conversations are wanted. None is proposed.
 
 Phase 6 stays roadmap-only. Writing these tickets does not authorize implementation before the preceding SN-A17 acceptance gate.
+
+## B20 concrete approval package — 2026-10-15
+
+The owner reported A17 completed and explicitly instructed B20 to proceed on 2026-10-15. Fetching origin still resolved to `08aea11`, whose published record contained the earlier upgrade-evidence gap. The [tracker](ticket-tracker.md) records the explicit owner completion report; B20 does not manufacture commit/test evidence or rewrite A17's historical results.
+
+Prepared [events/chat contract](events-chat-contract.md), [data mappings](phase-5-data-plan.md), [fixture pack](fixtures/phase-5-contract.json) and [independent artifact validator](fixtures/validate-phase-5.py) on `asmyrogl/B20`. **All thirteen product rows above remain proposed.** Recommended answers to the remaining questions: absolute UTC instants displayed locally, 2000 code points per message, no blocking/muting/reporting. No event edit/cancel, additional options, group images, new service or socket.
+
+The concrete choices/alternatives in the contract include UUID send deduplication across HTTP/socket/restart, monotonic persisted unread cursors, read bootstrap, event response versions and membership generations, private history/media retention and non-live recipient recovery. They also propose correcting the migration dependency to B21 → B22 so schema 9 cannot ship without schema 8. The current ticket graph is unchanged until that proposal is approved, then its reverse edges and audit are updated together.
+
+One owner approval covers every product row, these concrete choices, the data plan and the fixtures. Approval is **pending**, not inferred from the instruction to start B20 or the A17 completion report. No second Dev 1 fixture approval will be requested. Artifact checks are documented in the [contract verification record](events-chat-contract.md#approval-and-verification-record); no runtime validation is claimed.
