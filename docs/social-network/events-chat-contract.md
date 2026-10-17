@@ -1,6 +1,6 @@
 # Events and Messaging Contract — SN-B20
 
-Prepared 2026-10-15 on `asmyrogl/B20`, based on `08aea11`. **Draft approval package: no Phase 5 product or interface approval claimed.** The owner reported A17 complete and explicitly instructed proceeding on 2026-10-15. Fetching origin still returned `08aea11` with the earlier open-gap record; that report is the execution authorization, not fresh upgrade evidence. B20 does not alter A17's historical evidence or mark it verified. Status lives in the [tracker](ticket-tracker.md).
+Prepared 2026-10-15 on `asmyrogl/B20`, based on `08aea11`. **Approval package; owner approval recorded 2026-10-17 below.** The owner reported A17 complete and explicitly instructed proceeding on 2026-10-15. Fetching origin still returned `08aea11` with the earlier open-gap record; that report is the execution authorization, not fresh upgrade evidence. B20 does not alter A17's historical evidence or mark it verified. Status lives in the [tracker](ticket-tracker.md).
 
 This contract, [data plan](phase-5-data-plan.md), [policy alternatives](phase-5-decisions.md#proposed-decisions-all-pending-owner-approval), [fixture pack](fixtures/phase-5-contract.json) and [validator](fixtures/validate-phase-5.py) form **one owner approval package**. B21 implements events; B22 implements DMs; B23 implements group chat. A18–A20 consume the fixtures; A21 owns real-service acceptance. No SQL, API, socket, dependency or Vue changes belong to B20.
 
@@ -129,7 +129,7 @@ B20 validates artifacts only. B21 must exercise migrations/events/notices and ra
 
 ## Approval and verification record
 
-Pending one owner approval of all proposed policy rows, concrete interfaces, data mappings and fixture handoff. Once approved, record exact scope/date here and in the decision record; no second Dev 1 review. B20 remains in progress and consumers unstarted until that approval and artifact checks pass. A17's completion report authorizes this preparation without inventing missing local/hosted evidence.
+**Owner approval — 2026-10-17.** The owner reported this package merged ([PR #38](https://github.com/alexsmyr0/social-network/pull/38), `8bb01e5`) and instructed SN-A18 to start. That statement is recorded as the single owner approval of all proposed policy rows, concrete interfaces, data mappings and the fixture handoff as merged; no second Dev 1 review. The fixture pack's `review_status` and the validator are B20's artifacts and were not edited, so they still read "draft". A17's completion report authorized the preparation without inventing missing local/hosted evidence. The proposed B21 → B22 dependency correction is part of this package; applying it to the B tickets and graph remains B-track work.
 
 Artifact verification on 2026-10-15, working tree based on `08aea11`:
 

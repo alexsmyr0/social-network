@@ -9,6 +9,7 @@ import {
 	contentKey,
 	createContentState,
 } from '../../../../../src/features/content/content-state.js';
+import { createEventState, eventsKey } from '../../../../../src/features/events/event-state.js';
 import { createGroupState, groupsKey } from '../../../../../src/features/groups/group-state.js';
 import {
 	createNotificationState,
@@ -50,6 +51,7 @@ export async function mountGroupApp(
 		onUnauthenticated: createUnauthenticatedHandler({ session, router }),
 	});
 	const groups = createGroupState({ session, social });
+	const events = createEventState({ session, social });
 	const content = createContentState({ session, social });
 	await router.push(path);
 	await router.isReady();
@@ -74,13 +76,14 @@ export async function mountGroupApp(
 				[socialKey]: social,
 				[notificationsKey]: notifications,
 				[groupsKey]: groups,
+				[eventsKey]: events,
 				[contentKey]: content,
 			},
 		},
 	});
 	mounted.push(wrapper);
 	await settle();
-	return { wrapper, router, session, social, groups, fetchRef, current, backend, sockets };
+	return { wrapper, router, session, social, groups, events, fetchRef, current, backend, sockets };
 }
 
 export function groupCalls(fetchRef, { method, path } = {}) {

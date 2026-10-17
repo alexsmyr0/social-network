@@ -2,6 +2,8 @@
 import { computed, inject, ref, watch } from 'vue';
 
 import { sessionKey } from '../auth/session-state.js';
+// biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
+import EventsSection from '../events/EventsSection.vue';
 import { countLabel } from '../social/social-utils.js';
 // biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
 import GroupFeedback from './GroupFeedback.vue';
@@ -27,7 +29,7 @@ const props = defineProps({
 	section: {
 		type: String,
 		default: 'about',
-		validator: (value) => ['about', 'posts', 'members', 'requests'].includes(value),
+		validator: (value) => ['about', 'posts', 'events', 'members', 'requests'].includes(value),
 	},
 });
 
@@ -53,7 +55,7 @@ watch(role, () => {
 // the members-only posts or list, or the creator-only requests.
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 const sectionAllowed = computed(() => {
-	if (props.section === 'members' || props.section === 'posts') return isMember.value;
+	if (['members', 'posts', 'events'].includes(props.section)) return isMember.value;
 	if (props.section === 'requests') return isCreator.value;
 	return true;
 });
@@ -64,6 +66,7 @@ const members = computed(() =>
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 const restrictedTitle = computed(() => {
 	if (props.section === 'posts') return 'Only members can read group posts.';
+	if (props.section === 'events') return 'Only members can see group events.';
 	if (props.section === 'members') return 'Only members can see who belongs.';
 	return 'Only the creator reviews join requests.';
 });
@@ -145,6 +148,7 @@ async function leave() {
 				<RouterLink class="button button--secondary" :to="{ name: 'group', params: { id: group.id } }">About this group</RouterLink>
 			</div>
 			<GroupPosts v-else-if="section === 'posts'" :group="group" :viewer-id="viewerId" />
+			<EventsSection v-else-if="section === 'events'" :group="group" :viewer-id="viewerId" />
 			<GroupMembers v-else-if="section === 'members'" :group="group" :viewer-id="viewerId" />
 			<GroupRequests v-else :group="group" :viewer-id="viewerId" />
 		</template>
