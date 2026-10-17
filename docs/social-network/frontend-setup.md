@@ -80,6 +80,17 @@ make test-e2e PLAYWRIGHT_ARGS=a12-publishing
 
 A13 reuses `PostCard.vue`, `PostComposer.vue`, `post-form.js` and `content-state.js` for discussions, profile activity and draft management.
 
+## Group events (SN-A18)
+
+The Events section, event page, scheduling form and `group_event` notices run against the [approved events contract](events-chat-contract.md#events) and its [fixture pack](fixtures/phase-5-contract.json). See [behavior, ownership and verification evidence](frontend-events.md). Real persistence and authorization remain SN-A21.
+
+```bash
+bun run test:a18
+make test-e2e PLAYWRIGHT_ARGS=a18-events
+```
+
+SN-A19 and SN-A20 reuse the notification state and session-owned socket unchanged; message indicators stay separate from the notification badge.
+
 ## Frontend container handoff
 
 SN-A06 packages the browser bundle and its Go same-origin proxy in a frontend-only image named `social-network-frontend`. The build is self-contained: it installs locked Bun dependencies, builds `SPA/dist`, compiles the frontend server and does not consume local `node_modules`, binaries or generated assets.

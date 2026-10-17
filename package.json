@@ -23,6 +23,7 @@
 		"test:a13": "vitest run SPA/tests/unit/src/api/discussions.test.js SPA/tests/unit/src/api/content.test.js SPA/tests/unit/src/features/content SPA/tests/unit/src/features/social SPA/tests/unit/src/features/notifications SPA/tests/unit/src/app SPA/tests/unit/policy/no-fixtures-in-production.test.js",
 		"test:a15": "vitest run SPA/tests/unit/src/api/groups.test.js SPA/tests/unit/src/api/notifications.test.js SPA/tests/unit/src/features/groups SPA/tests/unit/src/features/social SPA/tests/unit/src/features/notifications SPA/tests/unit/src/app SPA/tests/unit/policy/no-fixtures-in-production.test.js",
 		"test:a16": "vitest run SPA/tests/unit/src/api/group-content.test.js SPA/tests/unit/src/api/content.test.js SPA/tests/unit/src/api/discussions.test.js SPA/tests/unit/src/features/groups SPA/tests/unit/src/features/content SPA/tests/unit/src/features/social SPA/tests/unit/src/features/notifications SPA/tests/unit/src/app SPA/tests/unit/policy/no-fixtures-in-production.test.js",
+		"test:a18": "vitest run SPA/tests/unit/src/api/events.test.js SPA/tests/unit/src/features/events SPA/tests/unit/src/features/groups SPA/tests/unit/src/features/notifications SPA/tests/unit/src/features/social SPA/tests/unit/src/app SPA/tests/unit/policy/no-fixtures-in-production.test.js",
 		"test:a12": "vitest run SPA/tests/unit/src/api/content.test.js SPA/tests/unit/src/features/content SPA/tests/unit/src/features/social SPA/tests/unit/src/app SPA/tests/unit/policy/no-fixtures-in-production.test.js"
 	},
 	"devDependencies": {

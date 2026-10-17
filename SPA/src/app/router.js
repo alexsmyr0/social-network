@@ -10,6 +10,8 @@ import DiscussionPage from '../features/content/DiscussionPage.vue';
 import EditPostPage from '../features/content/EditPostPage.vue';
 import FeedPage from '../features/content/FeedPage.vue';
 import MyPostsPage from '../features/content/MyPostsPage.vue';
+import EventCreatePage from '../features/events/EventCreatePage.vue';
+import EventPage from '../features/events/EventPage.vue';
 import GroupComposePage from '../features/groups/GroupComposePage.vue';
 import GroupCreatePage from '../features/groups/GroupCreatePage.vue';
 import GroupPage from '../features/groups/GroupPage.vue';
@@ -108,6 +110,25 @@ export const routes = [
 		component: GroupPage,
 		props: { section: 'members' },
 		meta: { title: 'Group members', requiresAuth: true },
+	},
+	{
+		path: '/groups/:id([1-9]\\d*)/events',
+		name: 'group-events',
+		component: GroupPage,
+		props: { section: 'events' },
+		meta: { title: 'Group events', requiresAuth: true },
+	},
+	{
+		path: '/groups/:id([1-9]\\d*)/events/new',
+		name: 'group-event-new',
+		component: EventCreatePage,
+		meta: { title: 'New event', requiresAuth: true },
+	},
+	{
+		path: '/groups/:id([1-9]\\d*)/events/:eventId([1-9]\\d*)',
+		name: 'group-event',
+		component: EventPage,
+		meta: { title: 'Event', requiresAuth: true },
 	},
 	{
 		path: '/groups/:id([1-9]\\d*)/requests',
