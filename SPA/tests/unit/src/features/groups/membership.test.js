@@ -67,6 +67,7 @@ describe('SN-A15 role-appropriate group controls', () => {
 		expect(navLinks(wrapper)).toEqual([
 			['About', '/groups/301'],
 			['Posts', '/groups/301/posts'],
+			['Events', '/groups/301/events'],
 			['Members', '/groups/301/members'],
 		]);
 		expect(hasButton(wrapper, 'Leave group')).toBe(true);
@@ -86,6 +87,7 @@ describe('SN-A15 role-appropriate group controls', () => {
 		expect(navLinks(wrapper)).toEqual([
 			['About', '/groups/301'],
 			['Posts', '/groups/301/posts'],
+			['Events', '/groups/301/events'],
 			['Members', '/groups/301/members'],
 			['Join requests', '/groups/301/requests'],
 		]);
@@ -133,7 +135,12 @@ describe('SN-A15 admission journeys', () => {
 		expect(feedbackText(wrapper)).toBe('You joined Chess Club.');
 		expect(document.activeElement?.classList.contains('group-feedback')).toBe(true);
 		expect(textOf(wrapper)).toContain('3 members');
-		expect(navLinks(wrapper).map(([label]) => label)).toEqual(['About', 'Posts', 'Members']);
+		expect(navLinks(wrapper).map(([label]) => label)).toEqual([
+			'About',
+			'Posts',
+			'Events',
+			'Members',
+		]);
 		expect(backend.groupNotices.get(801)).toMatchObject({ state: 'accepted', is_read: true });
 	});
 

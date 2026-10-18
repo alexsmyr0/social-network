@@ -1,6 +1,6 @@
 # Events and Messaging Contract — SN-B20
 
-Prepared 2026-10-15 on `asmyrogl/B20`, based on `08aea11`. **Owner approved the complete Phase 5 handoff on 2026-10-18.** The owner reported A17 complete and explicitly instructed proceeding on 2026-10-15. Fetching origin still returned `08aea11` with the earlier open-gap record; that report is the execution authorization, not fresh upgrade evidence. B20 does not alter A17's historical evidence or mark it verified. Status lives in the [tracker](ticket-tracker.md).
+Prepared 2026-10-15 on `asmyrogl/B20`, based on `08aea11`. **Owner approval recorded 2026-10-17; full handoff explicitly confirmed 2026-10-18.** The owner reported A17 complete and explicitly instructed proceeding on 2026-10-15. Fetching origin still returned `08aea11` with the earlier open-gap record; that report is the execution authorization, not fresh upgrade evidence. B20 does not alter A17's historical evidence or mark it verified. Status lives in the [tracker](ticket-tracker.md).
 
 This contract, [data plan](phase-5-data-plan.md), [policy alternatives](phase-5-decisions.md#proposed-decisions-all-pending-owner-approval), [fixture pack](fixtures/phase-5-contract.json) and [validator](fixtures/validate-phase-5.py) form **one owner approval package, approved 2026-10-18**. B21 implements events; B22 implements DMs; B23 implements group chat. A18–A20 consume the fixtures; A21 owns real-service acceptance. No SQL, API, socket, dependency or Vue changes belong to B20.
 
@@ -129,7 +129,7 @@ B20 validates artifacts only. B21 must exercise migrations/events/notices and ra
 
 ## Approval and verification record
 
-Owner approved the full B20 handoff on 2026-10-18: all thirteen policy rows, UTC instants, 2000-code-point messages, no blocking/muting/reporting, concrete interfaces, UUID retries, membership generations, persisted cursor bootstrap, data mappings, fixtures and B21 → B22 migration ordering. This is the single human gate; no second Dev 1 review. B20 artifact checks pass; B21 proceeds. A17's completion report authorizes this preparation without inventing missing local/hosted evidence.
+The owner reported SN-B20 merged ([PR #38](https://github.com/alexsmyr0/social-network/pull/38), `8bb01e5`) and instructed SN-A18 to start on 2026-10-17; Track A recorded that statement as approval of the package as merged. The owner explicitly confirmed the full B20 handoff on 2026-10-18: all thirteen policy rows, UTC instants, 2000-code-point messages, no blocking/muting/reporting, concrete interfaces, UUID retries, membership generations, persisted cursor bootstrap, data mappings, fixtures and B21 → B22 migration ordering. This is the single human gate; no second Dev 1 review. B21 synchronized the pack and validator approval status and applied the B21 → B22 dependency correction across the graph. B20 artifact checks pass; B21 proceeds. A17's completion report authorizes this preparation without inventing missing local/hosted evidence.
 
 Artifact verification on 2026-10-15, working tree based on `08aea11`:
 

@@ -161,6 +161,7 @@ const LABELS = {
 	comment: 'Commented on your post',
 	comment_like: 'Liked your comment',
 	comment_dislike: 'Disliked your comment',
+	group_event: 'Scheduled an event',
 };
 const GROUP_LABELS = {
 	group_invitation: {
@@ -186,10 +187,17 @@ function noticeLabel(notice) {
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 function contextLink(notice) {
 	const { target } = notice;
+	if (target.kind === 'group_event')
+		return { name: 'group-event', params: { id: target.group.id, eventId: target.event_id } };
 	if (target.group) return { name: 'group', params: { id: target.group.id } };
 	if (target.kind === 'comment') return { name: 'comment', params: { id: target.comment_id } };
 	return { name: 'post', params: { id: target.post_id } };
 }
+// biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
+const contextText = (notice) =>
+	notice.target.kind === 'group_event'
+		? `See the event in ${notice.target.group.title}`
+		: notice.target.group.title;
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 function dateLabel(value) {
 	const date = new Date(value);
@@ -235,7 +243,7 @@ function dateLabel(value) {
 							<div class="notice__content">
 								<RouterLink :to="{ name: 'profile', params: { id: notice.actor.id } }">{{ notice.actor.display_name }}</RouterLink>
 								<p>{{ noticeLabel(notice) }}</p>
-								<RouterLink v-if="notice.target.group" :to="contextLink(notice)" class="notice__context">{{ notice.target.group.title }}</RouterLink>
+								<RouterLink v-if="notice.target.group" :to="contextLink(notice)" class="notice__context">{{ contextText(notice) }}</RouterLink>
 								<RouterLink v-else-if="notice.target.kind !== 'follow_request'" :to="contextLink(notice)" class="notice__context">{{ notice.target.title || 'Untitled post' }}<span v-if="notice.target.excerpt"> · {{ notice.target.excerpt }}</span></RouterLink>
 								<time :datetime="notice.created_at">{{ dateLabel(notice.created_at) }}</time>
 								<div v-if="notice.actions.length" class="notice__actions">

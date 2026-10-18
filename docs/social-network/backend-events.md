@@ -28,3 +28,9 @@ Docker was stopped and was not started. Image/container checks and real-browser 
 ## Handoff
 
 SN-A18 consumes the approved event DTOs, fixed options, membership IDs and response versions. On a conflict, refetch before an explicit new choice; uncertain creation requires list/detail recovery before a deliberate retry. SN-B22 starts after migration 8 and owns migration 9. SN-A21 combines events with the later messaging tickets through B07's real-service harness. Event editing/cancellation, extra options, chat and Vue UI are outside B21.
+
+## Main merge verification — 2026-10-18
+
+Merged `origin/main` at `d4a00fb` (A18 frontend, including `db6eabf` corrections) into B21 at `6b9c19a`. Four documentation conflicts were reconciled: both A18 and B21 delivery records remain, the earlier approval report and later explicit confirmation are retained, and the tracker totals include both completions (39 complete, 5 not started). B21's migration dependency correction and approved fixture status remain applied. Frontend files match main and backend files match B21; no application code required manual conflict edits.
+
+On the merged working tree, `make test` passes: builds, Biome, Go format/vet, full Go suite, shared race gate, **Vitest 2357/2357** and **native Playwright 74/74**. `go test -race ./internal/db ./internal/tests -run TestGroupEvent -count=1` passes. The Phase 5 validator passes the fixture pack, 44-ticket graph and links; staged whitespace checks pass. Container and hosted gates were not rerun for this merge.

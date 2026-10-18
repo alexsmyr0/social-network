@@ -75,6 +75,10 @@ The concrete choices/alternatives in the contract include UUID send deduplicatio
 
 One owner approval covers every product row, these concrete choices, the data plan and the fixtures. Approval is **pending**, not inferred from the instruction to start B20 or the A17 completion report. No second Dev 1 fixture approval will be requested. Artifact checks are documented in the [contract verification record](events-chat-contract.md#approval-and-verification-record); no runtime validation is claimed.
 
+## Owner approval record — 2026-10-17
+
+The owner reported SN-B20 merged ([PR #38](https://github.com/alexsmyr0/social-network/pull/38), `8bb01e5`) and told Track A to start SN-A18. This is recorded as the single owner approval of every proposed row, the concrete choices, the data plan and the fixture handoff as merged; consumers may start. The earlier DM-delivery, offline and history proposals are therefore approved in the form the [contract](events-chat-contract.md) pins. No second Dev 1 review is requested. At that checkpoint the pack's `review_status` and validator were unchanged. B21 synchronized them with the explicit confirmation on 2026-10-18 below.
+
 ## Owner approval — 2026-10-18
 
 The owner explicitly approved the full B20 handoff: every thirteen-row product proposal, all concrete contract interfaces, UTC event instants, 2000-code-point messages, no blocking/muting/reporting, data mappings and fixtures, including B21 → B22 migration ordering. Earlier pending/proposed statements describe the historical preparation checkpoint; this approval supersedes them. B21 implementation is authorized; no second Dev 1 fixture gate applies.
