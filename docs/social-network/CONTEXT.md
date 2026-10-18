@@ -16,7 +16,8 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 | Understanding the complete delivery scope | [Roadmap](roadmap.md) | Six phases, requirement coverage, open decisions and phase boundaries |
 | Implementing profiles, follows, posts and audiences | [Phase 2–3 decisions](phase-2-3-decisions.md) | Owner-approved privacy, relationship/content behavior, architecture and inherited-feature preservation |
 | Implementing groups and membership | [Phase 4 decisions](phase-4-decisions.md) | Owner-approved discovery, admission/departure, group content and storage |
-| Planning events and messaging | [Phase 5 decisions](phase-5-decisions.md), [draft contract](events-chat-contract.md), [data plan](phase-5-data-plan.md) | SN-B20 draft policy/interface/fixture handoff; one owner approval pending, including migration dependency correction |
+| Reviewing event persistence, response generations and notices | [Backend events](backend-events.md) | SN-B21 migration 8, member-only APIs, atomic notices, privacy, restart and race evidence |
+| Planning events and messaging | [Phase 5 decisions](phase-5-decisions.md), [approved contract](events-chat-contract.md), [data plan](phase-5-data-plan.md) | SN-B20 owner-approved policy/interface/fixture handoff (2026-10-18), including B21 → B22 migration ordering |
 | Reviewing account/session interfaces | [Auth contract](auth-contract.md) | SN-B02 requests, responses, avatar flow, session policy and approved fixture handoff |
 | Reviewing storage and migration choices | [Data decision](data-decision.md) | Owner-approved SN-B08 schema, startup and legacy-data policy |
 | Running or recovering backend migrations | [Backend migrations](backend-migrations.md) | SN-B03 startup behavior, legacy refusal, failure recovery and verification |
@@ -47,7 +48,9 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 | Selecting or updating implementation work | [Ticket tracker](ticket-tracker.md) | Phase 1–5 status and dependencies for two developers; links to tracks A and B |
 | Creating or reviewing tickets | [Ticket rules](ticket-rules.md) | Compact format, larger Phase 2–4 scope, dependencies and verification; [latest audit](phase-5-ticket-audit.md), [Phase 4 audit](phase-4-ticket-audit.md), [Phase 2–3 audit](phase-2-3-ticket-audit.md), [Phase 1 audit](ticket-audit.md) |
 
-## Current checkpoint — 2026-10-15
+## Current checkpoint — 2026-10-18
+
+- Owner approved the complete B20 Phase 5 policy/contract/data/fixture handoff on 2026-10-18, including B21 → B22 migration ordering. B20 artifact validation passes. B21 is complete on `asmyrogl/B21`, based on `9a6cd4d`: [events implementation and evidence](backend-events.md) covers migration 8, five APIs, current-generation responses and atomic notices. All 85 HTTP fixtures, upgrade/failure/restart/socket/race checks and native `make test` pass (Vitest 2100/2100, Playwright 62/62). Docker checks remain unverified; B22 delivery now follows B21. Older pending-approval checkpoints below are historical.
 
 - Owner reported SN-A17 complete on 2026-10-15 and instructed SN-B20 to proceed. Fetched origin still resolved to `08aea11`, whose published A17 record retained the upgrade gap; this is an explicit owner completion report, not new runtime/hosted verification. SN-B20 on `asmyrogl/B20` prepares [event/chat contracts](events-chat-contract.md), [data mappings](phase-5-data-plan.md), [fixtures](fixtures/phase-5-contract.json) and an independent validator. Phase 5 policies and concrete handoff remain pending one owner approval; B21–B23/A18–A20 have not started. Older bullets below are historical checkpoints.
 

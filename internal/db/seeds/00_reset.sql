@@ -2,6 +2,8 @@
 -- Categories are bootstrap data and are intentionally preserved.
 DELETE FROM sessions;
 DELETE FROM notifications;
+DELETE FROM group_event_responses;
+DELETE FROM group_events;
 DELETE FROM reactions;
 DELETE FROM comments;
 DELETE FROM post_categories;
@@ -17,6 +19,7 @@ WHERE name IN (
   'reactions',
   'comments',
   'posts',
+  'group_events',
   'groups',
   'group_memberships',
   'group_invitations',

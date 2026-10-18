@@ -169,7 +169,14 @@ func NewRouter(database *sql.DB, hub *ws.Hub) http.Handler {
 			mux.Handle(apiPrefix+path, middleware.AllowMethods(auth(fn), methods...))
 		}
 		groupRoute("/groups", groups.Groups, http.MethodGet, http.MethodPost)
-		groupRoute("/groups/", groups.GroupItem, http.MethodGet, http.MethodPost)
+		events := handlers.NewGroupEventsHandler(database)
+		groupRoute("/groups/", func(w http.ResponseWriter, r *http.Request) {
+			if handlers.EventMethods(r.URL.Path) != "" {
+				events.ServeHTTP(w, r)
+				return
+			}
+			groups.GroupItem(w, r)
+		}, http.MethodGet, http.MethodPost, http.MethodPut)
 		groupRoute("/group-invitations/", groups.DecideInvitation, http.MethodPatch)
 		groupRoute("/group-join-requests/", groups.DecideJoinRequest, http.MethodPatch)
 		groupRoute("/group-memberships/", groups.RemoveMembership, http.MethodDelete)
@@ -345,7 +352,10 @@ func addMiddlewares(handler http.Handler, frontendOrigin string, socialSchema bo
 			if strings.HasPrefix(r.URL.Path, apiPrefix+"/") || db.IsMediaRequestPath(r.URL.EscapedPath()) || strings.HasPrefix(r.URL.Path, apiPrefix+"/users/") || r.URL.Path == apiPrefix+"/users" || strings.HasPrefix(r.URL.Path, apiPrefix+"/notifications") || strings.HasPrefix(r.URL.Path, apiPrefix+"/follows") || strings.HasPrefix(r.URL.Path, apiPrefix+"/follow-requests/") {
 				w.Header().Set("Cache-Control", "no-store")
 			}
-			methods := handlers.DiscussionMethods(r.URL.Path)
+			methods := handlers.EventMethods(r.URL.Path)
+			if methods == "" {
+				methods = handlers.DiscussionMethods(r.URL.Path)
+			}
 			if methods == "" {
 				methods = handlers.PublishingMethods(r.URL.Path)
 			}

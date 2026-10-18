@@ -1,10 +1,10 @@
 # Phase 5 Data and Upgrade Handoff — SN-B20
 
-Draft for owner approval with the [contract](events-chat-contract.md), [policies](phase-5-decisions.md) and [fixtures](fixtures/phase-5-contract.json). Based on migration 000007 at `08aea11`, 2026-10-15. **Mappings only: no SQL or runtime change executed.** Keep Go/SQLite, existing media manifest, session-owned socket and serialized `BeginSocialWrite`; no new service, queue, dependency or reset.
+Owner-approved 2026-10-18 with the [contract](events-chat-contract.md), [policies](phase-5-decisions.md) and [fixtures](fixtures/phase-5-contract.json). Based on migration 000007 at `08aea11`, 2026-10-15. **Mappings only: no SQL or runtime change executed.** Keep Go/SQLite, existing media manifest, session-owned socket and serialized `BeginSocialWrite`; no new service, queue, dependency or reset.
 
 ## Migration order and ownership
 
-Reserve **000008 / B21** events and notification rebuild; **000009 / B22** DM nonce/read cursors; **000010 / B23** group messages/cursors. **Proposed dependency correction included in owner approval:** change B22's prerequisite to B21 (which already depends on B20), remove B22 from B20's direct Blocks and add it to B21's Blocks, updating the tracker/audit together. The current graph remains unchanged until this proposal is approved. B22's runtime gate needs migration 8, so this prerequisite must be modeled rather than hidden in merge instructions. B21/B22 may author in parallel, but B22 delivery waits for B21. A18/A19 remain independently fixture-driven. B23 still depends on B22. Do not renumber/edit applied migrations or add placeholders; confirm latest version at implementation time.
+Reserve **000008 / B21** events and notification rebuild; **000009 / B22** DM nonce/read cursors; **000010 / B23** group messages/cursors. **Approved dependency correction (2026-10-18):** change B22's prerequisite to B21 (which already depends on B20), remove B22 from B20's direct Blocks and add it to B21's Blocks, updating the tracker/audit together. Owner approved this correction on 2026-10-18; the active graph now reflects it. B22's runtime gate needs migration 8, so this prerequisite must be modeled rather than hidden in merge instructions. B21/B22 may author in parallel, but B22 delivery waits for B21. A18/A19 remain independently fixture-driven. B23 still depends on B22. Do not renumber/edit applied migrations or add placeholders; confirm latest version at implementation time.
 
 All new IDs and counters must stay within safe integer range 1–9007199254740991; version/cursor 0 is allowed as the absence marker. INTEGER AUTOINCREMENT IDs never reuse deleted high values. Overflow fails transaction without partial state. All FKs enforced; preserve existing users, sessions, follows, profiles, posts, discussions, groups, notices, media and sequences.
 
@@ -53,4 +53,4 @@ Down migrations **refuse** when removing Phase 5 data or cursor state would be l
 
 ## Approval
 
-Pending the single approval recorded in [contract](events-chat-contract.md#approval-and-verification-record). Migration ordering, unread bootstrap, event response generations, nonce retries, time semantics and every new public interface are included in that approval.
+Owner approved the complete handoff on 2026-10-18, recorded in [contract](events-chat-contract.md#approval-and-verification-record). Migration ordering, unread bootstrap, event response generations, nonce retries, time semantics and every new public interface are included in that approval.

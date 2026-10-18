@@ -20,6 +20,8 @@ SN-A16 adds group posts (`/groups/:id/posts`) and the group composer (`/groups/:
 
 `cmd/backend/` starts the Go API. `internal/router/` wires HTTP routes, `internal/handlers/` handles requests, and `internal/db/` owns SQLite queries and startup migrations. Account/session behavior follows the [approved auth contract](docs/social-network/auth-contract.md), [storage decision](docs/social-network/data-decision.md) and [backend implementation records](docs/social-network/backend-accounts.md). Sessions are independent per device; logout revokes the presented session. Avatar bytes are backend-owned and retrieved through an authenticated route. The [backend image guide](docs/social-network/backend-image.md) describes persistent storage and image verification.
 
+SN-B21 adds member-only group events under `/api/v1/groups/{id}/events`, immutable UTC event records, membership-generation response versions and atomic event notices. Reads share snapshots; writes serialize with membership changes. Notice visibility follows current membership across lists, counts and read actions. The [backend events record](docs/social-network/backend-events.md) covers migration 8, verification and the A18/B22/A21 handoff.
+
 ## Delivery boundary
 
 The frontend and backend build as separate images. SN-B07 owns the combined run and hosted CI gate; SN-A07 owns Phase 1 real-service browser acceptance. Their status is in the [active tracker](docs/social-network/ticket-tracker.md). Inherited endpoints and tables may remain in the repository but do not satisfy later social-network requirements without their own tickets and verification.

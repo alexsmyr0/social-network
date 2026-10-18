@@ -1,5 +1,7 @@
 # Phase 5 — Events and Messaging: Analysis and Proposed Decisions
 
+**Current status:** owner approved the complete B20 package on 2026-10-18; see [approval record](#owner-approval--2026-10-18). Proposed/pending statements below preserve the earlier analysis history.
+
 Recorded on 2026-10-11 at the request to analyze and ticket Phase 5. This extends the [Phase 4 decisions](phase-4-decisions.md) for [events and messaging](roadmap.md#phase-5-boundary-and-exit). Unlike Phases 2–4, **no product choice below has owner approval**: the earlier DM questions were never answered, and the owner interview did not cover events or group chat. Every row marked *Proposed* is a recommendation that [SN-B20](track-b.md#sn-b20--publish-event-and-messaging-contracts) must put to the owner in its single approval gate. Tickets, not this record, carry the work; status lives in the [tracker](ticket-tracker.md).
 
 ## What the assignment requires
@@ -72,3 +74,7 @@ Prepared [events/chat contract](events-chat-contract.md), [data mappings](phase-
 The concrete choices/alternatives in the contract include UUID send deduplication across HTTP/socket/restart, monotonic persisted unread cursors, read bootstrap, event response versions and membership generations, private history/media retention and non-live recipient recovery. They also propose correcting the migration dependency to B21 → B22 so schema 9 cannot ship without schema 8. The current ticket graph is unchanged until that proposal is approved, then its reverse edges and audit are updated together.
 
 One owner approval covers every product row, these concrete choices, the data plan and the fixtures. Approval is **pending**, not inferred from the instruction to start B20 or the A17 completion report. No second Dev 1 fixture approval will be requested. Artifact checks are documented in the [contract verification record](events-chat-contract.md#approval-and-verification-record); no runtime validation is claimed.
+
+## Owner approval — 2026-10-18
+
+The owner explicitly approved the full B20 handoff: every thirteen-row product proposal, all concrete contract interfaces, UTC event instants, 2000-code-point messages, no blocking/muting/reporting, data mappings and fixtures, including B21 → B22 migration ordering. Earlier pending/proposed statements describe the historical preparation checkpoint; this approval supersedes them. B21 implementation is authorized; no second Dev 1 fixture gate applies.

@@ -1,12 +1,12 @@
 # Events and Messaging Contract — SN-B20
 
-Prepared 2026-10-15 on `asmyrogl/B20`, based on `08aea11`. **Draft approval package: no Phase 5 product or interface approval claimed.** The owner reported A17 complete and explicitly instructed proceeding on 2026-10-15. Fetching origin still returned `08aea11` with the earlier open-gap record; that report is the execution authorization, not fresh upgrade evidence. B20 does not alter A17's historical evidence or mark it verified. Status lives in the [tracker](ticket-tracker.md).
+Prepared 2026-10-15 on `asmyrogl/B20`, based on `08aea11`. **Owner approved the complete Phase 5 handoff on 2026-10-18.** The owner reported A17 complete and explicitly instructed proceeding on 2026-10-15. Fetching origin still returned `08aea11` with the earlier open-gap record; that report is the execution authorization, not fresh upgrade evidence. B20 does not alter A17's historical evidence or mark it verified. Status lives in the [tracker](ticket-tracker.md).
 
-This contract, [data plan](phase-5-data-plan.md), [policy alternatives](phase-5-decisions.md#proposed-decisions-all-pending-owner-approval), [fixture pack](fixtures/phase-5-contract.json) and [validator](fixtures/validate-phase-5.py) form **one owner approval package**. B21 implements events; B22 implements DMs; B23 implements group chat. A18–A20 consume the fixtures; A21 owns real-service acceptance. No SQL, API, socket, dependency or Vue changes belong to B20.
+This contract, [data plan](phase-5-data-plan.md), [policy alternatives](phase-5-decisions.md#proposed-decisions-all-pending-owner-approval), [fixture pack](fixtures/phase-5-contract.json) and [validator](fixtures/validate-phase-5.py) form **one owner approval package, approved 2026-10-18**. B21 implements events; B22 implements DMs; B23 implements group chat. A18–A20 consume the fixtures; A21 owns real-service acceptance. No SQL, API, socket, dependency or Vue changes belong to B20.
 
 ## Decisions presented for approval
 
-Every policy row in the [Phase 5 proposals](phase-5-decisions.md#proposed-decisions-all-pending-owner-approval) is retained as proposed, with its alternative. This package recommends all thirteen rows, plus absolute event instants displayed in the viewer's local zone, 2000-code-point messages, and no blocking/muting/reporting workflow. Concrete choices below are proposals too; consumers wait for the single approval.
+Every policy row in the [Phase 5 proposals](phase-5-decisions.md#proposed-decisions-all-pending-owner-approval) was approved on 2026-10-18; alternatives remain as rationale. This package recommends all thirteen rows, plus absolute event instants displayed in the viewer's local zone, 2000-code-point messages, and no blocking/muting/reporting workflow. The owner approved every policy row and concrete choice below on 2026-10-18.
 
 | Choice | Recommendation | Main alternative / cost |
 |---|---|---|
@@ -129,7 +129,7 @@ B20 validates artifacts only. B21 must exercise migrations/events/notices and ra
 
 ## Approval and verification record
 
-Pending one owner approval of all proposed policy rows, concrete interfaces, data mappings and fixture handoff. Once approved, record exact scope/date here and in the decision record; no second Dev 1 review. B20 remains in progress and consumers unstarted until that approval and artifact checks pass. A17's completion report authorizes this preparation without inventing missing local/hosted evidence.
+Owner approved the full B20 handoff on 2026-10-18: all thirteen policy rows, UTC instants, 2000-code-point messages, no blocking/muting/reporting, concrete interfaces, UUID retries, membership generations, persisted cursor bootstrap, data mappings, fixtures and B21 → B22 migration ordering. This is the single human gate; no second Dev 1 review. B20 artifact checks pass; B21 proceeds. A17's completion report authorizes this preparation without inventing missing local/hosted evidence.
 
 Artifact verification on 2026-10-15, working tree based on `08aea11`:
 
@@ -137,4 +137,4 @@ Artifact verification on 2026-10-15, working tree based on `08aea11`:
 - Eight independently corrupted packs are rejected: missing DM cell, wrong HTTP result, leaked signal payload, wrong retry identity, changed retained message, schema drift, queued-frame admission after readmission, missing group cell. This confirms the validator can fail; no corrupted pack is retained.
 - `bunx biome check docs/social-network/fixtures/phase-5-contract.json`, Python source compilation, changed-document whitespace checks and `bunx vitest run SPA/tests/unit/docs-consistency.test.js` (**10/10**) pass. No full application gate or Docker check is appropriate for this documentation/fixture ticket.
 
-Review recommendations together: all thirteen policy rows; absolute event instants and 2000-code-point text; UUID retries shared by HTTP/socket; retained DM history/media; membership-scoped group/event response generations and read cursors; migration bootstrap and B21 → B22 dependency correction. Alternatives are in the tables above and the policy record. No recommendation is recorded as approved yet.
+Review recommendations together: all thirteen policy rows; absolute event instants and 2000-code-point text; UUID retries shared by HTTP/socket; retained DM history/media; membership-scoped group/event response generations and read cursors; migration bootstrap and B21 → B22 dependency correction. Alternatives are in the tables above and the policy record. All recommendations were approved by the owner on 2026-10-18.

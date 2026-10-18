@@ -9,6 +9,7 @@ import (
 
 type NoticeTarget struct {
 	Kind      string  `json:"kind"`
+	EventID   *int64  `json:"event_id,omitempty"`
 	FollowID  *int64  `json:"follow_id,omitempty"`
 	State     string  `json:"state,omitempty"`
 	PostID    *int64  `json:"post_id,omitempty"`
@@ -62,6 +63,7 @@ const noticeJoins = ` FROM notifications n
  JOIN users a ON a.id=n.actor_id AND a.is_active=1
  JOIN users v ON v.id=n.recipient_id AND v.is_active=1
  LEFT JOIN groups g ON g.id=n.group_id
+ LEFT JOIN group_events e ON e.id=n.event_id AND e.group_id=n.group_id
  LEFT JOIN comments c ON c.id=n.comment_id
  LEFT JOIN posts p ON p.id=COALESCE(n.post_id,c.post_id)
  LEFT JOIN users u ON u.id=p.author_id `
@@ -69,6 +71,7 @@ const noticeJoins = ` FROM notifications n
 // Group invitation/request notices belong to their recipient and stay listable
 // after membership loss: they reveal only public group metadata, never content.
 var visibleNotice = `n.recipient_id=? AND (n.type IN ('follow_request','group_invitation','group_join_request') OR
+ (n.type='group_event' AND e.id IS NOT NULL AND ` + EventMemberSQL("n.group_id", "n.recipient_id") + `) OR
  (p.id IS NOT NULL AND p.status='published' AND ` + strings.ReplaceAll(contentPermission, "?1", "n.recipient_id") + `
  AND (c.id IS NULL OR EXISTS(SELECT 1 FROM users ca WHERE ca.id=c.user_id AND ca.is_active=1))))`
 
@@ -96,7 +99,7 @@ func ListSocialNotifications(ctx context.Context, database *sql.DB, viewer int64
 	}
 	rows, err := tx.QueryContext(ctx, `SELECT n.id,n.type,n.created_at,n.is_read,n.actor_id,n.follow_id,n.follow_state,p.id,n.comment_id,p.title,c.body,
  EXISTS(SELECT 1 FROM follows f WHERE f.id=n.follow_id AND f.follower_id=n.actor_id AND f.followed_id=n.recipient_id AND f.state='pending'),
- n.group_id,n.group_entry_id,n.group_state,g.title,`+groupActionable+noticeJoins+`WHERE `+visibleNotice+` ORDER BY n.created_at DESC,n.id DESC LIMIT ? OFFSET ?`, viewer, perPage, (page-1)*perPage)
+ n.group_id,n.group_entry_id,n.group_state,g.title,n.event_id,`+groupActionable+noticeJoins+`WHERE `+visibleNotice+` ORDER BY n.created_at DESC,n.id DESC LIMIT ? OFFSET ?`, viewer, perPage, (page-1)*perPage)
 	if err != nil {
 		return result, err
 	}
@@ -107,10 +110,10 @@ func ListSocialNotifications(ctx context.Context, database *sql.DB, viewer int64
 	items := []item{}
 	for rows.Next() {
 		var x item
-		var follow, post, comment, group, entry sql.NullInt64
+		var follow, post, comment, group, entry, event sql.NullInt64
 		var state, title, body, groupState, groupTitle sql.NullString
 		var actionable, groupLive bool
-		if err := rows.Scan(&x.notice.ID, &x.notice.Type, &x.notice.CreatedAt, &x.notice.IsRead, &x.actor, &follow, &state, &post, &comment, &title, &body, &actionable, &group, &entry, &groupState, &groupTitle, &groupLive); err != nil {
+		if err := rows.Scan(&x.notice.ID, &x.notice.Type, &x.notice.CreatedAt, &x.notice.IsRead, &x.actor, &follow, &state, &post, &comment, &title, &body, &actionable, &group, &entry, &groupState, &groupTitle, &event, &groupLive); err != nil {
 			rows.Close()
 			return result, err
 		}
@@ -121,6 +124,8 @@ func ListSocialNotifications(ctx context.Context, database *sql.DB, viewer int64
 			if state.String == "pending" && actionable {
 				n.Actions = []string{"accept", "decline"}
 			}
+		} else if n.Type == "group_event" {
+			n.Target = NoticeTarget{Kind: "group_event", EventID: &event.Int64, Group: &NoticeGroup{ID: group.Int64, Title: groupTitle.String}}
 		} else if n.Type == "group_invitation" || n.Type == "group_join_request" {
 			n.Target = NoticeTarget{Kind: n.Type, State: groupState.String, Group: &NoticeGroup{ID: group.Int64, Title: groupTitle.String}}
 			if n.Type == "group_invitation" {

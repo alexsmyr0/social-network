@@ -1,6 +1,6 @@
 {
 	"schema_version": 1,
-	"review_status": "draft-awaiting-owner-approval",
+	"review_status": "owner-approved-2026-10-18",
 	"clock": "2026-10-15T12:00:00Z",
 	"base_revision": "08aea11",
 	"defaults": {

@@ -44,3 +44,7 @@ Validation on the authored working tree based on `9604cb2`:
 Manual review covers fidelity to the supplied [groups](requirements.md#groups), [chat](requirements.md#chat) and [notifications](requirements.md#notifications) text, absence of invented moderation, ownership or event-edit workflows, and absence of any approval claim for unanswered decisions.
 
 No application tests, migrations, Docker startup or runtime changes are part of this documentation-only authoring gate. The current-state findings come from code inspection, not a fresh runtime run. Future ticket gates describe required verification; they do not claim it has passed.
+
+## Approved dependency correction — 2026-10-18
+
+Owner approved full B20 handoff. B22 now depends on B21 rather than directly on B20, because migration 9 requires migration 8. Reverse Blocks, tracker and sequence updated together; frontend A18/A19 remain independently fixture-driven. B21/B22 authoring may overlap; delivery is ordered.
