@@ -35,12 +35,13 @@ export function useGroup({ retain = false } = {}) {
 	return { ...resource, groupId, viewerId, group, role, isMember, isCreator };
 }
 
-// Sections a role may open. Nonmembers see discovery metadata only; posts and
-// the member list are members-only and join-request review is creator-only.
+// Sections a role may open. Nonmembers see discovery metadata only; posts,
+// events and the member list are members-only and join-request review is creator-only.
 export function groupSections(role) {
 	const sections = [{ name: 'group', label: 'About' }];
 	if (role === 'creator' || role === 'member') {
 		sections.push({ name: 'group-posts', label: 'Posts' });
+		sections.push({ name: 'group-events', label: 'Events' });
 		sections.push({ name: 'group-members', label: 'Members' });
 	}
 	if (role === 'creator') sections.push({ name: 'group-requests', label: 'Join requests' });

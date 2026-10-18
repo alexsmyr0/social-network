@@ -225,6 +225,7 @@ const NOTICE_TYPES = new Set([
 	'follow_request',
 	'group_invitation',
 	'group_join_request',
+	'group_event',
 	'post_like',
 	'post_dislike',
 	'comment',
@@ -291,6 +292,30 @@ function normalizeGroupNotice(base, target, actions) {
 	};
 }
 
+// An event notice names the event and public group metadata only, never the
+// event's text, and has no actions: opening it fetches the event with the
+// viewer's current membership.
+function normalizeEventNotice(base, target) {
+	const group = target.group;
+	if (
+		target.kind !== 'group_event' ||
+		!isValidId(target.event_id) ||
+		!group ||
+		!isValidId(group.id) ||
+		typeof group.title !== 'string'
+	)
+		return null;
+	return {
+		...base,
+		target: {
+			kind: 'group_event',
+			event_id: target.event_id,
+			group: { id: group.id, title: group.title },
+		},
+		actions: [],
+	};
+}
+
 export function normalizeNotice(value) {
 	if (
 		!value ||
@@ -312,6 +337,7 @@ export function normalizeNotice(value) {
 	};
 	if (value.type === 'follow_request') return normalizeRequestNotice(base, target, value.actions);
 	if (GROUP_NOTICES[value.type]) return normalizeGroupNotice(base, target, value.actions);
+	if (value.type === 'group_event') return normalizeEventNotice(base, target);
 	if (!isValidId(target.post_id) || !['post', 'comment'].includes(target.kind)) return null;
 	const content = { kind: target.kind, post_id: target.post_id, title: nullableText(target.title) };
 	if (target.kind === 'comment') {
