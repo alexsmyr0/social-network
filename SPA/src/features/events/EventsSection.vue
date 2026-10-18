@@ -26,7 +26,10 @@ const groupId = computed(() => props.group.id);
 // Mounted only for a confirmed member; the server still decides, and a viewer
 // who has lost membership gets a 404 that discards the list.
 const { status, result, reload } = useSocialResource(
-	() => events.api.fetchEvents(groupId.value, { page: page.value }),
+	() =>
+		events.reconcileCreation(groupId.value, () =>
+			events.api.fetchEvents(groupId.value, { page: page.value }),
+		),
 	{ social, sources: () => [groupId.value, page.value, props.viewerId] },
 );
 

@@ -30,7 +30,10 @@ const groupId = computed(() => props.group.id);
 // responder), so answering does not unmount the buttons under the member's
 // hands; a failed or denied read, a route or an account change discards it.
 const { status, result, reload } = useSocialResource(
-	() => events.api.fetchEvent(groupId.value, props.eventId),
+	() =>
+		events.reconcileCreation(groupId.value, () =>
+			events.api.fetchEvent(groupId.value, props.eventId),
+		),
 	{ social, sources: () => [groupId.value, props.eventId, props.viewerId], retain: true },
 );
 

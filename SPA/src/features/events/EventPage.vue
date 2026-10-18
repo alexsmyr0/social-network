@@ -37,11 +37,20 @@ const view = computed(() => {
 	if (status.value !== 'ready' || !group.value) return 'missing';
 	return isMember.value ? 'event' : 'restricted';
 });
+// A confirmation contains protected event text too. Never restore it after
+// denied access, and hide it while membership is being checked.
+watch([status, isMember], () => {
+	if (
+		['unavailable', 'not-found', 'rejected'].includes(status.value) ||
+		(status.value === 'ready' && !isMember.value)
+	)
+		flash.value = '';
+});
 </script>
 
 <template>
 	<section class="social-view event-view" data-screen="event" :aria-busy="view === 'checking'">
-		<p v-if="flash" class="group-feedback__text group-feedback__text--success" role="status">{{ flash }}</p>
+		<p v-if="flash && view === 'event'" class="group-feedback__text group-feedback__text--success" role="status">{{ flash }}</p>
 		<GroupFeedback ref="feedbackRegion" :feedback="feedback" />
 
 		<p v-if="view === 'checking'" class="social-status" role="status">Checking your membership…</p>

@@ -10,7 +10,7 @@ Implemented on `chbaikas/A18`, based on merged main `8bb01e5` (B20 included). Th
 
 **Answers.** Going and Not going are toggle buttons that show the viewer's current choice and the count for each option. A write sends the viewer's current `membership_id` and the `expected_version` of the answer the page showed (0 when there was none). Choosing the selected option again is not a write. One write is in flight per event, the result is worded as saved only after a confirmed success, and the page then re-reads the event. A stale version, a stale membership generation, a lost response and a removed membership each get their own plain message and a refetch; nothing is retried. The answers list shows names and choices only, never an avatar, profile field or membership history, and a returning member starts with no answer.
 
-**Scheduling** (`/groups/:id/events/new`) validates title (1–100 code points, no control characters), description (1–1000, newline and tab allowed) and the start as the contract does before anything is sent, then moves focus to the first problem. The start is a `datetime-local` wall time read in the viewer's zone and sent as a whole-second UTC instant. A wall time the zone skips at a clock change is refused rather than silently moved. Creation is not idempotent, so a lost response is never resent: the draft stays, focus returns to the message, and a link to the event list lets the member check before deliberately trying again. A server `VALIDATION_ERROR` is mapped back to the fields. On success the creator lands on the new event with a notice.
+**Scheduling** (`/groups/:id/events/new`) validates title (1–100 code points, no control characters), description (1–1000, newline and tab allowed) and the start as the contract does before anything is sent, then moves focus to the first problem. The start is a `datetime-local` wall time read in the viewer's zone and sent as a whole-second UTC instant. A wall time the zone skips at a clock change is refused rather than silently moved. Creation is not idempotent, so a lost response is never resent: the draft stays, focus returns to the message, and scheduling stays blocked until a successful event-list or detail read reconciles the result. The block survives leaving and reopening the form; failed reads do not unlock it. A link to the event list lets the member check before deliberately trying again. A server `VALIDATION_ERROR` is mapped back to the fields. On success the creator lands on the new event with a notice, provided the original route, account and membership are still current. A completion after navigation has no redirect or confirmation effect.
 
 **Notices.** `group_event` notices appear in the existing global panel as "Scheduled an event" with "See the event in {group}" linking to the event. They carry no actions and no event text, so nothing protected can leak through an excerpt. They are read through the existing read controls. The server hides notices for a group the recipient no longer belongs to and restores the same notice after fresh admission; the panel follows through the normal signal lifecycle.
 
@@ -18,7 +18,7 @@ Implemented on `chbaikas/A18`, based on merged main `8bb01e5` (B20 included). Th
 
 Every event read uses `useSocialResource`. A signal, reconnect, focus, route or account change refetches, and a failed, missing or denied read discards the event at once, so a removed member's open page never keeps showing it. Switching accounts discards event, list and answers before refetching. The group the page asks about uses the same lifecycle through `useGroup`.
 
-One deliberate exception: the event detail, its answers and the group behind them use `retain`, which keeps the shown data only while a refetch is in flight. The server also sends the `social.invalidate` signal to the member who just answered. A hard discard would unmount the answer buttons under the member's hands, drop focus and erase the confirmation message. Retained data is replaced or discarded by the very next response, and never survives an error, a 404, a route change or an account change. The list and the form gate behave as in A15/A16: the list is discarded on every signal, and the scheduling form keeps the member's draft through a re-read (as the group composer does) but closes the moment a response says the viewer is no longer a member.
+One deliberate exception: the event detail, its answers and the group behind them use `retain`, which keeps the shown data only while a refetch is in flight. The server also sends the `social.invalidate` signal to the member who just answered. A hard discard would unmount the answer buttons under the member's hands, drop focus and erase the confirmation message. Retained data is replaced or discarded by the very next response, and never survives an error, a 404, a route change or an account change. The list and the form gate behave as in A15/A16: the list is discarded on every signal, and the scheduling form keeps the member's draft through a re-read (as the group composer does) but closes and discards the draft the moment a response says the viewer is no longer a member. A new membership generation also clears the draft. Event-title confirmations are hidden during membership checks and cleared on lost or unavailable access, so readmission never restores an old confirmation.
 
 ## Files
 
@@ -67,3 +67,18 @@ Docker was already running. `make test-images` returned **exit 0**: both image b
 - Existing group tests that listed the group sections were updated for the new Events tab.
 - A sole member's new event claimed "Other members have been notified". The confirmation now mentions notices only when the group has other members.
 - The answer status cleared itself with `display: none` and switched its role between `status` and `alert`. Both stop some screen readers announcing; the region now stays in the tree with a fixed `status` role.
+
+## Review corrections — 2026-10-18
+
+Follow-up to review of `aa37ace` on `chbaikas/A18` fixes four reproduced P2 issues: duplicate creation after an uncertain response, a protected title left in the creation confirmation, a late redirect after navigation, and a removed member’s draft returning after readmission.
+
+The shared event write state now blocks uncertain creation per group until a successful list/detail read started after the uncertain outcome. Failed reads, another group’s reads and late reads from a previous account cannot unlock it. The form guards both submission and completion effects; membership loss clears its fields and the detail page clears protected confirmation text.
+
+Verification on the corrected working tree:
+
+- `bun run test:a18`: **965/965**, including four new interaction cases, stronger retry/readmission assertions in two existing cases and four reconciliation concurrency checks.
+- `GOCACHE="$PWD/.tmp/go-cache" GOTMPDIR="$PWD/.tmp/go-tmp" make test-e2e PLAYWRIGHT_ARGS=a18-events`: **12/12** A18 browser journeys.
+- Full native `make test`: **exit 0**, including build, Biome, gofmt, vet, Go suite/race checks, Vitest **2357/2357** and Playwright **74/74**.
+- `validate-phase-5.py` and `git diff --check` pass.
+
+This remains frontend fixture evidence; no new real-service Phase 5 acceptance or image verification is claimed.

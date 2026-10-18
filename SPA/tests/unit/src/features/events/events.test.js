@@ -517,11 +517,102 @@ describe('SN-A18 scheduling an event', () => {
 		expect(wrapper.get('#event-description').element.value).toBe('Kept draft');
 		expect(backend.events.size).toBe(3);
 		expect(document.activeElement?.classList.contains('group-form__summary')).toBe(true);
+		expect(wrapper.get('button[type="submit"]').element.disabled).toBe(true);
+		// Even an explicit form submit or edited draft cannot replay the write.
+		await submit(wrapper);
+		await fill(wrapper, { title: 'Edited after uncertainty' });
+		await submit(wrapper);
+		expect(eventCalls(fetchRef, { method: 'POST' })).toHaveLength(1);
+		expect(backend.events.size).toBe(3);
 		// The committed event shows once in the list; nothing was duplicated.
 		await wrapper.get('.group-form__summary a[href="/groups/301/events"]').trigger('click');
 		await settle();
 		expect(cardIds(wrapper).filter((id) => id === 703)).toHaveLength(1);
 		expect(eventCalls(fetchRef, { method: 'POST' })).toHaveLength(1);
+	});
+
+	test('an unavailable event list does not unlock a remounted creation form', async () => {
+		const app = await mount('/groups/301/events/new', { viewerId: 42 });
+		const { wrapper, backend, router, fetchRef } = app;
+		backend.faults.push({ method: 'POST', path: /\/events$/u, commit: true });
+		await fill(wrapper, {
+			title: 'Uncertain',
+			description: 'Check first',
+			startsAt: '2099-11-07T18:00',
+		});
+		await submit(wrapper);
+		backend.faults.push({ method: 'GET', path: /\/events(?:\?|$)/u, repeat: true });
+		await router.push('/groups/301/events');
+		await settle();
+		expect(textOf(wrapper)).toContain('We can’t load the events right now.');
+		await router.push('/groups/301/events/new');
+		await settle();
+		await fill(wrapper, {
+			title: 'Another',
+			description: 'Still blocked',
+			startsAt: '2099-11-07T18:00',
+		});
+		await submit(wrapper);
+		expect(eventCalls(fetchRef, { method: 'POST' })).toHaveLength(1);
+		backend.faults.length = 0;
+		await router.push('/groups/301/events');
+		await settle();
+		expect(cardIds(wrapper)).toContain(703);
+		await router.push('/groups/301/events/new');
+		await settle();
+		expect(wrapper.get('button[type="submit"]').element.disabled).toBe(false);
+		await fill(wrapper, {
+			title: 'Deliberate new event',
+			description: 'After checking',
+			startsAt: '2099-11-08T18:00',
+		});
+		await submit(wrapper);
+		expect(eventCalls(fetchRef, { method: 'POST' })).toHaveLength(2);
+	});
+
+	test.each([
+		'/groups/301/events',
+		'/groups/302/events/new',
+	])('a pending create cannot redirect back after navigating to %s', async (destination) => {
+		const hold = deferred();
+		const app = await mount('/groups/301/events/new', {
+			viewerId: 42,
+			before: async (call) => {
+				if (call.method === 'POST') await hold.promise;
+			},
+		});
+		await fill(app.wrapper, {
+			title: 'Late success',
+			description: 'Committed later',
+			startsAt: '2099-11-08T18:00',
+		});
+		await app.wrapper.get('form').trigger('submit');
+		await app.router.push(destination);
+		await settle();
+		hold.release();
+		await settle();
+		expect(app.backend.events.size).toBe(3);
+		expect(app.router.currentRoute.value.fullPath).toBe(destination);
+		expect(app.groups.takeFlash('event')).toBe('');
+	});
+
+	test('membership loss clears a successful creation confirmation permanently', async () => {
+		const app = await mount('/groups/301/events/new', { viewerId: 10 });
+		await fill(app.wrapper, {
+			title: 'Protected title',
+			description: 'Members only',
+			startsAt: '2099-11-08T18:00',
+		});
+		await submit(app.wrapper);
+		expect(textOf(app.wrapper)).toContain('Protected title is scheduled.');
+		app.backend.removeMember(301, 10);
+		await signal(app.sockets);
+		expect(textOf(app.wrapper)).toContain('Only members can see group events.');
+		expect(textOf(app.wrapper)).not.toContain('Protected title');
+		app.backend.admit(301, 10, []);
+		await signal(app.sockets);
+		expect(textOf(app.wrapper)).toContain('Protected title');
+		expect(textOf(app.wrapper)).not.toContain('Protected title is scheduled.');
 	});
 
 	test('server-side validation is mapped back to the fields', async () => {
@@ -556,6 +647,11 @@ describe('SN-A18 scheduling an event', () => {
 		expect(wrapper.find('#event-title').exists()).toBe(false);
 		expect(eventCalls(fetchRef, { method: 'POST' })).toHaveLength(0);
 		expect(backend.events.size).toBe(2);
+		backend.admit(301, 10, []);
+		await signal(app.sockets);
+		expect(wrapper.get('#event-title').element.value).toBe('');
+		expect(wrapper.get('#event-description').element.value).toBe('');
+		expect(wrapper.get('#event-starts-at').element.value).toBe('');
 	});
 
 	test('a membership that changed under an open form is refused and nothing is created', async () => {

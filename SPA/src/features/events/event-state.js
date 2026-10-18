@@ -31,16 +31,23 @@ export function eventMessage(result) {
 // followed by a refetch so views converge on what the server reports. No write
 // is ever replayed automatically.
 export function createEventState({ api = eventsApi, session, social } = {}) {
-	const state = reactive({ pending: {} });
+	const state = reactive({ pending: {}, uncertainCreates: {} });
+	let uncertainty = 0;
 	let revision = 0;
 
 	function reset() {
 		revision += 1;
 		state.pending = {};
+		state.uncertainCreates = {};
 	}
 
 	if (session) {
 		watch(() => session.state.account?.id ?? null, reset, { flush: 'sync' });
+	}
+
+	function markUncertainCreation(key, result) {
+		if (key.startsWith('create-') && result.status === 'unavailable')
+			state.uncertainCreates[key.slice(7)] = ++uncertainty;
 	}
 
 	async function run(key, request) {
@@ -54,6 +61,7 @@ export function createEventState({ api = eventsApi, session, social } = {}) {
 				await social.handleUnauthenticated();
 				return { status: 'unauthenticated', message: '' };
 			}
+			markUncertainCreation(key, result);
 			const ok = result.status === 'ok';
 			const outcome = { ...result, message: ok ? '' : eventMessage(result) };
 			if (PERMISSION_LOSS.has(result.status)) await social.invalidate();
@@ -68,12 +76,26 @@ export function createEventState({ api = eventsApi, session, social } = {}) {
 		return Boolean(state.pending[key]);
 	}
 
+	// Only a successful event read started after the uncertain write reconciles
+	// it. A failed read or an older in-flight read must not unlock creation.
+	async function reconcileCreation(groupId, read) {
+		const token = state.uncertainCreates[groupId];
+		const result = await read();
+		if (token && result.status === 'ok' && state.uncertainCreates[groupId] === token)
+			delete state.uncertainCreates[groupId];
+		return result;
+	}
+
 	return {
+		reconcileCreation,
 		state: readonly(state),
 		api,
 		isPending,
 		reset,
-		create: (groupId, fields) => run(`create-${groupId}`, () => api.createEvent(groupId, fields)),
+		create: (groupId, fields) =>
+			state.uncertainCreates[groupId]
+				? Promise.resolve({ status: 'busy', message: '' })
+				: run(`create-${groupId}`, () => api.createEvent(groupId, fields)),
 		respond: (groupId, eventId, fields) =>
 			run(`respond-${eventId}`, () => api.respondToEvent(groupId, eventId, fields)),
 	};

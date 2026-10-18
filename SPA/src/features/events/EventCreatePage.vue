@@ -1,8 +1,8 @@
 <script setup>
 // biome-ignore-all lint/correctness/noUnusedVariables: bindings used in Vue templates
 // biome-ignore-all lint/correctness/noUnusedImports: components used in Vue templates
-import { computed, inject, nextTick, reactive, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, inject, nextTick, onUnmounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 import { EVENT_DESCRIPTION_MAX, EVENT_TITLE_MAX } from '../../api/events.js';
 import { sessionKey } from '../auth/session-state.js';
@@ -16,6 +16,18 @@ const session = inject(sessionKey);
 const groups = inject(groupsKey);
 const events = inject(eventsKey);
 const router = useRouter();
+const route = useRoute();
+let navigation = 0;
+watch(
+	() => route.fullPath,
+	() => {
+		navigation += 1;
+	},
+	{ flush: 'sync' },
+);
+onUnmounted(() => {
+	navigation += 1;
+});
 
 // The form is open only for a viewer the server has confirmed as a current
 // member. A re-read (signal, reconnect, focus) must not wipe what the member is
@@ -51,7 +63,7 @@ const offline = computed(() => confirmed.value && status.value === 'unavailable'
 const fields = reactive({ title: '', description: '', startsAt: '' });
 const errors = reactive({ title: '', description: '', startsAt: '' });
 const formMessage = ref('');
-const uncertain = ref(false);
+const uncertain = computed(() => Boolean(events.state.uncertainCreates[groupId.value]));
 const summary = ref(null);
 const pending = computed(() =>
 	groupId.value ? events.isPending(`create-${groupId.value}`) : false,
@@ -71,8 +83,16 @@ function clearDraft() {
 	fields.title = fields.description = fields.startsAt = '';
 	errors.title = errors.description = errors.startsAt = '';
 	formMessage.value = '';
-	uncertain.value = false;
 }
+
+// Confirmed removal (including a new membership generation) discards the
+// draft. Loading and transient outages preserve a current member's work.
+watch(
+	() => confirmed.value?.viewer.membership_id ?? null,
+	(current, previous) => {
+		if (previous !== null && current !== previous) clearDraft();
+	},
+);
 
 // A different account, or a different group, never inherits an unsent draft.
 watch([() => session.state.account?.id ?? null, groupId], clearDraft);
@@ -103,14 +123,14 @@ function scheduledMessage(event, group) {
 }
 
 async function submit() {
-	if (!confirmed.value || pending.value) return;
+	if (!confirmed.value || pending.value || uncertain.value) return;
 	formMessage.value = '';
-	uncertain.value = false;
 	const checked = validate();
 	if (!checked.ok) {
 		await focusFirstProblem();
 		return;
 	}
+	const startedAt = navigation;
 	const accountId = session.state.account?.id;
 	const target = confirmed.value;
 	const outcome = await events.create(target.id, {
@@ -119,7 +139,12 @@ async function submit() {
 		description: normalizeText(fields.description),
 		startsAt: checked.instant,
 	});
-	if (accountId !== session.state.account?.id) return;
+	if (
+		startedAt !== navigation ||
+		accountId !== session.state.account?.id ||
+		confirmed.value?.viewer.membership_id !== target.viewer.membership_id
+	)
+		return;
 	if (outcome.status === 'ok') {
 		groups.setFlash('event', scheduledMessage(outcome.event, target));
 		await router.push({
@@ -138,7 +163,6 @@ async function submit() {
 	} else if (outcome.status === 'unavailable') {
 		// Creation is not idempotent: never resend. The member checks the event
 		// list, where a committed event already appears.
-		uncertain.value = true;
 		formMessage.value =
 			'We couldn’t confirm whether the event was created, so nothing was resent. Check the event list before trying again, or you may schedule it twice.';
 	} else {
@@ -191,7 +215,7 @@ async function submit() {
 
 		<form class="group-form event-form" novalidate @submit.prevent="submit">
 			<div ref="summary" tabindex="-1" class="group-form__summary" aria-live="polite">
-				<p v-if="formMessage" class="field-error" role="alert">{{ formMessage }}</p>
+				<p v-if="formMessage || uncertain" class="field-error" role="alert">{{ formMessage || "Check the event list before scheduling again. The previous event may already have been created." }}</p>
 				<RouterLink v-if="uncertain" class="text-link" :to="{ name: 'group-events', params: { id: confirmed.id } }">Check the event list <span aria-hidden="true">↗</span></RouterLink>
 			</div>
 
@@ -217,7 +241,7 @@ async function submit() {
 			</div>
 
 			<div class="group-form__actions">
-				<button class="button button--primary" type="submit" :aria-disabled="pending" :aria-busy="pending">{{ pending ? 'Scheduling…' : 'Schedule event' }}</button>
+				<button class="button button--primary" type="submit" :disabled="uncertain" :aria-disabled="pending || uncertain" :aria-busy="pending">{{ pending ? 'Scheduling…' : 'Schedule event' }}</button>
 				<RouterLink class="button button--secondary" :to="{ name: 'group-events', params: { id: confirmed.id } }">Cancel</RouterLink>
 			</div>
 		</form>
