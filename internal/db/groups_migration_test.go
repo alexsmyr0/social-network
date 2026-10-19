@@ -21,7 +21,7 @@ func groupPhase3Files(t *testing.T) fstest.MapFS {
 		t.Fatal(err)
 	}
 	for _, name := range names {
-		if strings.Contains(name, "000006_") || strings.Contains(name, "000007_") || strings.Contains(name, "000008_") {
+		if strings.Contains(name, "000006_") || strings.Contains(name, "000007_") || strings.Contains(name, "000008_") || strings.Contains(name, "000009_") {
 			continue
 		}
 		b, err := migrationFS.ReadFile(name)
@@ -141,7 +141,7 @@ func TestGroupMigrationUpgradePreservesPhase3Data(t *testing.T) {
 	}
 	var version, dirty int
 	upgraded.QueryRow(`SELECT version,dirty FROM schema_migrations`).Scan(&version, &dirty)
-	if version != 8 || dirty != 0 {
+	if version != 9 || dirty != 0 {
 		t.Fatalf("version %d dirty %d", version, dirty)
 	}
 	rows, err := upgraded.Query(`PRAGMA foreign_key_check`)
@@ -381,6 +381,11 @@ func TestGroupDownMigrationRefusesLossyRemovalAndRoundTripsWhenEmpty(t *testing.
 	database := groupTestDB(t)
 	eventDown, _ := migrationFS.ReadFile("migrations/sqlite/000008_group_events.down.sql")
 	eventUp, _ := migrationFS.ReadFile("migrations/sqlite/000008_group_events.up.sql")
+	cursorDown, _ := migrationFS.ReadFile("migrations/sqlite/000009_dm_cursors.down.sql")
+	cursorUp, _ := migrationFS.ReadFile("migrations/sqlite/000009_dm_cursors.up.sql")
+	if err := run(database, cursorDown); err != nil {
+		t.Fatal(err)
+	}
 	if err := run(database, eventDown); err != nil {
 		t.Fatal(err)
 	}
@@ -393,6 +398,9 @@ func TestGroupDownMigrationRefusesLossyRemovalAndRoundTripsWhenEmpty(t *testing.
 			t.Fatalf("group post up migration after round trip: %v", err)
 		}
 		if err := run(database, eventUp); err != nil {
+			t.Fatal(err)
+		}
+		if err := run(database, cursorUp); err != nil {
 			t.Fatal(err)
 		}
 	}()

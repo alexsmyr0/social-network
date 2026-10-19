@@ -284,12 +284,23 @@ func StageMedia(ctx context.Context, database *sql.DB, viewer, recipient int64, 
 		return "", "", err
 	}
 	defer tx.Rollback()
-	var count int
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE is_active=1 AND (id=? OR (?='dm' AND id=?))`, viewer, kind, recipient).Scan(&count); err != nil {
-		return "", "", err
-	}
-	if count != 1 && kind == "content" || count != 2 && kind == "dm" {
-		return "", "", sql.ErrNoRows
+	// A DM upload needs the same current permission as the send it will feed.
+	if kind == "dm" {
+		allowed, err := dmCanSend(ctx, tx, viewer, recipient)
+		if err != nil {
+			return "", "", err
+		}
+		if !allowed {
+			return "", "", sql.ErrNoRows
+		}
+	} else {
+		var active bool
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE is_active=1 AND id=?)`, viewer).Scan(&active); err != nil {
+			return "", "", err
+		}
+		if !active {
+			return "", "", sql.ErrNoRows
+		}
 	}
 	result, err := tx.ExecContext(ctx, `INSERT INTO media_objects(source_key,object_key,mime_type,byte_count,state) VALUES(?,?,?,?,'ready')`, "new:"+key, key, mime, len(data))
 	if err != nil {

@@ -26,6 +26,8 @@ SN-A19 adds private messaging (`/messages`, `/messages/:id`) and a message indic
 
 SN-B21 adds member-only group events under `/api/v1/groups/{id}/events`, immutable UTC event records, membership-generation response versions and atomic event notices. Reads share snapshots; writes serialize with membership changes. Notice visibility follows current membership across lists, counts and read actions. The [backend events record](docs/social-network/backend-events.md) covers migration 8, verification and the A18/B22/A21 handoff.
 
+SN-B22 enforces relationship rules for private messages: sending needs an accepted follow in either direction, messages are stored whether or not the recipient is online, `client_id` nonces make HTTP and socket retries idempotent, and persisted per-conversation read cursors back the unread counts (`/api/v1/chats`, `/chats/unread`, `/chats/{id}/messages|images|read`). Private frames are re-authorized at the socket write; relationship-changing writes take the same gate exclusively. The [backend direct-messages record](docs/social-network/backend-direct-messages.md) covers migration 9, delivery coordination and verification.
+
 ## Delivery boundary
 
 The frontend and backend build as separate images. SN-B07 owns the combined run and hosted CI gate; SN-A07 owns Phase 1 real-service browser acceptance. Their status is in the [active tracker](docs/social-network/ticket-tracker.md). Inherited endpoints and tables may remain in the repository but do not satisfy later social-network requirements without their own tickets and verification.

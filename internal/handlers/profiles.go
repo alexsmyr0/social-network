@@ -230,6 +230,17 @@ func (u *UsersHandler) IncomingFollowRequests(w http.ResponseWriter, r *http.Req
 	}
 	WriteOK(w, result.Items, &Meta{Pagination: makePaginationMeta(page, per, result.Total)})
 }
+
+// revoking runs a write that can end a recipient's permission to receive queued
+// private frames (unfollow, privacy change). It holds the exclusive delivery gate
+// only for that database write, never while the request is read or answered.
+func (u *UsersHandler) revoking(write func()) {
+	if u.hub == nil {
+		write()
+		return
+	}
+	u.hub.WithRevocation(write)
+}
 func (u *UsersHandler) Privacy(w http.ResponseWriter, r *http.Request) {
 	if _, _, _, e := socialQuery(r, false, false); e != nil {
 		WriteError(w, r, e)
@@ -260,7 +271,9 @@ func (u *UsersHandler) Privacy(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	change, err := db.ChangePrivacy(r.Context(), u.conn, viewer, *input.Visibility, version)
+	var change db.PrivacyChange
+	var err error
+	u.revoking(func() { change, err = db.ChangePrivacy(r.Context(), u.conn, viewer, *input.Visibility, version) })
 	if err != nil {
 		socialError(w, r, err)
 		return
@@ -317,7 +330,9 @@ func (u *UsersHandler) RemoveFollow(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if _, err := db.RemoveFollow(r.Context(), u.conn, viewer, id); err != nil {
+	var err error
+	u.revoking(func() { _, err = db.RemoveFollow(r.Context(), u.conn, viewer, id) })
+	if err != nil {
 		socialError(w, r, err)
 		return
 	}

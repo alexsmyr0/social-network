@@ -100,7 +100,12 @@ func TestGroupEventMigrationPreservesAllColumnsAndMedia(t *testing.T) {
 		if table == "notifications" {
 			continue
 		}
-		if got := tableSnapshot(t, upgraded, table, "*"); got != want {
+		columns := "*"
+		if table == "private_messages" {
+			// B22 adds one nullable column; every pre-existing column must be identical.
+			columns = "id,sender_id,recipient_id,body,image_path,created_at"
+		}
+		if got := tableSnapshot(t, upgraded, table, columns); got != want {
 			t.Fatalf("%s changed", table)
 		}
 	}
@@ -126,7 +131,7 @@ func TestGroupEventMigrationPreservesAllColumnsAndMedia(t *testing.T) {
 	if count(t, upgraded, `SELECT COUNT(*) FROM pragma_foreign_key_check`) != 0 {
 		t.Fatal("foreign key violation")
 	}
-	if count(t, upgraded, `SELECT version FROM schema_migrations WHERE dirty=0`) != 8 {
+	if count(t, upgraded, `SELECT version FROM schema_migrations WHERE dirty=0`) != 9 {
 		t.Fatal("wrong version")
 	}
 	// The deleted high notification ID is not reused.
@@ -161,7 +166,7 @@ func TestGroupEventMigrationEveryVersionedSource(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer up.Close()
-			if count(t, up, `SELECT COUNT(*) FROM users WHERE email='kept@test.local'`) != 1 || count(t, up, `SELECT version FROM schema_migrations WHERE dirty=0`) != 8 {
+			if count(t, up, `SELECT COUNT(*) FROM users WHERE email='kept@test.local'`) != 1 || count(t, up, `SELECT version FROM schema_migrations WHERE dirty=0`) != 9 {
 				t.Fatal("upgrade lost account or schema")
 			}
 		})

@@ -10,6 +10,7 @@ DELETE FROM post_categories;
 DELETE FROM posts;
 -- Group children cascade; the creator row may only go with its group.
 DELETE FROM groups;
+DELETE FROM dm_read_cursors;
 DELETE FROM users;
 
 DELETE FROM sqlite_sequence

@@ -424,7 +424,7 @@ func TestSocialSessionRevokedSocketCannotSend(t *testing.T) {
 	if err := db.InvalidateSessionByToken(context.Background(), conn, aliceToken); err != nil {
 		t.Fatal(err)
 	}
-	message := `{"type":"dm.send","payload":{"recipient_id":` + strconv.FormatInt(bobID, 10) + `,"body":"after revoke"}}`
+	message := `{"type":"dm.send","payload":{"recipient_id":` + strconv.FormatInt(bobID, 10) + `,"client_id":"11111111-1111-4111-8111-111111111111","body":"after revoke"}}`
 	if err := alice.WriteMessage(websocket.TextMessage, []byte(message)); err != nil {
 		t.Fatal(err)
 	}
