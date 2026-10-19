@@ -1,6 +1,6 @@
 # Track B — Backend, Data and Shared Tooling
 
-Dev 2 owns backend, storage and shared run/CI tooling for Phases 1–5. Status and handoffs live in the [tracker](ticket-tracker.md); follow the [ticket-writing rules](ticket-rules.md). Larger work packages follow the [Phase 2–3 decisions](phase-2-3-decisions.md) and [Phase 4 decisions](phase-4-decisions.md), including preservation of inherited features. Phase 5 tickets follow the [Phase 5 analysis](phase-5-decisions.md); its product decisions need owner approval in SN-B20 before consumers start.
+Dev 2 owns backend, storage and shared run/CI tooling for Phases 1–5. Status and handoffs live in the [tracker](ticket-tracker.md); follow the [ticket-writing rules](ticket-rules.md). Larger work packages follow the [Phase 2–3 decisions](phase-2-3-decisions.md) and [Phase 4 decisions](phase-4-decisions.md), including preservation of inherited features. Phase 5 tickets follow the [Phase 5 analysis](phase-5-decisions.md); its complete product/interface/data/fixture handoff was owner-approved in SN-B20 on 2026-10-18.
 
 Output filenames are planned artifacts under this section, not existing files. Decision tickets require recorded owner approval. Test commands are recorded when executed; do not invent framework-specific commands before selection.
 
@@ -498,7 +498,7 @@ Scope: Decisions, contract and data handoff; event implementation belongs to SN-
 
 Depends on: SN-A17
 
-Blocks: SN-B21, SN-B22, SN-A18, SN-A19
+Blocks: SN-B21, SN-A18, SN-A19
 
 External gate: One owner approval of every Phase 5 product decision and of the concrete interfaces and fixture handoff. A rejected proposal is revised here before any consumer starts.
 
@@ -526,7 +526,7 @@ Scope: Event schema, APIs and event notices; group chat belongs to SN-B23, priva
 
 Depends on: SN-B20
 
-Blocks: SN-A21
+Blocks: SN-B22, SN-A21
 
 Work:
 
@@ -550,7 +550,7 @@ Goal: Make private messaging follow the approved relationship, delivery, history
 
 Scope: DM permission, offline storage, roster, history, DM images, read cursors and frames; group chat belongs to SN-B23, the UI to SN-A19.
 
-Depends on: SN-B20
+Depends on: SN-B21
 
 Blocks: SN-B23
 

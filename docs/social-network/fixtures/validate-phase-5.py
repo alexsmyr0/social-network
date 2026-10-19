@@ -701,7 +701,7 @@ def check_links():
 
 def check_pack(pack):
     require(pack['schema_version'] == 1, 'Unexpected pack schema')
-    require(pack['review_status'] == 'draft-awaiting-owner-approval', 'Do not infer owner approval')
+    require(pack['review_status'] == 'owner-approved-2026-10-18', 'Owner approval record changed')
     require(pack['migration_order'] == [
         {'version': 8, 'ticket': 'SN-B21', 'tables': ['group_events', 'group_event_responses', 'notifications']},
         {'version': 9, 'ticket': 'SN-B22', 'tables': ['private_messages', 'dm_read_cursors']},
@@ -872,7 +872,7 @@ def main():
           f'{len(pack["sequences"])} journeys, {len(pack["races"])} two-order races, '
           f'{len(pack["delivery_cases"])} delivery cases, {len(pack["media_cases"])} image cases, '
           f'{len(pack["socket_cases"])} socket cases, upgrade mappings; {graph} tickets, {links} links. '
-          'Draft approval pending; no application validation.')
+          'Owner-approved 2026-10-18; no application validation.')
 
 
 if __name__ == '__main__':

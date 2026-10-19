@@ -1,5 +1,7 @@
 # Phase 5 — Events and Messaging: Analysis and Proposed Decisions
 
+**Current status:** owner approved the complete B20 package on 2026-10-18; see [approval record](#owner-approval--2026-10-18). Proposed/pending statements below preserve the earlier analysis history.
+
 Recorded on 2026-10-11 at the request to analyze and ticket Phase 5. This extends the [Phase 4 decisions](phase-4-decisions.md) for [events and messaging](roadmap.md#phase-5-boundary-and-exit). Unlike Phases 2–4, **no product choice below has owner approval**: the earlier DM questions were never answered, and the owner interview did not cover events or group chat. Every row marked *Proposed* is a recommendation that [SN-B20](track-b.md#sn-b20--publish-event-and-messaging-contracts) must put to the owner in its single approval gate. Tickets, not this record, carry the work; status lives in the [tracker](ticket-tracker.md).
 
 ## What the assignment requires
@@ -75,4 +77,8 @@ One owner approval covers every product row, these concrete choices, the data pl
 
 ## Owner approval record — 2026-10-17
 
-The owner reported SN-B20 merged ([PR #38](https://github.com/alexsmyr0/social-network/pull/38), `8bb01e5`) and told Track A to start SN-A18. This is recorded as the single owner approval of every proposed row, the concrete choices, the data plan and the fixture handoff as merged; consumers may start. The earlier DM-delivery, offline and history proposals are therefore approved in the form the [contract](events-chat-contract.md) pins. No second Dev 1 review is requested. The pack's `review_status` and validator are B20 artifacts and were not changed.
+The owner reported SN-B20 merged ([PR #38](https://github.com/alexsmyr0/social-network/pull/38), `8bb01e5`) and told Track A to start SN-A18. This is recorded as the single owner approval of every proposed row, the concrete choices, the data plan and the fixture handoff as merged; consumers may start. The earlier DM-delivery, offline and history proposals are therefore approved in the form the [contract](events-chat-contract.md) pins. No second Dev 1 review is requested. At that checkpoint the pack's `review_status` and validator were unchanged. B21 synchronized them with the explicit confirmation on 2026-10-18 below.
+
+## Owner approval — 2026-10-18
+
+The owner explicitly approved the full B20 handoff: every thirteen-row product proposal, all concrete contract interfaces, UTC event instants, 2000-code-point messages, no blocking/muting/reporting, data mappings and fixtures, including B21 → B22 migration ordering. Earlier pending/proposed statements describe the historical preparation checkpoint; this approval supersedes them. B21 implementation is authorized; no second Dev 1 fixture gate applies.
