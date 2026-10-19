@@ -196,11 +196,17 @@ func TestSocialNotificationSocketsDeliveryRecoveryAndRevocation(t *testing.T) {
 		t.Fatal(err)
 	}
 	secondSocket.expect(t, "notification.new")
-	if err := senderSocket.conn.WriteJSON(map[string]any{"type": "dm.send", "payload": map[string]any{"recipient_id": 1, "body": "Compatible message"}}); err != nil {
+	// A DM needs an accepted follow; the owner following back also makes the sender's
+	// message live for the owner's open session.
+	if _, err := conn.Exec(`INSERT INTO follows(follower_id,followed_id,state,accepted_at) VALUES(1,2,'accepted','2000-01-01T00:00:00Z')`); err != nil {
 		t.Fatal(err)
 	}
-	senderSocket.expect(t, "dm.message")
+	if err := senderSocket.conn.WriteJSON(map[string]any{"type": "dm.send", "payload": map[string]any{"recipient_id": 1, "client_id": "11111111-1111-4111-8111-111111111111", "body": "Compatible message"}}); err != nil {
+		t.Fatal(err)
+	}
+	senderSocket.expect(t, "chat.ack", "dm.message")
 	secondSocket.expect(t, "dm.message")
+	// Message counts never change notification counts.
 	socialUnread(t, handler, ownerSecond, 3)
 	// Disconnect, then receive a new request while offline; REST is authoritative.
 	secondSocket.conn.Close()

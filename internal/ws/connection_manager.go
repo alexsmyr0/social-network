@@ -34,6 +34,9 @@ type Hub struct {
 	mu     sync.RWMutex
 	gateMu sync.Mutex
 	gates  map[string]*sessionGate
+	// deliveryGate orders private-frame delivery against relationship revocation.
+	// Lock order is always session gate, then deliveryGate, then SQLite.
+	deliveryGate sync.RWMutex
 
 	connections map[int64]map[*Client]bool
 
@@ -76,6 +79,26 @@ func (h *Hub) WithSessionAdmission(token string, admit func()) {
 	defer release()
 	defer gate.mu.RUnlock()
 	admit()
+}
+
+// WithDeliveryAdmission holds the relationship gate shared while a private frame
+// is authorized and written. A revocation commits either before the check (the
+// frame is suppressed) or after the write completed (the frame was permitted when
+// delivered); it can never fall between a check and an unlocked write.
+func (h *Hub) WithDeliveryAdmission(deliver func()) {
+	h.deliveryGate.RLock()
+	defer h.deliveryGate.RUnlock()
+	deliver()
+}
+
+// WithRevocation runs a permission-revoking write (unfollow, privacy change,
+// follow-request decision) exclusively against queued private-frame writes. It
+// waits only for writes already in flight, which carry a write deadline, and the
+// SQLite write transaction begins after the gate is held, never under a socket write.
+func (h *Hub) WithRevocation(revoke func()) {
+	h.deliveryGate.Lock()
+	defer h.deliveryGate.Unlock()
+	revoke()
 }
 
 // RevokeToken waits for admitted work, invalidates the token, then closes its

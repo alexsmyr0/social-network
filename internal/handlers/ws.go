@@ -63,6 +63,11 @@ func allowedWSOrigin() string {
 // relative to a healthy local SQLite roundtrip; tune if real workloads need it.
 const dmDBTimeout = 5 * time.Second
 
+const (
+	socketFrameLimit = 16 << 10
+	socketWriteWait  = 10 * time.Second
+)
+
 type WsHandler struct {
 	db           *sql.DB
 	hub          *ws.Hub
@@ -167,6 +172,10 @@ func (h *WsHandler) readPump(userID int64, c *ws.Client) {
 	}()
 
 	c.Conn.SetReadLimit(4096)
+	if h.socialSchema {
+		// Contract: 16 KiB text frames; larger ones close with 1009 and change no state.
+		c.Conn.SetReadLimit(socketFrameLimit)
+	}
 	c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	c.Conn.SetPongHandler(func(string) error {
 		c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
@@ -191,6 +200,10 @@ func (h *WsHandler) readPump(userID int64, c *ws.Client) {
 			active = true
 			c.Conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 
+			if h.socialSchema {
+				h.handleSocialFrame(userID, c, raw)
+				return
+			}
 			var msg ws.WSMessage
 			if err := json.Unmarshal(raw, &msg); err != nil {
 				// Malformed frame: no type to attribute an error to.
@@ -242,49 +255,63 @@ func (h *WsHandler) writePump(c *ws.Client) {
 }
 
 // Revalidate outbound work too: an idle revoked/inactive social socket must not
-// receive queued frames. The session gate orders delivery against logout.
+// receive queued frames. The session gate orders delivery against logout, and the
+// delivery gate orders private frames against relationship revocation: the check
+// and the socket write happen under one shared admission, so a frame authorized
+// before an unfollow is written before that unfollow can commit, and one written
+// after it is re-evaluated and suppressed.
 func (h *WsHandler) writeSessionMessage(c *ws.Client, kind int, data []byte) bool {
 	if !h.socialSchema {
 		return c.Conn.WriteMessage(kind, data) == nil
 	}
 	delivered := false
 	h.hub.WithSessionAdmission(c.Token, func() {
-		ctx, cancel := context.WithTimeout(context.Background(), dmDBTimeout)
-		defer cancel()
-		session, err := db.GetSessionByToken(ctx, h.db, c.Token)
-		if err != nil {
-			return
-		}
-		if kind == websocket.TextMessage {
-			filtered, send, err := h.filterPresence(ctx, session.UserID, data)
+		h.hub.WithDeliveryAdmission(func() {
+			ctx, cancel := context.WithTimeout(context.Background(), dmDBTimeout)
+			defer cancel()
+			session, err := db.GetSessionByToken(ctx, h.db, c.Token)
 			if err != nil {
 				return
 			}
-			if !send {
-				delivered = true
-				return
-			}
-			data = filtered
-		}
-		delivered = c.Conn.WriteMessage(kind, data) == nil
-		if delivered && kind == websocket.TextMessage {
-			var frame ws.WSMessage
-			if json.Unmarshal(data, &frame) == nil && frame.Type == "social.invalidate" {
-				users := []map[string]any{}
-				for _, id := range h.hub.GetOnlineUserIDs() {
-					allowed, err := db.CanViewProfile(ctx, h.db, session.UserID, id)
-					if err != nil {
-						delivered = false
-						return
-					}
-					if allowed {
-						users = append(users, map[string]any{"user_id": id, "is_online": true})
-					}
+			if kind == websocket.TextMessage {
+				filtered, send, err := h.authorizeFrame(ctx, session.UserID, data)
+				if err != nil {
+					// Fail closed for this frame only: a busy database must not
+					// tear down the user's live connection. Clients recover by refetching.
+					log.Printf("ws: suppressed frame, authorization failed for user %d: %v", session.UserID, err)
+					delivered = true
+					return
 				}
-				snapshot := marshalEvent("presence.snapshot", map[string]any{"users": users})
-				delivered = c.Conn.WriteMessage(websocket.TextMessage, snapshot) == nil
+				if !send {
+					delivered = true
+					return
+				}
+				data = filtered
 			}
-		}
+			// The deadline starts here, after any wait for the gates, so a slow
+			// peer holds the gate for at most one bounded write.
+			c.Conn.SetWriteDeadline(time.Now().Add(socketWriteWait))
+			delivered = c.Conn.WriteMessage(kind, data) == nil
+			if delivered && kind == websocket.TextMessage {
+				var frame ws.WSMessage
+				if json.Unmarshal(data, &frame) == nil && frame.Type == "social.invalidate" {
+					users := []map[string]any{}
+					for _, id := range h.hub.GetOnlineUserIDs() {
+						allowed, err := db.CanViewProfile(ctx, h.db, session.UserID, id)
+						if err != nil {
+							delivered = false
+							return
+						}
+						if allowed {
+							users = append(users, map[string]any{"user_id": id, "is_online": true})
+						}
+					}
+					snapshot := marshalEvent("presence.snapshot", map[string]any{"users": users})
+					c.Conn.SetWriteDeadline(time.Now().Add(socketWriteWait))
+					delivered = c.Conn.WriteMessage(websocket.TextMessage, snapshot) == nil
+				}
+			}
+		})
 	})
 	return delivered
 }
@@ -317,8 +344,10 @@ type dmMessagePayload struct {
 
 // chatErrorPayload is the typed wire shape for the `chat.error` server event.
 type chatErrorPayload struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	Code     string            `json:"code"`
+	Message  string            `json:"message"`
+	ClientID string            `json:"client_id,omitempty"`
+	Fields   map[string]string `json:"fields,omitempty"`
 }
 
 // Canonical chat.error codes. The SDS shows `RECIPIENT_OFFLINE` as the
@@ -384,7 +413,7 @@ func (h *WsHandler) handleDMSend(senderID int64, senderClient *ws.Client, payloa
 		h.sendChatError(senderClient, codeEmptyBody, "message must have a body or an image")
 		return
 	}
-	if p.ImageURL != "" && ((!h.socialSchema && !isValidDMImageURL(p.ImageURL)) || (h.socialSchema && !db.IsPrivateMediaURL(p.ImageURL))) {
+	if p.ImageURL != "" && !isValidDMImageURL(p.ImageURL) {
 		h.sendChatError(senderClient, codeInvalidImage, "invalid image_url")
 		return
 	}
@@ -396,9 +425,6 @@ func (h *WsHandler) handleDMSend(senderID int64, senderClient *ws.Client, payloa
 	ctx, cancel := context.WithTimeout(context.Background(), dmDBTimeout)
 	defer cancel()
 
-	if h.socialSchema {
-		ctx = db.WithSocialViewer(ctx, senderID)
-	}
 	msg, err := db.CreateMessage(ctx, h.db, db.CreateMessageRequest{
 		SenderID:    senderID,
 		RecipientID: p.RecipientID,
@@ -406,10 +432,6 @@ func (h *WsHandler) handleDMSend(senderID int64, senderClient *ws.Client, payloa
 		ImagePath:   p.ImageURL,
 	})
 	if err != nil {
-		if h.socialSchema && (errors.Is(err, sql.ErrNoRows) || errors.Is(err, db.ErrNotFound)) {
-			h.sendChatError(senderClient, codeInvalidImage, "invalid recipient or image")
-			return
-		}
 		// Surface a generic code; never echo the DB error string to the wire.
 		h.sendChatError(senderClient, codeInternalError, "failed to send message")
 		return
@@ -446,12 +468,12 @@ func (h *WsHandler) handleDMSend(senderID int64, senderClient *ws.Client, payloa
 // The send is non-blocking — a saturated client buffer drops the error rather
 // than blocking the read pump. Same policy as Hub broadcasts.
 func (h *WsHandler) sendChatError(c *ws.Client, code, message string) {
-	data := marshalEvent("chat.error", chatErrorPayload{
-		Code:    code,
-		Message: message,
-	})
+	h.sendChatErrorPayload(c, chatErrorPayload{Code: code, Message: message})
+}
+
+func (h *WsHandler) sendChatErrorPayload(c *ws.Client, payload chatErrorPayload) {
 	select {
-	case c.Send <- data:
+	case c.Send <- marshalEvent("chat.error", payload):
 	default:
 	}
 }
@@ -468,9 +490,12 @@ func marshalEvent(eventType string, payload any) []byte {
 	return envelope
 }
 
-// Recheck presence at delivery, so queued global hub frames cannot reveal private
-// subjects. Invalidation remains payload-free; clients discard cached social data.
-func (h *WsHandler) filterPresence(ctx context.Context, viewer int64, data []byte) ([]byte, bool, error) {
+// Recheck authorization at delivery, so queued frames cannot reveal private
+// subjects after the permission behind them changed. Presence follows profile
+// visibility; a dm.message reaches a recipient session only while the live
+// predicate holds; chat.read is limited to a conversation the viewer can still
+// open. Invalidation remains payload-free; clients discard cached social data.
+func (h *WsHandler) authorizeFrame(ctx context.Context, viewer int64, data []byte) ([]byte, bool, error) {
 	var frame ws.WSMessage
 	if err := json.Unmarshal(data, &frame); err != nil {
 		return nil, false, err
@@ -507,6 +532,26 @@ func (h *WsHandler) filterPresence(ctx context.Context, viewer int64, data []byt
 		frame.Payload, _ = json.Marshal(map[string]any{"users": filtered})
 		out, err := json.Marshal(frame)
 		return out, true, err
+	case "dm.message":
+		var m struct {
+			SenderID    int64 `json:"sender_id"`
+			RecipientID int64 `json:"recipient_id"`
+		}
+		if err := json.Unmarshal(frame.Payload, &m); err != nil {
+			return nil, false, err
+		}
+		allowed, err := db.DirectDeliveryAllowed(ctx, h.db, viewer, m.SenderID, m.RecipientID)
+		return data, allowed, err
+	case "chat.read":
+		var p chatReadPayload
+		if err := json.Unmarshal(frame.Payload, &p); err != nil {
+			return nil, false, err
+		}
+		if p.Kind != "dm" {
+			return data, false, nil
+		}
+		allowed, err := db.DirectAccessible(ctx, h.db, viewer, p.TargetID)
+		return data, allowed, err
 	}
 	return data, true, nil
 }

@@ -288,12 +288,16 @@ func NewRouter(database *sql.DB, hub *ws.Hub) http.Handler {
 	)
 	// GET  /chats/{userID}/messages → history
 	// POST /chats/{userID}/images   → DM image upload (C09)
+	chatMethods := []string{http.MethodGet, http.MethodPost}
+	if socialSchema {
+		// PUT /chats/{id}/read; per-route Allow lists are enforced in addMiddlewares.
+		chatMethods = append(chatMethods, http.MethodPut)
+	}
 	mux.Handle(
 		apiPrefix+"/chats/",
 		middleware.AllowMethods(
 			auth(http.HandlerFunc(chats.HandleChatMessages)),
-			http.MethodGet,
-			http.MethodPost,
+			chatMethods...,
 		),
 	)
 
@@ -361,6 +365,9 @@ func addMiddlewares(handler http.Handler, frontendOrigin string, socialSchema bo
 			}
 			if methods == "" {
 				methods = handlers.GroupMethods(r.URL.Path)
+			}
+			if methods == "" {
+				methods = handlers.ChatMethods(r.URL.Path)
 			}
 			if methods != "" && !strings.Contains(", "+methods+", ", ", "+r.Method+", ") {
 				w.Header().Set("Allow", methods)

@@ -181,3 +181,6 @@ func TestSocialMultipartRejectsInvalidAvatar(t *testing.T) {
 		t.Fatalf("multipart without avatar: %d %s", accepted.Code, accepted.Body.String())
 	}
 }
+
+// routerFor builds a router over an existing connection and hub (restart tests).
+func routerFor(conn *sql.DB, hub *ws.Hub) http.Handler { return router.NewRouter(conn, hub) }
