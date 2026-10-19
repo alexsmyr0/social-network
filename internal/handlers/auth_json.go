@@ -25,6 +25,12 @@ func decodeStrictObject(w http.ResponseWriter, r *http.Request, target any, limi
 		}
 		return NewError("BAD_REQUEST", "invalid request body", http.StatusBadRequest)
 	}
+	return strictObject(raw, target, allowedKeys...)
+}
+
+// strictObject validates one JSON object: valid UTF-8, no unknown or repeated
+// keys, no trailing data and exact field types. The socket reuses it for payloads.
+func strictObject(raw []byte, target any, allowedKeys ...string) *APIError {
 	if !utf8.Valid(raw) {
 		return NewError("BAD_REQUEST", "invalid UTF-8", http.StatusBadRequest)
 	}

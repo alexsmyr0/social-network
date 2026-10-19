@@ -3,7 +3,6 @@ package handlers
 
 import (
 	"database/sql"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -39,6 +38,10 @@ type rosterResponseEntry struct {
 }
 
 func (h *ChatsHandler) HandleChatRoster(w http.ResponseWriter, r *http.Request) {
+	if _, social := db.SocialViewer(r.Context()); social {
+		h.socialRoster(w, r)
+		return
+	}
 	userID, err := middleware.GetUserID(r.Context())
 	if err != nil || userID == 0 {
 		WriteError(w, r, NewError("UNAUTHORIZED", "user not authenticated", http.StatusUnauthorized))
@@ -57,19 +60,8 @@ func (h *ChatsHandler) HandleChatRoster(w http.ResponseWriter, r *http.Request) 
 			UserID:   e.UserID,
 			Username: e.Username,
 		}
-		canSee := true
-		if _, social := db.SocialViewer(r.Context()); social {
-			var err error
-			canSee, err = db.CanViewProfile(r.Context(), h.conn, userID, e.UserID)
-			if err != nil {
-				writeHandlerError(w, r, err, "failed to load roster")
-				return
-			}
-		}
-		if canSee {
-			online := h.hub.IsUserOnline(e.UserID)
-			row.IsOnline = &online
-		}
+		online := h.hub.IsUserOnline(e.UserID)
+		row.IsOnline = &online
 		if e.LastMessageAt != "" {
 			at := e.LastMessageAt
 			preview := e.LastMessagePreview
@@ -93,6 +85,10 @@ func (h *ChatsHandler) HandleChatRoster(w http.ResponseWriter, r *http.Request) 
 //   - GET  .../messages → chat history
 //   - POST .../images   → DM image upload (C09)
 func (h *ChatsHandler) HandleChatMessages(w http.ResponseWriter, r *http.Request) {
+	if _, social := db.SocialViewer(r.Context()); social {
+		h.socialChat(w, r)
+		return
+	}
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/chats/")
 	switch {
 	case strings.HasSuffix(path, "/messages"):
@@ -129,8 +125,7 @@ func (h *ChatsHandler) uploadDMImage(w http.ResponseWriter, r *http.Request) {
 
 	// Parse and validate the {userID} path segment so the endpoint honours its
 	// route contract; the recipient itself is validated again on dm.send.
-	recipientID, validRecipient := parseChatTargetID(r.URL.Path, "/images")
-	if !validRecipient {
+	if _, validRecipient := parseChatTargetID(r.URL.Path, "/images"); !validRecipient {
 		WriteError(w, r, NewError("BAD_REQUEST", "invalid recipient user ID", http.StatusBadRequest))
 		return
 	}
@@ -151,17 +146,7 @@ func (h *ChatsHandler) uploadDMImage(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	var url string
-	if _, social := db.SocialViewer(r.Context()); social {
-		data, readErr := io.ReadAll(io.LimitReader(file, avatarMaxBytes+1))
-		if readErr != nil {
-			writeHandlerError(w, r, readErr, "failed to read image")
-			return
-		}
-		url, _, err = db.StageMedia(r.Context(), h.conn, userID, recipientID, "dm", data, mime)
-	} else {
-		url, _, err = saveUploadedImageToSubdir(file, mime, "dm")
-	}
+	url, _, err := saveUploadedImageToSubdir(file, mime, "dm")
 	if err != nil {
 		writeHandlerError(w, r, err, "failed to save image")
 		return
@@ -251,14 +236,6 @@ func (h *ChatsHandler) getChatHistory(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, user := range users {
 			usersMap[user.ID] = user.Username
-		}
-		if _, social := db.SocialViewer(r.Context()); social {
-			names, err := db.DisplayNames(r.Context(), h.conn, senderIDs)
-			if err != nil {
-				writeHandlerError(w, r, err, "failed to load names")
-				return
-			}
-			usersMap = names
 		}
 		// Graceful fallback for orphaned senders (user deleted after sending).
 		for senderID := range uniqueSenders {

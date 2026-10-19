@@ -77,6 +77,10 @@ func TestMediaOwnershipStagingReplacementAndEveryOwner(t *testing.T) {
 	}
 	denyMedia(t, database, 3, commentURL)
 	// Shared historical bytes may have multiple owners; cleanup preserves every link.
+	if _, _, err := StageMedia(ctx, database, 2, 3, "dm", data, "image/png"); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("upload without a relationship %v", err)
+	}
+	mustExec(t, database, `INSERT INTO follows(follower_id,followed_id,state,accepted_at)VALUES(2,3,'accepted','2000-01-01')`)
 	dmURL, _, err := StageMedia(ctx, database, 2, 3, "dm", data, "image/png")
 	if err != nil {
 		t.Fatal(err)
@@ -86,13 +90,14 @@ func TestMediaOwnershipStagingReplacementAndEveryOwner(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertMedia(t, database, 2, dmURL, data)
-	if _, err := CreateMessage(WithSocialViewer(ctx, 2), database, CreateMessageRequest{SenderID: 2, RecipientID: 1, ImagePath: dmURL}); !errors.Is(err, sql.ErrNoRows) {
+	if _, err := SendDirectMessage(ctx, database, DirectSendRequest{SenderID: 2, RecipientID: 1, ClientID: testNonce(1), ImageURL: dmURL}); !errors.Is(err, sql.ErrNoRows) {
 		t.Fatalf("recipient spoof %v", err)
 	}
-	msg, err := CreateMessage(WithSocialViewer(ctx, 2), database, CreateMessageRequest{SenderID: 2, RecipientID: 3, ImagePath: dmURL})
+	sent, err := SendDirectMessage(ctx, database, DirectSendRequest{SenderID: 2, RecipientID: 3, ClientID: testNonce(2), ImageURL: dmURL})
 	if err != nil {
 		t.Fatal(err)
 	}
+	msg := sent.Message
 	assertMedia(t, database, 3, dmURL, data)
 	denyMedia(t, database, 1, dmURL)
 	mustExec(t, database, `UPDATE comments SET image_url=? WHERE id=?`, dmURL, comment.ID)
@@ -250,6 +255,7 @@ func TestMediaCopyFailureResumesAndConflictingRootsStayRecoverable(t *testing.T)
 		t.Fatal(err)
 	}
 	assertMedia(t, database, 1, "/static/uploads/asset.png", data)
+	mustExec(t, database, `INSERT INTO follows(follower_id,followed_id,state,accepted_at)VALUES(1,2,'accepted','2000-01-01')`)
 	pending, _, err := StageMedia(ctx, database, 1, 2, "dm", data, "image/png")
 	if err != nil {
 		t.Fatal(err)
@@ -290,6 +296,7 @@ func TestMediaInterruptedWriteKeepsCommittedBytesAndDMRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	data := mediaPNG(t, 100)
+	mustExec(t, database, `INSERT INTO follows(follower_id,followed_id,state,accepted_at)VALUES(1,2,'accepted','2000-01-01')`)
 	pending, path, err := StageMedia(ctx, database, 1, 2, "dm", data, "image/png")
 	if err != nil {
 		t.Fatal(err)
@@ -315,13 +322,14 @@ func TestMediaInterruptedWriteKeepsCommittedBytesAndDMRestart(t *testing.T) {
 	defer reopened.Close()
 	assertMedia(t, reopened, 1, pending, data)
 	denyMedia(t, reopened, 2, pending)
-	msg, err := CreateMessage(WithSocialViewer(ctx, 1), reopened, CreateMessageRequest{SenderID: 1, RecipientID: 2, ImagePath: pending})
+	sent, err := SendDirectMessage(ctx, reopened, DirectSendRequest{SenderID: 1, RecipientID: 2, ClientID: testNonce(1), ImageURL: pending})
 	if err != nil {
 		t.Fatal(err)
 	}
+	msg := sent.Message
 	assertMedia(t, reopened, 2, pending, data)
-	history, _, err := GetMessageHistory(WithSocialViewer(ctx, 2), reopened, 2, 1, 0)
-	if err != nil || len(history) != 1 || history[0].ID != msg.ID || history[0].ImagePath == nil || *history[0].ImagePath != pending {
+	history, err := DirectHistory(ctx, reopened, 2, 1, 0, 10)
+	if err != nil || len(history.Messages) != 1 || history.Messages[0].ID != msg.ID || history.Messages[0].ImageURL == nil || *history.Messages[0].ImageURL != pending {
 		t.Fatalf("history %+v err=%v", history, err)
 	}
 }

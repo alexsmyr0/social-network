@@ -147,6 +147,12 @@ func TestSocialMediaHTTPValidationPrivacyAndDMOwnership(t *testing.T) {
 		t.Fatalf("failed staging=%d %v", pending, err)
 	}
 	conn.Exec(`DROP TRIGGER fail_post`)
+	// Without a relationship the upload is not found; the owner following the viewer
+	// allows both the upload and the send, yet keeps the private owner's presence hidden.
+	assertSocialCode(t, contentUpload(t, handler, owner, "/api/v1/chats/2/images", png, nil), 404, "")
+	if _, err := conn.Exec(`INSERT INTO follows(follower_id,followed_id,state,accepted_at) VALUES(1,2,'accepted','2000-01-01T00:00:00Z')`); err != nil {
+		t.Fatal(err)
+	}
 	dm := contentUpload(t, handler, owner, "/api/v1/chats/2/images", png, nil)
 	assertSocialCode(t, dm, 200, "")
 	var staged struct {
@@ -160,7 +166,7 @@ func TestSocialMediaHTTPValidationPrivacyAndDMOwnership(t *testing.T) {
 	invalidDMClaim := socialRequest(t, handler, "PATCH", fmt.Sprintf("/api/v1/posts/%d", result.Data.ID), "application/json", []byte(fmt.Sprintf(`{"expected_version":1,"image_url":%q}`, staged.Data.URL)), owner)
 	assertSocialCode(t, invalidDMClaim, 404, "")
 	assertSocialCode(t, socialRequest(t, handler, "GET", staged.Data.URL, "", nil, owner), 200, "")
-	_, err = db.CreateMessage(db.WithSocialViewer(context.Background(), 1), conn, db.CreateMessageRequest{SenderID: 1, RecipientID: 2, ImagePath: staged.Data.URL})
+	_, err = db.SendDirectMessage(context.Background(), conn, db.DirectSendRequest{SenderID: 1, RecipientID: 2, ClientID: "11111111-1111-4111-8111-111111111111", ImageURL: staged.Data.URL})
 	if err != nil {
 		t.Fatal(err)
 	}

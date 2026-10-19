@@ -90,7 +90,7 @@ SN-B17 supplies reviewed group interfaces, transition fixtures and data mappings
 
 ## Phase 5 boundary and exit
 
-SN-B20 turns the [Phase 5 analysis](phase-5-decisions.md) into owner-approved decisions, interfaces, migration mappings and fixtures. SN-B21 implements group events, responses and event notices. SN-B22 enforces follow-based permission, offline storage, history, unread cursors and DM images for private messages; SN-B23 adds members-only group chat on the same realtime layer. SN-A18 delivers events, SN-A19 private messaging and SN-A20 group chat against fixtures. The current social DM path checks no follow relationship, so SN-B22 closes a privacy gap rather than only preserving behavior.
+SN-B20 turns the [Phase 5 analysis](phase-5-decisions.md) into owner-approved decisions, interfaces, migration mappings and fixtures. SN-B21 implements group events, responses and event notices. SN-B22 enforces follow-based permission, offline storage, history, unread cursors and DM images for private messages; SN-B23 adds members-only group chat on the same realtime layer. SN-A18 delivers events, SN-A19 private messaging and SN-A20 group chat against fixtures. The social DM path checked no follow relationship before SN-B22, which closed that privacy gap rather than only preserving behavior.
 
 [SN-A21](track-a.md#sn-a21--accept-events-and-messaging-end-to-end) proves event notices and responses, relationship-based sending, live versus stored delivery, group-room membership, distinct message indicators and revocation after unfollow, removal or leaving across real services and restarts. Existing DM images, presence and history must still pass. Group-chat images, event editing and blocking are outside the boundary unless the owner adds them in SN-B20.
 
