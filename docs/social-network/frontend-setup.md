@@ -89,7 +89,18 @@ bun run test:a18
 make test-e2e PLAYWRIGHT_ARGS=a18-events
 ```
 
-SN-A19 and SN-A20 reuse the notification state and session-owned socket unchanged; message indicators stay separate from the notification badge.
+SN-A19 and SN-A20 reuse the session-owned socket: the notification state keeps its lifecycle and only gains a `subscribe` hook that tells the message state about each frame; message indicators stay separate from the notification badge.
+
+## Private messages (SN-A19)
+
+The roster, conversation view, composer with emoji and DM images, presence and the navigation indicator run against the [approved messaging contract](events-chat-contract.md#private-messages) and its [fixture pack](fixtures/phase-5-contract.json). See [behavior, ownership and verification evidence](frontend-messages.md). Server relationship enforcement is SN-B22 and real-service acceptance is SN-A21.
+
+```bash
+bun run test:a19
+make test-e2e PLAYWRIGHT_ARGS=a19-messages
+```
+
+SN-A20 reuses `MessageList.vue`, `MessageComposer.vue` and `EmojiPicker.vue` unchanged.
 
 ## Frontend container handoff
 

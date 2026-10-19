@@ -33,7 +33,7 @@ One deliberate exception: the event detail, its answers and the group behind the
 | Layout | `SPA/src/styles/events.css` (user text wraps anywhere; 44px controls) |
 | Test model and helpers | `SPA/tests/fixtures/phase5/event-backend.js` (a stateful model extending the Phase 4 group model), `SPA/tests/fixtures/phase4/browser.js`, `SPA/tests/unit/src/features/groups/harness.js`; frontend evidence only, never imported by `SPA/src` |
 
-SN-A19 reuses the notification and socket lifecycle unchanged and keeps message indicators separate from the notification badge. No Go, schema or shared-runtime changes are needed. The native Playwright configuration includes A18. SN-B07 remains the shared image/CI owner.
+SN-A19 keeps the notification lifecycle and adds only a `subscribe` hook for message frames; it keeps message indicators separate from the notification badge ([frontend messages](frontend-messages.md)). No Go, schema or shared-runtime changes are needed. The native Playwright configuration includes A18. SN-B07 remains the shared image/CI owner.
 
 ## Verification record
 

@@ -322,3 +322,67 @@ test('disposal during 401 session confirmation cannot restart a fallback timer',
 	read.mockRestore();
 	restore.mockRestore();
 });
+
+describe('shared socket subscribers (SN-A19 message frames)', () => {
+	test('every parsed frame and every connection reaches subscribers, and notices still work', async () => {
+		const { notifications, sockets } = setup();
+		await flushPromises();
+		const events = [];
+		notifications.subscribe((event) => events.push(event));
+		sockets[0].onopen();
+		sockets[0].onmessage({
+			data: JSON.stringify({ type: 'dm.message', payload: { id: 5 } }),
+		});
+		sockets[0].emit('notification.new');
+		await flushPromises();
+		expect(events).toEqual([
+			{ kind: 'open' },
+			{ kind: 'frame', frame: { type: 'dm.message', payload: { id: 5 } } },
+			{ kind: 'frame', frame: { type: 'notification.new' } },
+		]);
+	});
+
+	test('message frames do not refetch notices, unsubscribing stops delivery, and bad input is skipped', async () => {
+		const { notifications, sockets, fetchRef } = setup();
+		await flushPromises();
+		const seen = [];
+		const stop = notifications.subscribe((event) => seen.push(event.kind));
+		const before = reads(fetchRef).length;
+		sockets[0].onmessage({ data: JSON.stringify({ type: 'dm.message', payload: {} }) });
+		sockets[0].onmessage({ data: 'not json' });
+		sockets[0].onmessage({ data: JSON.stringify(null) });
+		sockets[0].onmessage({ data: JSON.stringify('text') });
+		await flushPromises();
+		expect(reads(fetchRef)).toHaveLength(before);
+		expect(seen).toEqual(['frame']);
+		stop();
+		sockets[0].emit('dm.message');
+		expect(seen).toEqual(['frame']);
+	});
+
+	test('a faulty subscriber cannot break notices or the other subscribers', async () => {
+		const { notifications, sockets } = setup();
+		await flushPromises();
+		const seen = [];
+		notifications.subscribe(() => {
+			throw new Error('broken subscriber');
+		});
+		notifications.subscribe((event) => seen.push(event.kind));
+		sockets[0].emit('notification.new');
+		await flushPromises();
+		expect(seen).toEqual(['frame']);
+		expect(notifications.state.status).toBe('ready');
+	});
+
+	test('frames from a replaced socket never reach subscribers after the account changes', async () => {
+		const { notifications, sockets, session } = setup();
+		await flushPromises();
+		const seen = [];
+		notifications.subscribe((event) => seen.push(event.kind));
+		const stale = sockets[0];
+		session.clearAuthenticatedState();
+		await flushPromises();
+		stale.emit('dm.message');
+		expect(seen).toEqual([]);
+	});
+});

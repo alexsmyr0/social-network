@@ -22,6 +22,7 @@ export default defineConfig({
 		'a15-groups.test.js',
 		'a16-group-content.test.js',
 		'a18-events.test.js',
+		'a19-messages.test.js',
 		'b07-transport.test.js',
 		'b13-media.test.js',
 	],
