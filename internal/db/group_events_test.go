@@ -246,7 +246,12 @@ func TestGroupEventAtomicRollbackSilenceAndOverflow(t *testing.T) {
 		t.Fatal("partial response or premature signal")
 	}
 	mustExec(t, database, `DROP TRIGGER fail_response;INSERT INTO group_event_responses(event_id,user_id,membership_id,choice,version)VALUES(1,2,2,'going',9007199254740991)`)
-	if _, err := RespondGroupEvent(context.Background(), database, 2, 1, e.ID, m, MaxSocialID, "not_going"); err == nil {
+	if _, err := RespondGroupEvent(context.Background(), database, 2, 1, e.ID, m, MaxSocialID, "not_going"); err != nil {
+		var field *ContentFieldError
+		if !errors.As(err, &field) || field.Field != "expected_version" || field.Code != "INVALID_ID" {
+			t.Fatalf("overflow error %v, want expected_version: INVALID_ID", err)
+		}
+	} else {
 		t.Fatal("overflow accepted")
 	}
 	if count(t, database, `SELECT version FROM group_event_responses`) != int(MaxSocialID) || invalidations != 0 {
@@ -258,6 +263,115 @@ func TestGroupEventAtomicRollbackSilenceAndOverflow(t *testing.T) {
 	}
 	if count(t, database, `SELECT COUNT(*) FROM group_events`) != 1 || notices != 0 || invalidations != 0 {
 		t.Fatal("overflow emitted effects")
+	}
+}
+
+type eventQueryCounter struct {
+	*sql.Tx
+	queries int
+}
+
+func (q *eventQueryCounter) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	q.queries++
+	return q.Tx.QueryContext(ctx, query, args...)
+}
+
+func (q *eventQueryCounter) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+	q.queries++
+	return q.Tx.QueryRowContext(ctx, query, args...)
+}
+
+func TestGroupEventPageBatchingKeepsMembershipFiltering(t *testing.T) {
+	database, oldMembership := eventRepoFixture(t)
+	ctx := context.Background()
+	mustExec(t, database, `INSERT INTO group_memberships(group_id,user_id,role)VALUES(1,3,'member'),(1,4,'member');
+ INSERT INTO groups(creator_id,title,description,title_search)VALUES(1,'Other','Other','other');
+ INSERT INTO group_memberships(group_id,user_id,role)VALUES(2,4,'member');
+ UPDATE users SET is_active=0 WHERE id=3`)
+	var inactive, departed, foreign int64
+	for user, dest := range map[int]*int64{3: &inactive, 4: &departed} {
+		if err := database.QueryRow(`SELECT id FROM group_memberships WHERE group_id=1 AND user_id=?`, user).Scan(dest); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := database.QueryRow(`SELECT id FROM group_memberships WHERE group_id=2 AND user_id=4`).Scan(&foreign); err != nil {
+		t.Fatal(err)
+	}
+	if err := RemoveGroupMembership(ctx, database, 1, departed); err != nil {
+		t.Fatal(err)
+	}
+	if err := RemoveGroupMembership(ctx, database, 2, oldMembership); err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, database, `INSERT INTO group_memberships(group_id,user_id,role)VALUES(1,2,'member')`)
+	var current int64
+	if err := database.QueryRow(`SELECT id FROM group_memberships WHERE group_id=1 AND user_id=2`).Scan(&current); err != nil {
+		t.Fatal(err)
+	}
+	for id := 1; id <= 55; id++ {
+		creator := 1
+		if id%2 == 0 {
+			creator = 3 // Retained events with inactive authors still appear.
+		}
+		mustExec(t, database, `INSERT INTO group_events(id,group_id,creator_id,title,description,starts_at)VALUES(?,1,?,'Event','Games','2026-10-16T18:00:00Z')`, id, creator)
+		// None of these retained or forged generations may affect any projection.
+		for _, r := range []struct{ user, membership int64 }{{2, oldMembership}, {3, inactive}, {4, departed}, {4, foreign}} {
+			mustExec(t, database, `INSERT INTO group_event_responses(event_id,user_id,membership_id,choice,version)VALUES(?,?,?,'going',99)`, id, r.user, r.membership)
+		}
+		if id%4 == 0 {
+			continue // No currently visible response: zero counts and null choice.
+		}
+		mustExec(t, database, `INSERT INTO group_event_responses(event_id,user_id,membership_id,choice,version)VALUES(?,1,1,'going',3)`, id)
+		if id%3 != 0 {
+			choice, version := "going", 2
+			if id%3 == 2 {
+				choice, version = "not_going", 7
+			}
+			mustExec(t, database, `INSERT INTO group_event_responses(event_id,user_id,membership_id,choice,version)VALUES(?,2,?,?,?)`, id, current, choice, version)
+		}
+	}
+	for _, c := range []struct{ page, per, size, queries int }{{1, 1, 1, 4}, {1, 20, 20, 4}, {2, 20, 20, 4}, {1, 50, 50, 4}, {100, 20, 0, 3}} {
+		t.Run(fmt.Sprintf("page-%d-size-%d", c.page, c.per), func(t *testing.T) {
+			tx, err := database.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer tx.Rollback()
+			counter := &eventQueryCounter{Tx: tx}
+			page, err := eventPageInTx(ctx, counter, 2, 1, c.page, c.per)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if page.Total != 55 || len(page.Items) != c.size || counter.queries != c.queries {
+				t.Fatalf("total=%d items=%d queries=%d; want 55/%d/%d", page.Total, len(page.Items), counter.queries, c.size, c.queries)
+			}
+			for i, e := range page.Items {
+				id := int64((c.page-1)*c.per + i + 1)
+				want := EventCounts{}
+				var own *EventResponse
+				if id%4 != 0 {
+					want.Going = 1
+					if id%3 == 1 {
+						want.Going++
+						own = &EventResponse{Choice: "going", Version: 2}
+					} else if id%3 == 2 {
+						want.NotGoing = 1
+						own = &EventResponse{Choice: "not_going", Version: 7}
+					}
+				}
+				if e.ID != id || e.Counts != want || !reflect.DeepEqual(e.ViewerResponse, own) {
+					t.Fatalf("event %d: id=%d counts=%+v response=%+v; want %+v/%+v", id, e.ID, e.Counts, e.ViewerResponse, want, own)
+				}
+				if id%2 == 0 && e.Creator.DisplayName != "Unavailable account" {
+					t.Fatalf("inactive creator attribution: %+v", e.Creator)
+				}
+				// Detail and batched pages must expose identical DTOs in this snapshot.
+				detail, err := eventInTx(ctx, tx, 2, 1, id)
+				if err != nil || !reflect.DeepEqual(detail, e) {
+					t.Fatalf("detail/list mismatch: %+v / %+v (%v)", detail, e, err)
+				}
+			}
+		})
 	}
 }
 

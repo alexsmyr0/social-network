@@ -517,8 +517,8 @@ func (s recipientSet) sorted() []int64 {
 	return ids
 }
 
-// addMembers adds every active member after the transition. Called only when a
-// membership row was inserted or deleted, so member lists and permissions refresh.
+// addMembers collects the group's current active members in the caller's
+// transaction for membership invalidation, event notices and event refreshes.
 func (s recipientSet) addMembers(ctx context.Context, tx *sql.Tx, gid int64) error {
 	rows, err := tx.QueryContext(ctx, `SELECT gm.user_id FROM group_memberships gm JOIN users u ON u.id=gm.user_id AND u.is_active=1 WHERE gm.group_id=?`, gid)
 	if err != nil {

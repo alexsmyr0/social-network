@@ -48,7 +48,10 @@ func eventValidation(fields map[string]string) *APIError {
 	return e
 }
 func eventError(w http.ResponseWriter, r *http.Request, err error) {
+	var field *db.ContentFieldError
 	switch {
+	case errors.As(err, &field):
+		WriteError(w, r, eventValidation(map[string]string{field.Field: field.Code}))
 	case errors.Is(err, db.ErrNotFound):
 		WriteError(w, r, NewError("NOT_FOUND", "Not found", 404))
 	case errors.Is(err, db.ErrStaleEventResponse):

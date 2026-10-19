@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 )
 
 var ErrStaleEventResponse = errors.New("event response changed")
@@ -56,15 +57,14 @@ func eventMembership(ctx context.Context, q groupQuerier, viewer, gid int64) (in
 	return id, err
 }
 
-// eventInTx projects aggregates only for current active membership generations.
-// The caller has already checked the viewer's membership in the same snapshot.
-func eventInTx(ctx context.Context, q groupQuerier, viewer, gid, id int64) (GroupEvent, error) {
+const eventColumns = `e.id,e.group_id,e.creator_id,u.first_name,u.last_name,u.nickname,u.is_active,e.title,e.description,e.starts_at,e.created_at`
+
+func scanGroupEvent(row interface{ Scan(...any) error }) (GroupEvent, error) {
 	e := GroupEvent{Options: []string{"going", "not_going"}}
 	var first, last string
 	var nickname sql.NullString
 	var active bool
-	err := q.QueryRowContext(ctx, `SELECT e.id,e.group_id,e.creator_id,u.first_name,u.last_name,u.nickname,u.is_active,e.title,e.description,e.starts_at,e.created_at
- FROM group_events e JOIN users u ON u.id=e.creator_id WHERE e.group_id=? AND e.id=?`, gid, id).Scan(&e.ID, &e.GroupID, &e.Creator.ID, &first, &last, &nickname, &active, &e.Title, &e.Description, &e.StartsAt, &e.CreatedAt)
+	err := row.Scan(&e.ID, &e.GroupID, &e.Creator.ID, &first, &last, &nickname, &active, &e.Title, &e.Description, &e.StartsAt, &e.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return e, ErrNotFound
 	}
@@ -74,6 +74,17 @@ func eventInTx(ctx context.Context, q groupQuerier, viewer, gid, id int64) (Grou
 	e.Creator.DisplayName = "Unavailable account"
 	if active {
 		e.Creator.DisplayName = groupPersonName(first, last, nickname)
+	}
+	return e, nil
+}
+
+// eventInTx projects aggregates only for current active membership generations.
+// The caller has already checked the viewer's membership in the same snapshot.
+func eventInTx(ctx context.Context, q groupQuerier, viewer, gid, id int64) (GroupEvent, error) {
+	e, err := scanGroupEvent(q.QueryRowContext(ctx, `SELECT `+eventColumns+`
+ FROM group_events e JOIN users u ON u.id=e.creator_id WHERE e.group_id=? AND e.id=?`, gid, id))
+	if err != nil {
+		return e, err
 	}
 	err = q.QueryRowContext(ctx, `SELECT COALESCE(SUM(r.choice='going'),0),COALESCE(SUM(r.choice='not_going'),0)
  FROM group_event_responses r JOIN group_memberships m ON m.id=r.membership_id AND m.user_id=r.user_id
@@ -109,34 +120,78 @@ func GetGroupEvent(ctx context.Context, database *sql.DB, viewer, gid, id int64)
 	return e, tx.Commit()
 }
 func ListGroupEvents(ctx context.Context, database *sql.DB, viewer, gid int64, page, per int) (GroupEventPage, error) {
-	result := GroupEventPage{Items: []GroupEvent{}}
 	tx, err := database.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
-		return result, err
+		return GroupEventPage{}, err
 	}
 	defer tx.Rollback()
-	if err := requireMember(ctx, tx, viewer, gid, false); err != nil {
-		return result, err
-	}
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM group_events WHERE group_id=?`, gid).Scan(&result.Total); err != nil {
-		return result, err
-	}
-	rows, err := tx.QueryContext(ctx, `SELECT id FROM group_events WHERE group_id=? ORDER BY starts_at,id LIMIT ? OFFSET ?`, gid, per, (page-1)*per)
+	result, err := eventPageInTx(ctx, tx, viewer, gid, page, per)
 	if err != nil {
 		return result, err
 	}
-	ids, err := collectIDs(rows)
+	return result, tx.Commit()
+}
+
+// eventPageInTx reads the page and its aggregates in at most four queries regardless of
+// page size. Authorization, totals and projections share the caller's snapshot.
+func eventPageInTx(ctx context.Context, q groupQuerier, viewer, gid int64, page, per int) (GroupEventPage, error) {
+	result := GroupEventPage{Items: []GroupEvent{}}
+	if err := requireMember(ctx, q, viewer, gid, false); err != nil {
+		return result, err
+	}
+	if err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM group_events WHERE group_id=?`, gid).Scan(&result.Total); err != nil {
+		return result, err
+	}
+	rows, err := q.QueryContext(ctx, `SELECT `+eventColumns+`
+ FROM group_events e JOIN users u ON u.id=e.creator_id WHERE e.group_id=? ORDER BY e.starts_at,e.id LIMIT ? OFFSET ?`, gid, per, (page-1)*per)
 	if err != nil {
 		return result, err
 	}
-	for _, id := range ids {
-		e, err := eventInTx(ctx, tx, viewer, gid, id)
+	for rows.Next() {
+		e, err := scanGroupEvent(rows)
 		if err != nil {
+			rows.Close()
 			return result, err
 		}
 		result.Items = append(result.Items, e)
 	}
-	return result, tx.Commit()
+	err = rows.Err()
+	rows.Close()
+	if err != nil || len(result.Items) == 0 {
+		return result, err
+	}
+	args := []any{viewer, viewer, gid}
+	byID := make(map[int64]*GroupEvent, len(result.Items))
+	for i := range result.Items {
+		e := &result.Items[i]
+		args = append(args, e.ID)
+		byID[e.ID] = e
+	}
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(result.Items)), ",")
+	rows, err = q.QueryContext(ctx, `SELECT r.event_id,SUM(r.choice='going'),SUM(r.choice='not_going'),
+ MAX(CASE WHEN r.user_id=? THEN r.choice END),MAX(CASE WHEN r.user_id=? THEN r.version END)
+ FROM group_event_responses r JOIN group_memberships m ON m.id=r.membership_id AND m.user_id=r.user_id
+ JOIN users u ON u.id=m.user_id AND u.is_active=1
+ WHERE m.group_id=? AND r.event_id IN (`+placeholders+`) GROUP BY r.event_id`, args...)
+	if err != nil {
+		return result, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int64
+		var counts EventCounts
+		var choice sql.NullString
+		var version sql.NullInt64
+		if err := rows.Scan(&id, &counts.Going, &counts.NotGoing, &choice, &version); err != nil {
+			return result, err
+		}
+		e := byID[id]
+		e.Counts = counts
+		if choice.Valid && version.Valid {
+			e.ViewerResponse = &EventResponse{Choice: choice.String, Version: version.Int64}
+		}
+	}
+	return result, rows.Err()
 }
 func ListGroupEventResponses(ctx context.Context, database *sql.DB, viewer, gid, id int64, page, per int) (GroupEventResponsePage, error) {
 	result := GroupEventResponsePage{Items: []GroupEventResponse{}}
@@ -248,26 +303,30 @@ func RespondGroupEvent(ctx context.Context, database *sql.DB, viewer, gid, id, m
 	if current != membership {
 		return GroupEvent{}, ErrStaleMembership
 	}
-	e, err := eventInTx(ctx, tx, viewer, gid, id)
-	if err != nil {
-		return e, err
+	// Check event identity and the current generation's version without loading
+	// creator/aggregate data until the response has actually been written.
+	var version int64
+	err = tx.QueryRowContext(ctx, `SELECT COALESCE(r.version,0) FROM group_events e
+ LEFT JOIN group_event_responses r ON r.event_id=e.id AND r.membership_id=? AND r.user_id=?
+ WHERE e.group_id=? AND e.id=?`, current, viewer, gid, id).Scan(&version)
+	if errors.Is(err, sql.ErrNoRows) {
+		return GroupEvent{}, ErrNotFound
 	}
-	version := int64(0)
-	if e.ViewerResponse != nil {
-		version = e.ViewerResponse.Version
+	if err != nil {
+		return GroupEvent{}, err
 	}
 	if version != expected {
-		return e, ErrStaleEventResponse
+		return GroupEvent{}, ErrStaleEventResponse
 	}
 	if version == MaxSocialID {
-		return e, ErrInvalidInput
+		return GroupEvent{}, contentField("expected_version", "INVALID_ID")
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO group_event_responses(event_id,user_id,membership_id,choice,version) VALUES(?,?,?,?,?)
  ON CONFLICT(event_id,membership_id) DO UPDATE SET choice=excluded.choice,version=excluded.version,updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now')`, id, viewer, current, choice, version+1)
 	if err != nil {
-		return e, err
+		return GroupEvent{}, err
 	}
-	e, err = eventInTx(ctx, tx, viewer, gid, id)
+	e, err := eventInTx(ctx, tx, viewer, gid, id)
 	if err != nil {
 		return e, err
 	}

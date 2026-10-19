@@ -34,3 +34,16 @@ SN-A18 consumes the approved event DTOs, fixed options, membership IDs and respo
 Merged `origin/main` at `d4a00fb` (A18 frontend, including `db6eabf` corrections) into B21 at `6b9c19a`. Four documentation conflicts were reconciled: both A18 and B21 delivery records remain, the earlier approval report and later explicit confirmation are retained, and the tracker totals include both completions (39 complete, 5 not started). B21's migration dependency correction and approved fixture status remain applied. Frontend files match main and backend files match B21; no application code required manual conflict edits.
 
 On the merged working tree, `make test` passes: builds, Biome, Go format/vet, full Go suite, shared race gate, **Vitest 2357/2357** and **native Playwright 74/74**. `go test -race ./internal/db ./internal/tests -run TestGroupEvent -count=1` passes. The Phase 5 validator passes the fixture pack, 44-ticket graph and links; staged whitespace checks pass. Container and hosted gates were not rerun for this merge.
+
+## PR review corrections — 2026-10-19
+
+Review of `1d2ba37` in [PR #40](https://github.com/alexsmyr0/social-network/pull/40) identified three code improvements and one stale comment:
+
+- Response-version exhaustion now uses the existing `400 VALIDATION_ERROR` envelope with `expected_version:INVALID_ID`, rather than falling through to 500. A real-router regression advances to the last safe version, then checks exact overflow/stale/missing-event errors, unchanged persisted state and zero signals; genuine storage failures still return 500. The contract records this boundary explicitly.
+- Event pages read base rows/creators together and batch current-generation response counts and the viewer's choice with `GROUP BY event_id`. Authorization, total, page and aggregates remain in one snapshot, with four queries for nonempty pages and three for empty pages. A 55-event regression enforces this bound for page sizes 1/20/50, ordering and beyond-last paging, and excludes departed, inactive, old-generation and wrong-group responses while matching detail DTOs.
+- Response writes check event/group identity and the current membership generation's version in one query before mutation. Full creator/count/response hydration runs once after the write. Existing fixture, revocation and competing-response tests cover the retained authorization and concurrency behavior.
+- `recipientSet.addMembers` now documents event notice/invalidation snapshots as well as membership transitions.
+
+`go test ./internal/db ./internal/tests -run TestGroupEvent -count=1` and the same scoped run with `-race` pass, including all 85 approved event/notice HTTP fixtures and the new regressions. No migration, endpoint or DTO shape changes.
+
+Full native `make test` passes after these corrections: builds, Biome, Go format/vet, full Go suite, shared race gate, **Vitest 2357/2357** and **Playwright 74/74**. The Phase 5 artifact validator and whitespace checks pass. Container and hosted gates were not rerun for this review update.

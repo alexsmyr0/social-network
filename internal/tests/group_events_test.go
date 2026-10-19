@@ -248,6 +248,59 @@ func eventData(t *testing.T, rec *httptest.ResponseRecorder, want int) db.GroupE
 	}
 	return out.Data
 }
+
+func TestGroupEventResponseOverflowReturnsValidationWithoutEffects(t *testing.T) {
+	pack := loadEventPack(t)
+	h, conn := socialAPI(t)
+	seedEventFixture(t, conn, pack.State, pack.Clock)
+	fixtureExec(t, conn, `INSERT INTO group_event_responses(event_id,user_id,membership_id,choice,version)VALUES(901,2,102,'going',?)`, db.MaxSocialID-1)
+	// The last representable version remains a valid stored response.
+	e := eventData(t, eventRequest(t, h, conn, 2, "PUT", "/api/v1/groups/10/events/901/response",
+		fmt.Sprintf(`{"membership_id":102,"choice":"not_going","expected_version":%d}`, db.MaxSocialID-1)), 200)
+	if e.ViewerResponse == nil || e.ViewerResponse.Version != db.MaxSocialID || e.ViewerResponse.Choice != "not_going" {
+		t.Fatalf("last valid version: %+v", e.ViewerResponse)
+	}
+	before := eventSnapshot(t, conn)
+	signals := captureGroupSignals(t)
+	for _, c := range []struct {
+		path, body, want string
+		status           int
+	}{
+		{"/groups/10/events/901/response", fmt.Sprintf(`{"membership_id":102,"choice":"going","expected_version":%d}`, db.MaxSocialID),
+			`{"error":{"code":"VALIDATION_ERROR","message":"Validation failed","fields":{"expected_version":"INVALID_ID"}}}`, 400},
+		{"/groups/10/events/901/response", fmt.Sprintf(`{"membership_id":102,"choice":"going","expected_version":%d}`, db.MaxSocialID-1),
+			`{"error":{"code":"STALE_EVENT_RESPONSE","message":"Event response changed; refresh and retry"}}`, 409},
+		{"/groups/10/events/999/response", `{"membership_id":102,"choice":"going","expected_version":0}`,
+			`{"error":{"code":"NOT_FOUND","message":"Not found"}}`, 404},
+		{"/groups/11/events/901/response", `{"membership_id":111,"choice":"going","expected_version":0}`,
+			`{"error":{"code":"NOT_FOUND","message":"Not found"}}`, 404},
+	} {
+		actor := int64(2)
+		if strings.Contains(c.path, "/groups/11/") {
+			actor = 1
+		}
+		r := eventRequest(t, h, conn, actor, "PUT", "/api/v1"+c.path, c.body)
+		if r.Code != c.status {
+			t.Fatalf("status %d, want %d: %s", r.Code, c.status, r.Body)
+		}
+		var got, want any
+		if err := json.Unmarshal(r.Body.Bytes(), &got); err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal([]byte(c.want), &want); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(got, want) || !reflect.DeepEqual(before, eventSnapshot(t, conn)) || len(signals.sorted()) != 0 {
+			t.Fatalf("rejected response changed state/signals or error: %s", r.Body)
+		}
+	}
+	// Real storage failures still surface as 500, never validation or false 404.
+	fixtureExec(t, conn, `DROP TABLE group_event_responses`)
+	r := eventRequest(t, h, conn, 2, "PUT", "/api/v1/groups/10/events/901/response", `{"membership_id":102,"choice":"going","expected_version":0}`)
+	if r.Code != 500 || !strings.Contains(r.Body.String(), "INTERNAL_SERVER_ERROR") || len(signals.sorted()) != 0 {
+		t.Fatalf("storage failure: %d %s", r.Code, r.Body)
+	}
+}
 func TestGroupEventStrictValidationAndMethods(t *testing.T) {
 	pack := loadEventPack(t)
 	h, conn := socialAPI(t)
