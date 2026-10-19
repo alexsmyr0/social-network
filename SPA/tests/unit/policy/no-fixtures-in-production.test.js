@@ -1,4 +1,4 @@
-// SN-A09/A10/A12/A15/A18 develop against owner-approved contract fixtures. Production code
+// SN-A09/A10/A12/A15/A18/A19 develop against owner-approved contract fixtures. Production code
 // must never import them or ship their data: a fixture response would look
 // like real authorization.
 import { readdir, readFile } from 'node:fs/promises';
@@ -26,7 +26,7 @@ describe('production sources stay free of fixtures', () => {
 		for (const file of await sourceFiles(srcRoot)) {
 			const text = await readFile(file, 'utf8');
 			if (
-				/tests\/fixtures|phase-[2345]-contract|fixture-backend|content-backend|group-backend|event-backend|@vitest|vi\.stubGlobal/u.test(
+				/tests\/fixtures|phase-[2345]-contract|fixture-backend|content-backend|group-backend|event-backend|chat-backend|@vitest|vi\.stubGlobal/u.test(
 					text,
 				)
 			) {

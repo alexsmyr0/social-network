@@ -16,6 +16,7 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 | Understanding the complete delivery scope | [Roadmap](roadmap.md) | Six phases, requirement coverage, open decisions and phase boundaries |
 | Implementing profiles, follows, posts and audiences | [Phase 2–3 decisions](phase-2-3-decisions.md) | Owner-approved privacy, relationship/content behavior, architecture and inherited-feature preservation |
 | Implementing groups and membership | [Phase 4 decisions](phase-4-decisions.md) | Owner-approved discovery, admission/departure, group content and storage |
+| Reviewing private messages, indicator and live delivery | [Frontend messages](frontend-messages.md) | SN-A19 Vue roster and conversations, retry nonces, mark-read, presence, protected-state lifecycle and fixture-only verification |
 | Reviewing group events, answers and event notices | [Frontend events](frontend-events.md) | SN-A18 Vue journeys, answer concurrency, time-zone handling, protected-state lifecycle and fixture-only verification |
 | Reviewing event persistence, response generations and notices | [Backend events](backend-events.md) | SN-B21 migration 8, member-only APIs, atomic notices, privacy, restart and race evidence |
 | Planning events and messaging | [Phase 5 decisions](phase-5-decisions.md), [approved contract](events-chat-contract.md), [data plan](phase-5-data-plan.md) | SN-B20 handoff recorded approved 2026-10-17 and explicitly confirmed 2026-10-18; B21 → B22 migration ordering applied |
@@ -49,7 +50,9 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 | Selecting or updating implementation work | [Ticket tracker](ticket-tracker.md) | Phase 1–5 status and dependencies for two developers; links to tracks A and B |
 | Creating or reviewing tickets | [Ticket rules](ticket-rules.md) | Compact format, larger Phase 2–4 scope, dependencies and verification; [latest audit](phase-5-ticket-audit.md), [Phase 4 audit](phase-4-ticket-audit.md), [Phase 2–3 audit](phase-2-3-ticket-audit.md), [Phase 1 audit](ticket-audit.md) |
 
-## Current checkpoint — 2026-10-18
+## Current checkpoint — 2026-10-19
+
+- SN-A19 is complete on `chbaikas/A19`, based on merged main `56331f6` (B20 and B21 included): [private messages](frontend-messages.md) against the approved fixtures. The conforming test model replays all 86 private-message HTTP cases, the journeys and races, and the application replays the 36-cell delivery matrix for sender and recipient; interaction checks and 9 browser journeys pass, and native `make test` passes (Vitest **2750/2750**, Playwright **83/83**) with `make test-images` passing 37/37 earlier-phase regressions. Frontend-only evidence; SN-A20 is ready and SN-A21 owns real-service acceptance.
 
 - Owner approved the complete B20 Phase 5 policy/contract/data/fixture handoff on 2026-10-18, including B21 → B22 migration ordering. B20 artifact validation passes. B21 is complete on `asmyrogl/B21`, based on `9a6cd4d`: [events implementation and evidence](backend-events.md) covers migration 8, five APIs, current-generation responses and atomic notices. All 85 HTTP fixtures, upgrade/failure/restart/socket/race checks and native `make test` pass (Vitest 2100/2100, Playwright 62/62). Docker checks remain unverified; B22 delivery now follows B21. Older pending-approval checkpoints below are historical.
 

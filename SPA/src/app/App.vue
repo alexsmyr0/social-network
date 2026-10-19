@@ -6,6 +6,8 @@ import { checkBackendHealth } from '../api/health.js';
 // biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
 import HealthStatus from '../components/HealthStatus.vue';
 import { sessionKey } from '../features/auth/session-state.js';
+// biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
+import MessageBadge from '../features/messages/MessageBadge.vue';
 
 // biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
 import NotificationCenter from '../features/notifications/NotificationCenter.vue';
@@ -78,6 +80,7 @@ async function retrySession() {
 					<RouterLink :to="{ name: 'feed' }">Feed</RouterLink>
 					<RouterLink :to="{ name: 'people' }">People</RouterLink>
 					<RouterLink :to="{ name: 'groups' }">Groups</RouterLink>
+					<MessageBadge />
 					<RouterLink :to="{name:'activity'}">Activity</RouterLink>
 					<RouterLink :to="{ name: 'profile', params: { id: session.state.account.id } }">Profile</RouterLink>
 					<span class="site-nav__identity">{{ session.state.account.display_name }}</span>

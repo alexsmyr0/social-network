@@ -35,6 +35,25 @@ export function createNotificationState({
 	let disposed = false;
 	let retryDelay = 1000;
 	let handlingUnauthorized = false;
+	// Other session-owned features (private messages) read frames from this one
+	// socket instead of opening their own. Listeners are told about every frame
+	// and every successful (re)connection, never about another account's socket.
+	const listeners = new Set();
+
+	function subscribe(listener) {
+		listeners.add(listener);
+		return () => listeners.delete(listener);
+	}
+
+	function emit(event) {
+		for (const listener of [...listeners]) {
+			try {
+				listener(event);
+			} catch {
+				// A faulty subscriber must not break notices or the other listeners.
+			}
+		}
+	}
 
 	function discard(status = 'loading') {
 		state.notifications = [];
@@ -177,6 +196,7 @@ export function createNotificationState({
 			retryDelay = 1000;
 			state.connection = 'online';
 			void invalidate();
+			emit({ kind: 'open' });
 		};
 		current.onmessage = (event) => {
 			if (!valid()) return;
@@ -188,6 +208,7 @@ export function createNotificationState({
 			}
 			if (signal?.type === 'notification.new' || signal?.type === 'social.invalidate')
 				void invalidate();
+			if (signal && typeof signal === 'object') emit({ kind: 'frame', frame: signal });
 		};
 		current.onclose = () => {
 			if (!valid()) return;
@@ -290,5 +311,5 @@ export function createNotificationState({
 		owner = null;
 	}
 
-	return { state: readonly(state), reload, invalidate, markRead, setPage, dispose };
+	return { state: readonly(state), reload, invalidate, markRead, setPage, subscribe, dispose };
 }

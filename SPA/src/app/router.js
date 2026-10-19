@@ -17,6 +17,8 @@ import GroupCreatePage from '../features/groups/GroupCreatePage.vue';
 import GroupPage from '../features/groups/GroupPage.vue';
 import GroupsPage from '../features/groups/GroupsPage.vue';
 import { groupsQuery, readGroupsQuery } from '../features/groups/group-utils.js';
+import ConversationPage from '../features/messages/ConversationPage.vue';
+import MessagesPage from '../features/messages/MessagesPage.vue';
 import NotFoundPage from '../features/migration/NotFoundPage.vue';
 import HomePage from '../features/shell/HomePage.vue';
 import FollowListPage from '../features/social/FollowListPage.vue';
@@ -136,6 +138,18 @@ export const routes = [
 		component: GroupPage,
 		props: { section: 'requests' },
 		meta: { title: 'Join requests', requiresAuth: true },
+	},
+	{
+		path: '/messages',
+		name: 'messages',
+		component: MessagesPage,
+		meta: { title: 'Messages', requiresAuth: true },
+	},
+	{
+		path: '/messages/:id([1-9]\\d*)',
+		name: 'conversation',
+		component: ConversationPage,
+		meta: { title: 'Conversation', requiresAuth: true },
 	},
 	{
 		path: '/people',

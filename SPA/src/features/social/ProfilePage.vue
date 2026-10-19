@@ -71,6 +71,7 @@ const details = computed(() => {
 					<p v-else class="profile-head__visibility">
 						<span class="badge badge--private">Private profile</span>
 					</p>
+					<RouterLink v-if="subject.relationship.state === 'accepted'" class="text-link profile-head__message" :to="{ name: 'conversation', params: { id: subject.id } }">Message {{ subject.display_name }} <span aria-hidden="true">→</span></RouterLink>
 				</div>
 				<FollowControl :person="subject" />
 			</header>
