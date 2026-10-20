@@ -131,7 +131,7 @@ func TestGroupEventMigrationPreservesAllColumnsAndMedia(t *testing.T) {
 	if count(t, upgraded, `SELECT COUNT(*) FROM pragma_foreign_key_check`) != 0 {
 		t.Fatal("foreign key violation")
 	}
-	if count(t, upgraded, `SELECT version FROM schema_migrations WHERE dirty=0`) != 9 {
+	if count(t, upgraded, `SELECT version FROM schema_migrations WHERE dirty=0`) != 10 {
 		t.Fatal("wrong version")
 	}
 	// The deleted high notification ID is not reused.
@@ -166,7 +166,7 @@ func TestGroupEventMigrationEveryVersionedSource(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer up.Close()
-			if count(t, up, `SELECT COUNT(*) FROM users WHERE email='kept@test.local'`) != 1 || count(t, up, `SELECT version FROM schema_migrations WHERE dirty=0`) != 9 {
+			if count(t, up, `SELECT COUNT(*) FROM users WHERE email='kept@test.local'`) != 1 || count(t, up, `SELECT version FROM schema_migrations WHERE dirty=0`) != 10 {
 				t.Fatal("upgrade lost account or schema")
 			}
 		})

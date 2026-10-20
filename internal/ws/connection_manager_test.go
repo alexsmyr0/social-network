@@ -9,6 +9,7 @@ package ws
 import (
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestGetOnlineUserIDs_EmptyHub(t *testing.T) {
@@ -166,4 +167,33 @@ func sliceEq(a, b []int64) bool {
 		}
 	}
 	return true
+}
+
+// Fanout to a member's sessions never blocks: a session whose buffer is full drops
+// the frame (it recovers by refetching) and every other session still receives it.
+func TestSendToUser_FullBufferNeverBlocksOtherSessions(t *testing.T) {
+	h := NewHub()
+	slow, _ := h.Add(1, nil)
+	fast, _ := h.Add(1, nil)
+	for i := 0; i < cap(slow.Send); i++ {
+		slow.Send <- []byte("backlog")
+	}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; i < 3; i++ {
+			if err := h.SendToUser(1, []byte("frame")); err != nil {
+				t.Errorf("SendToUser: %v", err)
+			}
+			<-fast.Send
+		}
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("a full session buffer blocked fanout")
+	}
+	if len(slow.Send) != cap(slow.Send) {
+		t.Fatal("a full buffer was overwritten instead of dropped")
+	}
 }

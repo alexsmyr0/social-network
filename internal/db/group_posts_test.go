@@ -22,7 +22,7 @@ func groupPostPriorFiles(t *testing.T) fstest.MapFS {
 		t.Fatal(err)
 	}
 	for _, name := range names {
-		if strings.Contains(name, "000007_") || strings.Contains(name, "000008_") || strings.Contains(name, "000009_") {
+		if strings.Contains(name, "000007_") || strings.Contains(name, "000008_") || strings.Contains(name, "000009_") || strings.Contains(name, "000010_") {
 			continue
 		}
 		b, err := migrationFS.ReadFile(name)
@@ -151,7 +151,7 @@ func TestGroupPostMigrationUpgradePreservesEverythingAndStaysPersonal(t *testing
 	}
 	var version, dirty int
 	upgraded.QueryRow(`SELECT version,dirty FROM schema_migrations`).Scan(&version, &dirty)
-	if version != 9 || dirty != 0 {
+	if version != 10 || dirty != 0 {
 		t.Fatalf("version %d dirty %d", version, dirty)
 	}
 	rows, err := upgraded.Query(`PRAGMA foreign_key_check`)

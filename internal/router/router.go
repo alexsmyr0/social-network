@@ -164,15 +164,22 @@ func NewRouter(database *sql.DB, hub *ws.Hub) http.Handler {
 		socialRoute("/follows/", users.RemoveFollow, http.MethodDelete)
 		socialRoute("/follow-requests/", users.DecideFollow, http.MethodPatch)
 
-		groups := handlers.NewGroupsHandler(database)
+		groups := handlers.NewGroupsHandler(database, hub)
 		groupRoute := func(path string, fn http.HandlerFunc, methods ...string) {
 			mux.Handle(apiPrefix+path, middleware.AllowMethods(auth(fn), methods...))
 		}
 		groupRoute("/groups", groups.Groups, http.MethodGet, http.MethodPost)
 		events := handlers.NewGroupEventsHandler(database)
+		groupChat := handlers.NewGroupChatHandler(database, hub)
+		groupRoute("/group-chats", groupChat.Rooms, http.MethodGet)
+		groupRoute("/group-chats/unread", groupChat.Unread, http.MethodGet)
 		groupRoute("/groups/", func(w http.ResponseWriter, r *http.Request) {
 			if handlers.EventMethods(r.URL.Path) != "" {
 				events.ServeHTTP(w, r)
+				return
+			}
+			if handlers.GroupChatMethods(r.URL.Path) != "" {
+				groupChat.Room(w, r)
 				return
 			}
 			groups.GroupItem(w, r)
@@ -357,6 +364,9 @@ func addMiddlewares(handler http.Handler, frontendOrigin string, socialSchema bo
 				w.Header().Set("Cache-Control", "no-store")
 			}
 			methods := handlers.EventMethods(r.URL.Path)
+			if methods == "" {
+				methods = handlers.GroupChatMethods(r.URL.Path)
+			}
 			if methods == "" {
 				methods = handlers.DiscussionMethods(r.URL.Path)
 			}

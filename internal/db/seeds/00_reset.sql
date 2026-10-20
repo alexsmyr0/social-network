@@ -4,6 +4,7 @@ DELETE FROM sessions;
 DELETE FROM notifications;
 DELETE FROM group_event_responses;
 DELETE FROM group_events;
+DELETE FROM group_messages;
 DELETE FROM reactions;
 DELETE FROM comments;
 DELETE FROM post_categories;
@@ -21,6 +22,7 @@ WHERE name IN (
   'comments',
   'posts',
   'group_events',
+  'group_messages',
   'groups',
   'group_memberships',
   'group_invitations',

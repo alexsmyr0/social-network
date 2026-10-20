@@ -81,6 +81,8 @@ type dmFixtureAction struct {
 	Body         string
 	ThroughID    int64 `json:"through_id"`
 	MembershipID int64 `json:"membership_id"`
+	User         int64
+	Group        int64
 }
 type dmFixtureStep struct {
 	Action dmFixtureAction
@@ -89,7 +91,8 @@ type dmFixtureStep struct {
 		ID          int64
 		Code        string
 		IDs         []int64
-		UnreadCount *int `json:"unread_count"`
+		UnreadCount *int  `json:"unread_count"`
+		Membership  int64 `json:"membership_id"`
 	}
 }
 type dmFixturePack struct {
@@ -114,6 +117,7 @@ type dmFixturePack struct {
 		Viewer       int64
 		Sender       int64
 		Target       int64
+		Membership   int64 `json:"membership_id"`
 		Given        map[string]any
 		SessionValid bool `json:"session_valid"`
 		Deliver      bool
@@ -231,6 +235,29 @@ func seedDMFixture(t *testing.T, conn *sql.DB, state map[string]any, clock strin
 		p := strings.Split(pair, ":")
 		fixtureExec(t, conn, `INSERT INTO dm_read_cursors(viewer_id,other_id,through_id)VALUES(?,?,?)`, p[0], p[1], through)
 	}
+	seedGroupChatFixture(t, conn, state)
+}
+
+// seedGroupChatFixture adds the room half of the pack state: stored messages and
+// the persisted cursor of each membership generation. Admission already created a
+// cursor for every seeded membership; it moves forward to the pack's value.
+func seedGroupChatFixture(t *testing.T, conn *sql.DB, state map[string]any) {
+	t.Helper()
+	rooms := records(state, "messages")
+	keys := make([]string, 0, len(rooms))
+	for id := range rooms {
+		keys = append(keys, id)
+	}
+	sort.Slice(keys, func(i, j int) bool { a, _ := strconv.Atoi(keys[i]); b, _ := strconv.Atoi(keys[j]); return a < b })
+	for _, id := range keys {
+		m := rooms[id]
+		fixtureExec(t, conn, `INSERT INTO group_messages(id,group_id,sender_id,sender_membership_id,body,created_at,client_id)VALUES(?,?,?,?,?,?,?)`,
+			id, m["group_id"], m["sender_id"], m["membership_id"], m["body"], m["created_at"], m["client_id"])
+	}
+	cursors, _ := state["group_cursors"].(map[string]any)
+	for membership, through := range cursors {
+		fixtureExec(t, conn, `UPDATE group_read_cursors SET through_id=? WHERE membership_id=?`, through, membership)
+	}
 }
 
 func dmSnapshot(t *testing.T, conn *sql.DB) map[string]string {
@@ -242,6 +269,9 @@ func dmSnapshot(t *testing.T, conn *sql.DB) map[string]string {
 		{"objects", `SELECT * FROM media_objects ORDER BY id`},
 		{"pending", `SELECT * FROM media_pending ORDER BY media_id`},
 		{"links", `SELECT * FROM media_links ORDER BY id`},
+		{"room_messages", `SELECT * FROM group_messages ORDER BY id`},
+		{"room_cursors", `SELECT * FROM group_read_cursors ORDER BY membership_id`},
+		{"memberships", `SELECT * FROM group_memberships ORDER BY id`},
 		{"notices", `SELECT * FROM notifications ORDER BY id`},
 		{"sequences", `SELECT * FROM sqlite_sequence ORDER BY name`},
 	} {
@@ -275,6 +305,8 @@ func dmSnapshot(t *testing.T, conn *sql.DB) map[string]string {
 type dmFrame struct {
 	Type    string          `json:"type"`
 	Payload json.RawMessage `json:"payload"`
+	// Raw is the frame exactly as it arrived on the wire.
+	Raw []byte `json:"-"`
 }
 type dmProbe struct {
 	conn   *websocket.Conn
@@ -306,6 +338,7 @@ func dialDM(t *testing.T, srv *httptest.Server, token string) (*dmProbe, error) 
 			if json.Unmarshal(raw, &f) != nil {
 				continue
 			}
+			f.Raw = raw
 			p.mu.Lock()
 			p.frames = append(p.frames, f)
 			p.mu.Unlock()
@@ -381,7 +414,7 @@ func (p *dmProbe) closedWithin(d time.Duration) (int, bool) {
 	}
 }
 
-var chatFrameTypes = []string{"dm.message", "chat.read", "chat.ack", "chat.error"}
+var chatFrameTypes = []string{"dm.message", "group.message", "chat.read", "chat.ack", "chat.error"}
 
 func normalizePayload(raw json.RawMessage) any {
 	var v any
@@ -572,44 +605,50 @@ func TestDirectMessageContractFixtures(t *testing.T) {
 		if strings.HasPrefix(c.ID, "dm-") && strings.Count(c.ID, "-") == 4 {
 			matrix++
 		}
-		t.Run(c.ID, func(t *testing.T) {
-			w := newDMWorld(t, pack, c.Given)
-			before := dmSnapshot(t, w.conn)
-			rec := w.do(t, c.Request)
-			w.quiesce()
-			if c.Expect.Status == 404 || c.Expect.Status == 409 || c.Expect.Status == 400 && bytes.Contains(c.Expect.Body, []byte("VALIDATION_ERROR")) {
-				var actual, expected any
-				if err := json.Unmarshal(rec.Body.Bytes(), &actual); err != nil {
-					t.Fatal(err)
-				}
-				json.Unmarshal(c.Expect.Body, &expected)
-				if !reflect.DeepEqual(actual, expected) {
-					t.Fatalf("pinned error %s want %s", rec.Body, c.Expect.Body)
-				}
-			}
-			body := c.Expect.Body
-			if c.Expect.Status == 204 {
-				body = nil
-			}
-			assertGroupResponse(t, rec, groupResponse{Status: c.Expect.Status, Body: body}, c.Request.Method != "GET" && rec.Code < 300)
-			if rec.Header().Get("Cache-Control") != "no-store" {
-				t.Fatal("missing no-store")
-			}
-			if c.Expect.Allow != "" && rec.Header().Get("Allow") != c.Expect.Allow {
-				t.Fatalf("Allow %q want %q", rec.Header().Get("Allow"), c.Expect.Allow)
-			}
-			assertDMSignals(t, c.Expect.Signals, w.probes)
-			if c.Expect.Unchanged || rec.Code >= 400 {
-				if !reflect.DeepEqual(before, dmSnapshot(t, w.conn)) {
-					t.Fatal("denied or read-only request changed persisted state")
-				}
-			}
-			assertDMState(t, w, c)
-		})
+		t.Run(c.ID, func(t *testing.T) { replayChatCase(t, pack, c) })
 	}
 	if ran != 86 || matrix != 36 {
 		t.Fatalf("ran %d chat cases (%d matrix cells), want 86 and 36", ran, matrix)
 	}
+}
+
+// replayChatCase runs one approved HTTP case against a freshly seeded service with real
+// sockets for the online users, and checks the response, the frames that arrived,
+// and the persisted state.
+func replayChatCase(t *testing.T, pack dmFixturePack, c dmFixtureCase) {
+	t.Helper()
+	w := newDMWorld(t, pack, c.Given)
+	before := dmSnapshot(t, w.conn)
+	rec := w.do(t, c.Request)
+	w.quiesce()
+	if c.Expect.Status == 404 || c.Expect.Status == 409 || c.Expect.Status == 400 && bytes.Contains(c.Expect.Body, []byte("VALIDATION_ERROR")) {
+		var actual, expected any
+		if err := json.Unmarshal(rec.Body.Bytes(), &actual); err != nil {
+			t.Fatal(err)
+		}
+		json.Unmarshal(c.Expect.Body, &expected)
+		if !reflect.DeepEqual(actual, expected) {
+			t.Fatalf("pinned error %s want %s", rec.Body, c.Expect.Body)
+		}
+	}
+	body := c.Expect.Body
+	if c.Expect.Status == 204 {
+		body = nil
+	}
+	assertGroupResponse(t, rec, groupResponse{Status: c.Expect.Status, Body: body}, c.Request.Method != "GET" && rec.Code < 300)
+	if rec.Header().Get("Cache-Control") != "no-store" {
+		t.Fatal("missing no-store")
+	}
+	if c.Expect.Allow != "" && rec.Header().Get("Allow") != c.Expect.Allow {
+		t.Fatalf("Allow %q want %q", rec.Header().Get("Allow"), c.Expect.Allow)
+	}
+	assertDMSignals(t, c.Expect.Signals, w.probes)
+	if c.Expect.Unchanged || rec.Code >= 400 {
+		if !reflect.DeepEqual(before, dmSnapshot(t, w.conn)) {
+			t.Fatal("denied or read-only request changed persisted state")
+		}
+	}
+	assertDMState(t, w, c)
 }
 
 func assertDMState(t *testing.T, w *dmWorld, c dmFixtureCase) {
@@ -637,6 +676,12 @@ func assertDMState(t *testing.T, w *dmWorld, c dmFixtureCase) {
 			page, err := db.ListSocialNotifications(ctx, w.conn, *c.Request.Actor, 1, 20)
 			if err != nil || page.UnreadCount != int(want.(float64)) {
 				t.Fatalf("notification unread %d (%v) want %v", page.UnreadCount, err, want)
+			}
+		case "group_messages_count":
+			var n int
+			w.conn.QueryRow(`SELECT COUNT(*) FROM group_messages`).Scan(&n)
+			if n != int(want.(float64)) {
+				t.Fatalf("room messages %d want %v", n, want)
 			}
 		case "dm_cursor":
 			target := strings.Split(strings.TrimPrefix(c.Request.Path, "/api/v1/chats/"), "/")[0]
@@ -732,11 +777,12 @@ func TestDirectMessageSocketFixtures(t *testing.T) {
 ---------------------------------------------------------------------------*/
 
 type dmOutcome struct {
-	status int
-	id     int64
-	code   string
-	ids    []int64
-	unread int
+	status     int
+	id         int64
+	code       string
+	ids        []int64
+	unread     int
+	membership int64
 }
 
 func (w *dmWorld) restart(t *testing.T) {
@@ -802,6 +848,37 @@ func (w *dmWorld) apply(t *testing.T, a dmFixtureAction) dmOutcome {
 			fixtureExec(t, w.conn, `INSERT OR REPLACE INTO follows(follower_id,followed_id,state,accepted_at)VALUES(?,?,?,?)`, a.From, a.To, a.State, "2026-10-15T12:00:00Z")
 		}
 		return dmOutcome{status: 204}
+	case "group_send":
+		return call(a.Actor, "POST", fmt.Sprintf("/api/v1/groups/%d/messages", a.Target), map[string]any{"membership_id": a.MembershipID, "client_id": a.ClientID, "body": a.Body})
+	case "group_history":
+		return call(a.Actor, "GET", fmt.Sprintf("/api/v1/groups/%d/messages", a.Target), nil)
+	case "group_unread":
+		return call(a.Actor, "GET", "/api/v1/group-chats/unread", nil)
+	case "group_read":
+		return call(a.Actor, "PUT", fmt.Sprintf("/api/v1/groups/%d/messages/read", a.Target), map[string]any{"membership_id": a.MembershipID, "through_id": a.ThroughID})
+	case "remove":
+		// The group's creator removes the member through the real membership route.
+		var membership, creator int64
+		if err := w.conn.QueryRow(`SELECT m.id,g.creator_id FROM group_memberships m JOIN groups g ON g.id=m.group_id WHERE m.group_id=? AND m.user_id=?`, a.Group, a.User).Scan(&membership, &creator); err != nil {
+			t.Fatalf("remove %d from %d: %v", a.User, a.Group, err)
+		}
+		out := call(creator, "DELETE", fmt.Sprintf("/api/v1/group-memberships/%d", membership), nil)
+		return out
+	case "admit":
+		// A join request the creator accepts: a fresh membership generation.
+		request := call(a.User, "POST", fmt.Sprintf("/api/v1/groups/%d/join-requests", a.Group), nil)
+		if request.status != 201 && request.status != 200 {
+			t.Fatalf("join request for %d: %d", a.User, request.status)
+		}
+		var creator int64
+		if err := w.conn.QueryRow(`SELECT creator_id FROM groups WHERE id=?`, a.Group).Scan(&creator); err != nil {
+			t.Fatal(err)
+		}
+		accepted := call(creator, "PATCH", fmt.Sprintf("/api/v1/group-join-requests/%d", request.id), map[string]any{"decision": "accept"})
+		if accepted.status != 200 {
+			t.Fatalf("accepting the request: %d", accepted.status)
+		}
+		return dmOutcome{status: 201, membership: accepted.id}
 	case "restart":
 		w.restart(t)
 		return dmOutcome{status: 204}

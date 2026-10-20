@@ -82,6 +82,21 @@ func chatBody(raw json.RawMessage) (string, string, *APIError) {
 	return value, "", nil
 }
 
+// chatClientID validates a retry nonce: a lowercase canonical UUID v4.
+func chatClientID(raw json.RawMessage) (string, string, *APIError) {
+	if len(raw) == 0 {
+		return "", "REQUIRED", nil
+	}
+	value, e := eventString(raw)
+	if e != nil {
+		return "", "", e
+	}
+	if !chatUUID.MatchString(value) {
+		return value, "INVALID_UUID", nil
+	}
+	return value, "", nil
+}
+
 // parseDirectInput returns structural problems as an *APIError and field
 // problems as a map. withRecipient is set for socket payloads, where the
 // recipient travels in the body instead of the path.
@@ -98,18 +113,14 @@ func parseDirectInput(input map[string]json.RawMessage, withRecipient bool) (dir
 		}
 		in.recipient = recipient
 	}
-	if len(input["client_id"]) == 0 {
-		fields["client_id"] = "REQUIRED"
-	} else {
-		value, e := eventString(input["client_id"])
-		if e != nil {
-			return in, nil, e
-		}
-		if !chatUUID.MatchString(value) {
-			fields["client_id"] = "INVALID_UUID"
-		}
-		in.clientID = value
+	clientID, code, e := chatClientID(input["client_id"])
+	if e != nil {
+		return in, nil, e
 	}
+	if code != "" {
+		fields["client_id"] = code
+	}
+	in.clientID = clientID
 	if len(input["image_url"]) > 0 {
 		value, e := eventString(input["image_url"])
 		if e != nil {
@@ -172,6 +183,8 @@ func chatError(w http.ResponseWriter, r *http.Request, err error) {
 		WriteError(w, r, NewError("NOT_FOUND", "Not found", 404))
 	case errors.Is(err, db.ErrMessageConflict):
 		WriteError(w, r, NewError("MESSAGE_CONFLICT", "Message retry differs from original", 409))
+	case errors.Is(err, db.ErrStaleMembership):
+		WriteError(w, r, NewError("STALE_MEMBERSHIP", "Membership changed; refresh before acting", 409))
 	default:
 		socialError(w, r, err)
 	}
@@ -268,29 +281,37 @@ func (h *ChatsHandler) socialUnread(w http.ResponseWriter, r *http.Request) {
 	WriteOK(w, map[string]int{"unread_count": total}, nil)
 }
 
-func (h *ChatsHandler) socialHistory(w http.ResponseWriter, r *http.Request, viewer, target int64) {
+// chatHistoryQuery reads the shared history paging keys: optional before_id and
+// limit (1–50, default 10). Both are positive safe integers; anything else is rejected.
+func chatHistoryQuery(r *http.Request) (int64, int, *APIError) {
 	values, e := urlQuery(r)
 	if e != nil {
-		WriteError(w, r, e)
-		return
+		return 0, 0, e
 	}
 	var before int64
 	limit := chatHistoryLimit
 	for key, list := range values {
 		if len(list) != 1 || key != "before_id" && key != "limit" {
-			WriteError(w, r, NewError("BAD_REQUEST", "invalid query", 400))
-			return
+			return 0, 0, NewError("BAD_REQUEST", "invalid query", 400)
 		}
 		n, e := socialID(list[0])
 		if e != nil || key == "limit" && n > chatHistoryMax {
-			WriteError(w, r, NewError("BAD_REQUEST", "invalid query", 400))
-			return
+			return 0, 0, NewError("BAD_REQUEST", "invalid query", 400)
 		}
 		if key == "before_id" {
 			before = n
 		} else {
 			limit = int(n)
 		}
+	}
+	return before, limit, nil
+}
+
+func (h *ChatsHandler) socialHistory(w http.ResponseWriter, r *http.Request, viewer, target int64) {
+	before, limit, e := chatHistoryQuery(r)
+	if e != nil {
+		WriteError(w, r, e)
+		return
 	}
 	if e := socialEmptyBody(r); e != nil {
 		WriteError(w, r, e)

@@ -48,7 +48,7 @@ func EventMemberSQL(groupExpr, userExpr string) string {
 	return GroupMemberSQL(groupExpr, userExpr) + ` AND EXISTS(SELECT 1 FROM groups eg_ JOIN users ec_ ON ec_.id=eg_.creator_id AND ec_.is_active=1 WHERE eg_.id=` + groupExpr + `)`
 }
 
-func eventMembership(ctx context.Context, q groupQuerier, viewer, gid int64) (int64, error) {
+func currentMembershipID(ctx context.Context, q groupQuerier, viewer, gid int64) (int64, error) {
 	if err := requireMember(ctx, q, viewer, gid, false); err != nil {
 		return 0, err
 	}
@@ -244,7 +244,7 @@ func CreateGroupEvent(ctx context.Context, database *sql.DB, viewer, gid, member
 		return GroupEvent{}, err
 	}
 	defer tx.Rollback()
-	current, err := eventMembership(ctx, tx, viewer, gid)
+	current, err := currentMembershipID(ctx, tx, viewer, gid)
 	if err != nil {
 		return GroupEvent{}, err
 	}
@@ -296,7 +296,7 @@ func RespondGroupEvent(ctx context.Context, database *sql.DB, viewer, gid, id, m
 		return GroupEvent{}, err
 	}
 	defer tx.Rollback()
-	current, err := eventMembership(ctx, tx, viewer, gid)
+	current, err := currentMembershipID(ctx, tx, viewer, gid)
 	if err != nil {
 		return GroupEvent{}, err
 	}

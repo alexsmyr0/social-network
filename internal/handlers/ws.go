@@ -547,11 +547,54 @@ func (h *WsHandler) authorizeFrame(ctx context.Context, viewer int64, data []byt
 		if err := json.Unmarshal(frame.Payload, &p); err != nil {
 			return nil, false, err
 		}
-		if p.Kind != "dm" {
-			return data, false, nil
+		switch p.Kind {
+		case "dm":
+			allowed, err := db.DirectAccessible(ctx, h.db, viewer, p.TargetID)
+			return data, allowed, err
+		case "group":
+			return h.authorizeGroupFrame(ctx, viewer, data, frame, p.TargetID)
 		}
-		allowed, err := db.DirectAccessible(ctx, h.db, viewer, p.TargetID)
-		return data, allowed, err
+		return data, false, nil
+	case "chat.ack":
+		var p chatAckPayload
+		if err := json.Unmarshal(frame.Payload, &p); err != nil {
+			return nil, false, err
+		}
+		if p.Kind == "group" {
+			return h.authorizeGroupFrame(ctx, viewer, data, frame, p.TargetID)
+		}
+	case "group.message":
+		var m struct {
+			GroupID int64 `json:"group_id"`
+		}
+		if err := json.Unmarshal(frame.Payload, &m); err != nil {
+			return nil, false, err
+		}
+		return h.authorizeGroupFrame(ctx, viewer, data, frame, m.GroupID)
 	}
 	return data, true, nil
+}
+
+// authorizeGroupFrame admits a room frame only while the exact membership
+// generation it was queued for still belongs to the viewer. The generation travels
+// in an internal envelope key that is removed before the frame is written, so a
+// frame queued before a departure is never delivered after it, even to a member
+// who has since returned under a new membership ID. A frame without a generation
+// cannot be authorized and is suppressed.
+func (h *WsHandler) authorizeGroupFrame(ctx context.Context, viewer int64, data []byte, frame ws.WSMessage, group int64) ([]byte, bool, error) {
+	var stamp struct {
+		Membership int64 `json:"x_membership_id"`
+	}
+	if err := json.Unmarshal(data, &stamp); err != nil {
+		return nil, false, err
+	}
+	if stamp.Membership <= 0 {
+		return data, false, nil
+	}
+	allowed, err := db.GroupDeliveryAllowed(ctx, h.db, viewer, group, stamp.Membership)
+	if err != nil || !allowed {
+		return data, false, err
+	}
+	out, err := json.Marshal(frame)
+	return out, true, err
 }

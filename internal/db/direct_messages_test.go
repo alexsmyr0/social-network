@@ -128,7 +128,7 @@ func TestDirectMessageMigrationPreservesMessagesMediaAndBootstrapsCursors(t *tes
 			t.Fatal("missing index", name)
 		}
 	}
-	if count(t, upgraded, `SELECT COUNT(*) FROM pragma_foreign_key_check`) != 0 || count(t, upgraded, `SELECT version FROM schema_migrations WHERE dirty=0`) != 9 {
+	if count(t, upgraded, `SELECT COUNT(*) FROM pragma_foreign_key_check`) != 0 || count(t, upgraded, `SELECT version FROM schema_migrations WHERE dirty=0`) != 10 {
 		t.Fatal("foreign keys or version wrong")
 	}
 	for _, name := range []string{"o701.png", "o702.png"} {
@@ -175,7 +175,7 @@ func TestDirectMessageMigrationEveryVersionedSource(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer up.Close()
-			if count(t, up, `SELECT COUNT(*) FROM private_messages WHERE id=7 AND body='kept' AND client_id IS NULL`) != 1 || count(t, up, `SELECT version FROM schema_migrations WHERE dirty=0`) != 9 {
+			if count(t, up, `SELECT COUNT(*) FROM private_messages WHERE id=7 AND body='kept' AND client_id IS NULL`) != 1 || count(t, up, `SELECT version FROM schema_migrations WHERE dirty=0`) != 10 {
 				t.Fatal("upgrade lost the message or schema")
 			}
 			if count(t, up, `SELECT through_id FROM dm_read_cursors WHERE viewer_id=1 AND other_id=2`) != 7 || count(t, up, `SELECT through_id FROM dm_read_cursors WHERE viewer_id=2 AND other_id=1`) != 7 {
