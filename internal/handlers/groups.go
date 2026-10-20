@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"forum/internal/db"
+	"forum/internal/ws"
 )
 
 const (
@@ -19,9 +20,16 @@ const (
 // GroupsHandler adapts the group, invitation, join-request and membership
 // resources. Request shaping lives here; every authorization and transition
 // decision is repeated inside the repository's serialized write transaction.
-type GroupsHandler struct{ conn *sql.DB }
+type GroupsHandler struct {
+	conn *sql.DB
+	hub  *ws.Hub
+}
 
-func NewGroupsHandler(conn *sql.DB) *GroupsHandler { return &GroupsHandler{conn: conn} }
+// NewGroupsHandler takes the socket hub so a departure can be ordered against
+// queued room frames. A nil hub (tests without sockets) skips that ordering.
+func NewGroupsHandler(conn *sql.DB, hub *ws.Hub) *GroupsHandler {
+	return &GroupsHandler{conn: conn, hub: hub}
+}
 
 // GroupMethods returns the exact Allow list for the group routes, or "" when the
 // path is not one of them. The router rejects wrong methods with it before the
@@ -462,7 +470,17 @@ func (h *GroupsHandler) RemoveMembership(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
-	if err := db.RemoveGroupMembership(r.Context(), h.conn, viewer, id); err != nil {
+	// Leaving or removal ends the right to receive queued room frames. The write
+	// holds the exclusive delivery gate, so a frame authorized earlier is written
+	// before the departure commits and a later one is re-evaluated and suppressed.
+	var err error
+	remove := func() { err = db.RemoveGroupMembership(r.Context(), h.conn, viewer, id) }
+	if h.hub != nil {
+		h.hub.WithRevocation(remove)
+	} else {
+		remove()
+	}
+	if err != nil {
 		socialError(w, r, err)
 		return
 	}
