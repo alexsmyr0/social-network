@@ -219,6 +219,8 @@ test.describe('SN-A20 fixture group chat', () => {
 
 		// Back to the group and forward again: still no cached room.
 		await page.getByRole('link', { name: 'About this group' }).click();
+		await expect(page).toHaveURL(/\/groups\/301$/u);
+		await expect(page.getByRole('heading', { level: 1, name: 'Chess Club' })).toBeVisible();
 		await page.goBack();
 		await expect(page).toHaveURL(/\/groups\/301\/chat$/u);
 		await expect(
