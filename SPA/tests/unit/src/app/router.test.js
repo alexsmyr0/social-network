@@ -32,6 +32,29 @@ describe('Vue route contract', () => {
 	});
 
 	test.each([
+		['/groups/301/chat', 'group-chat'],
+		['/groups/1/chat', 'group-chat'],
+	])('resolves the group chat route %s', async (path, expectedName) => {
+		const router = createAppRouter(createMemoryHistory());
+		await router.push(path);
+
+		expect(router.currentRoute.value.name).toBe(expectedName);
+		expect(router.currentRoute.value.meta.requiresAuth).toBe(true);
+	});
+
+	test.each([
+		'/groups/0/chat',
+		'/groups/007/chat',
+		'/groups/abc/chat',
+		'/groups/301/chat/extra',
+	])('does not resolve %s as a group chat', async (path) => {
+		const router = createAppRouter(createMemoryHistory());
+		await router.push(path);
+
+		expect(router.currentRoute.value.name).toBe('not-found');
+	});
+
+	test.each([
 		['/groups/301/posts', 'group-posts'],
 		['/groups/301/posts/new', 'group-compose'],
 		['/groups/301/posts?feed=following&category=2&page=3', 'group-posts'],

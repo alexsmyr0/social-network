@@ -11,7 +11,7 @@ import { socialKey } from '../social/social-state.js';
 import { countLabel, parsePage } from '../social/social-utils.js';
 import { useSocialResource } from '../social/use-social-resource.js';
 import { messagesKey } from './message-state.js';
-import { previewLabel, timeLabel } from './message-utils.js';
+import { previewLabel, roomPreview, timeLabel } from './message-utils.js';
 
 const session = inject(sessionKey);
 const social = inject(socialKey);
@@ -31,6 +31,26 @@ const { status, result, reload } = useSocialResource(
 watch(
 	() => messages.state.revision,
 	() => reload('quiet'),
+);
+
+// The viewer's group rooms: one per group they belong to now. A group they have
+// left or been removed from is simply not in the list.
+const roomsPage = computed(() => parsePage(route.query.rooms));
+const rooms = useSocialResource(() => messages.api.fetchRooms({ page: roomsPage.value }), {
+	social,
+	sources: () => [roomsPage.value, viewerId.value],
+});
+watch(
+	() => messages.state.revision,
+	() => rooms.reload('quiet'),
+);
+const roomEntries = computed(() => rooms.result.value?.rooms ?? []);
+const roomPagination = computed(() => rooms.result.value?.pagination ?? null);
+const roomsBeyondLastPage = computed(
+	() => roomEntries.value.length === 0 && roomPagination.value?.total > 0 && roomsPage.value > 1,
+);
+const roomSummary = computed(() =>
+	roomPagination.value ? countLabel(roomPagination.value.total, 'group chat') : '',
 );
 
 const entries = computed(() => result.value?.entries ?? []);
@@ -102,5 +122,46 @@ function previewText(entry) {
 			</ul>
 			<PaginationNav v-if="pagination" :page="page" :total-pages="pagination.total_pages" label="Conversation pages" />
 		</template>
+
+		<section class="room-roster" aria-labelledby="rooms-heading" :aria-busy="rooms.status.value === 'loading'">
+			<h2 id="rooms-heading">Group chats</h2>
+			<p v-if="rooms.status.value === 'loading'" class="social-status" role="status">Loading your group chats…</p>
+			<div v-else-if="rooms.status.value === 'unavailable'" class="social-state social-state--error" role="alert">
+				<h3>We can’t load your group chats right now.</h3>
+				<p>Nothing is shown until we can confirm which groups you belong to.</p>
+				<button class="button button--secondary" type="button" @click="rooms.reload('hard')">Try again</button>
+			</div>
+			<div v-else-if="rooms.status.value !== 'ready'" class="social-state" role="status" data-state="restricted">
+				<h3>Group chats aren’t available.</h3>
+			</div>
+			<template v-else>
+				<p class="social-status" role="status">{{ roomSummary }}</p>
+				<div v-if="roomsBeyondLastPage" class="social-state" role="status">
+					<h3>That page doesn’t exist.</h3>
+					<RouterLink class="button button--secondary" :to="{ name: 'messages' }">First page</RouterLink>
+				</div>
+				<div v-else-if="roomEntries.length === 0" class="social-state" role="status" data-state="empty">
+					<h3>No group chats yet.</h3>
+					<p>Every group you belong to has a members-only room. Join a group and it appears here.</p>
+					<RouterLink class="button button--secondary" :to="{ name: 'groups' }">Find groups</RouterLink>
+				</div>
+				<ul v-else class="roster-list" aria-label="Group chats">
+					<li v-for="room in roomEntries" :key="room.group_id" class="roster-row" :class="{ 'roster-row--unread': room.unread_count > 0 }" :data-group-id="room.group_id">
+						<RouterLink class="roster-row__link" :to="{ name: 'group-chat', params: { id: room.group_id } }">
+							<SocialAvatar :name="room.title" size="md" />
+							<span class="roster-row__main">
+								<span class="roster-row__name"><span>{{ room.title }}</span></span>
+								<span class="roster-row__preview">{{ roomPreview(room, viewerId) }}</span>
+							</span>
+							<span class="roster-row__meta">
+								<time v-if="room.last_message" :datetime="room.last_message.created_at">{{ timeLabel(room.last_message.created_at) }}</time>
+								<span v-if="room.unread_count > 0" class="message-unread" role="img" :aria-label="`${room.unread_count} unread ${room.unread_count === 1 ? 'message' : 'messages'}`">{{ room.unread_count }}</span>
+							</span>
+						</RouterLink>
+					</li>
+				</ul>
+				<PaginationNav v-if="roomPagination" :page="roomsPage" :total-pages="roomPagination.total_pages" label="Group chat pages" param="rooms" />
+			</template>
+		</section>
 	</section>
 </template>

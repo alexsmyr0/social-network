@@ -122,18 +122,20 @@ describe('group content form', () => {
 });
 
 describe('group routes and sections', () => {
-	test('only members see Posts and Events; the creator also sees join requests', () => {
+	test('only members see Posts, Events and Chat; the creator also sees join requests', () => {
 		expect(groupSections('none').map((section) => section.name)).toEqual(['group']);
 		expect(groupSections('member').map((section) => section.name)).toEqual([
 			'group',
 			'group-posts',
 			'group-events',
+			'group-chat',
 			'group-members',
 		]);
 		expect(groupSections('creator').map((section) => section.name)).toEqual([
 			'group',
 			'group-posts',
 			'group-events',
+			'group-chat',
 			'group-members',
 			'group-requests',
 		]);

@@ -4,6 +4,7 @@ import { MESSAGE_PAGE, ROSTER_PAGE } from '../../api/chats.js';
 import { sessionKey } from '../auth/session-state.js';
 import { socialKey } from '../social/social-state.js';
 import { useSocialResource } from '../social/use-social-resource.js';
+import { fetchNewest } from './history.js';
 import { messagesKey } from './message-state.js';
 import { lastId, mergeMessages } from './message-utils.js';
 
@@ -20,29 +21,6 @@ async function findRosterEntry(api, userId) {
 		if (page >= result.pagination.total_pages) return { status: 'ok', entry: null };
 		page += 1;
 	}
-}
-
-// Newest messages plus, when this is a refresh after a gap (reconnect, missed
-// frames), every page back to the last message already known. It never relies
-// on `before_id` alone, which pages older history and would skip new messages.
-async function fetchNewest(api, userId, known) {
-	const first = await api.fetchMessages(userId, { limit: MESSAGE_PAGE });
-	if (first.status !== 'ok') return first;
-	let messages = first.messages;
-	let oldest = first;
-	while (known > 0 && oldest.hasMore && oldest.messages[0].id > known) {
-		const page = await api.fetchMessages(userId, {
-			beforeId: oldest.nextBeforeId,
-			limit: MESSAGE_PAGE,
-		});
-		if (page.status !== 'ok') return page;
-		// Require progress rather than capping recovery and silently leaving a gap.
-		if (!page.messages.length || page.messages.at(-1).id >= oldest.messages[0].id)
-			return { status: 'unavailable' };
-		messages = mergeMessages(messages, page.messages);
-		oldest = page;
-	}
-	return { status: 'ok', messages, hasMore: oldest.hasMore, nextBeforeId: oldest.nextBeforeId };
 }
 
 // One private conversation: its committed messages (ascending by ID, merged
@@ -83,7 +61,7 @@ export function useThread(userId) {
 		// You can't message yourself; no request is needed to know that.
 		if (!id || id === viewerId.value) return { status: 'not-found' };
 		const [history, roster] = await Promise.all([
-			fetchNewest(messages.api, id, lastId(loaded.value)),
+			fetchNewest((options) => messages.api.fetchMessages(id, options), lastId(loaded.value)),
 			findRosterEntry(messages.api, id),
 		]);
 		if (history.status === 'unauthenticated' || roster.status === 'unauthenticated')

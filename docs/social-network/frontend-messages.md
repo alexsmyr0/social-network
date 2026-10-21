@@ -44,7 +44,7 @@ The sends use `POST /chats/{id}/messages`, not `dm.send`: the contract gives bot
 | Layout | `SPA/src/styles/messages.css`; `main.css` (frame column and navigation gap) |
 | Test model and helpers | `SPA/tests/fixtures/phase5/chat-backend.js` (a stateful model extending the event model, ported from the pack's reference model), `SPA/tests/fixtures/phase5/browser.js`, `SPA/tests/unit/src/features/messages/harness.js`; frontend evidence only, never imported by `SPA/src` |
 
-SN-A20 reuses the list, composer and picker, and adds per-group counts to the same indicator.
+SN-A20 reuses the list, composer and picker, and adds per-group counts to the same indicator ([frontend group chat](frontend-group-chat.md)).
 
 ## Verification record
 

@@ -474,4 +474,15 @@
 		min-width: 0;
 		padding-inline: 0.6rem;
 	}
+
+	/* A group has up to six sections (creators see Join requests): let the
+	   tabs size to their labels and wrap, rather than overlap. */
+	.group-nav a {
+		flex: 1 1 auto;
+		text-align: center;
+	}
+
+	.group-nav a:nth-child(n + 2) {
+		border-top: 0;
+	}
 }

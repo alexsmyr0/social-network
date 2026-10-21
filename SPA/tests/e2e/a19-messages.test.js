@@ -42,8 +42,10 @@ test.describe('SN-A19 fixture private messages', () => {
 		await indicator(page).focus();
 		await page.keyboard.press('Enter');
 		await expect(page).toHaveURL(/\/messages$/u);
-		await expect(page.locator('.roster-row')).toHaveCount(3);
-		await page.getByRole('link', { name: /Lee Example/u }).focus();
+		await expect(page.locator('.roster-list[aria-label="Conversations"] .roster-row')).toHaveCount(
+			3,
+		);
+		await page.locator('[data-user-id="10"] a').focus();
 		await page.keyboard.press('Enter');
 		await expect(page).toHaveURL(/\/messages\/10$/u);
 		await expect(message(page, 504)).toBeVisible();
@@ -104,7 +106,7 @@ test.describe('SN-A19 fixture private messages', () => {
 
 		await indicator(page).click();
 		await expect(page.locator('[data-user-id="10"] .message-unread')).toHaveText('3');
-		await page.getByRole('link', { name: /Lee Example/u }).click();
+		await page.locator('[data-user-id="10"] a').click();
 		await expect(page.locator('.message', { hasText: 'Live from Lee' })).toBeVisible();
 		actAs(10, 'POST', '/chats/42/messages', {
 			client_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
@@ -274,7 +276,9 @@ test.describe('SN-A19 fixture private messages', () => {
 			await page.setViewportSize({ width, height: 900 });
 			viewer.id = 42;
 			await page.goto('/messages');
-			await expect(page.locator('.roster-row')).toHaveCount(3);
+			await expect(
+				page.locator('.roster-list[aria-label="Conversations"] .roster-row'),
+			).toHaveCount(3);
 			await noHorizontalScroll(page);
 			for (const control of await page.locator('.roster-row__link').all())
 				expect((await control.boundingBox()).height).toBeGreaterThanOrEqual(44);

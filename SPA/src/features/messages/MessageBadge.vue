@@ -6,9 +6,10 @@ import { messagesKey } from './message-state.js';
 
 // The always-visible message indicator. It is deliberately not the
 // notification badge: a different control, shape and colour, its own count
-// from its own endpoint, and a label that never says "notification".
+// from its own endpoints (private conversations plus group rooms), and a label
+// that never says "notification".
 const messages = inject(messagesKey, null);
-const count = computed(() => messages?.state.unreadCount ?? null);
+const count = computed(() => messages?.totalUnread() ?? null);
 const label = computed(() =>
 	count.value === null
 		? 'Messages, unread count unavailable'
