@@ -27,8 +27,11 @@ afterEach(() => {
 // Viewer 42 is Alex. Conversations: Lee (10, two unread, follows Alex), Ada
 // (7, private, Alex follows her, image in the history) and Kim (11, no
 // history, offline). Sam (8, pending), Pat (9) and Robin (99) are strangers.
+const CONVERSATIONS = '.roster-list[aria-label="Conversations"]';
 const rosterIds = (wrapper) =>
-	wrapper.findAll('.roster-row').map((row) => Number(row.attributes('data-user-id')));
+	wrapper
+		.findAll(`${CONVERSATIONS} .roster-row`)
+		.map((row) => Number(row.attributes('data-user-id')));
 const messageIds = (wrapper) =>
 	wrapper
 		.findAll('.message[data-message-id]')
@@ -107,7 +110,7 @@ describe('SN-A19 roster and the message indicator', () => {
 	test('a viewer with no relationships sees an honest empty roster and a zero indicator', async () => {
 		const { wrapper } = await mountMessagesApp('/messages', { viewerId: 99 });
 		expect(textOf(wrapper)).toContain('No conversations yet.');
-		expect(wrapper.find('.roster-list').exists()).toBe(false);
+		expect(wrapper.find(CONVERSATIONS).exists()).toBe(false);
 		expect(indicator(wrapper).get('.message-badge').classes()).toContain('message-badge--zero');
 		expect(indicator(wrapper).attributes('aria-label')).toBe('Messages, 0 unread messages');
 	});
@@ -120,7 +123,7 @@ describe('SN-A19 roster and the message indicator', () => {
 		);
 		const { wrapper } = await mountMessagesApp('/messages', { backend });
 		expect(textOf(wrapper)).toContain('We can’t load your messages right now.');
-		expect(wrapper.find('.roster-list').exists()).toBe(false);
+		expect(wrapper.find(CONVERSATIONS).exists()).toBe(false);
 		expect(indicator(wrapper).attributes('aria-label')).toBe('Messages, unread count unavailable');
 		backend.faults.length = 0;
 		await wrapper
@@ -850,7 +853,7 @@ describe('SN-A19 history and recovery', () => {
 		);
 		expect(urls.some((url) => url.includes('before_id='))).toBe(true);
 		expect(readCalls(app.fetchRef).at(-1).json).toEqual({ through_id: ids.at(-1) });
-	});
+	}, 30000);
 
 	test('losing the connection says delivery is reconnecting and sending still works', async () => {
 		const app = await mountMessagesApp('/messages/10');

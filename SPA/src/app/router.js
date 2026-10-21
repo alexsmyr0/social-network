@@ -18,6 +18,7 @@ import GroupPage from '../features/groups/GroupPage.vue';
 import GroupsPage from '../features/groups/GroupsPage.vue';
 import { groupsQuery, readGroupsQuery } from '../features/groups/group-utils.js';
 import ConversationPage from '../features/messages/ConversationPage.vue';
+import GroupChatPage from '../features/messages/GroupChatPage.vue';
 import MessagesPage from '../features/messages/MessagesPage.vue';
 import NotFoundPage from '../features/migration/NotFoundPage.vue';
 import HomePage from '../features/shell/HomePage.vue';
@@ -131,6 +132,12 @@ export const routes = [
 		name: 'group-event',
 		component: EventPage,
 		meta: { title: 'Event', requiresAuth: true },
+	},
+	{
+		path: '/groups/:id([1-9]\\d*)/chat',
+		name: 'group-chat',
+		component: GroupChatPage,
+		meta: { title: 'Group chat', requiresAuth: true },
 	},
 	{
 		path: '/groups/:id([1-9]\\d*)/requests',

@@ -102,6 +102,15 @@ make test-e2e PLAYWRIGHT_ARGS=a19-messages
 
 SN-A20 reuses `MessageList.vue`, `MessageComposer.vue` and `EmojiPicker.vue` unchanged.
 
+## Group chat (SN-A20)
+
+The group room under a group's Chat tab, its membership-bound sends and read marking, the per-group and total unread counts and the Messages page's group chats run against the [approved group-room contract](events-chat-contract.md#group-rooms) and the same [fixture pack](fixtures/phase-5-contract.json). See [behavior, ownership and verification evidence](frontend-group-chat.md). Server enforcement is SN-B23 and real-service acceptance is SN-A21.
+
+```bash
+bun run test:a20
+make test-e2e PLAYWRIGHT_ARGS=a20-group-chat
+```
+
 ## Frontend container handoff
 
 SN-A06 packages the browser bundle and its Go same-origin proxy in a frontend-only image named `social-network-frontend`. The build is self-contained: it installs locked Bun dependencies, builds `SPA/dist`, compiles the frontend server and does not consume local `node_modules`, binaries or generated assets.

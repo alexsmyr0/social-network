@@ -6,14 +6,16 @@ const props = defineProps({
 	page: { type: Number, required: true },
 	totalPages: { type: Number, required: true },
 	label: { type: String, default: 'Pagination' },
+	// The query key that carries this list's page, for pages with two lists.
+	param: { type: String, default: 'page' },
 });
 
 const route = useRoute();
 
 function target(page) {
 	const query = { ...route.query };
-	if (page <= 1) delete query.page;
-	else query.page = String(page);
+	if (page <= 1) delete query[props.param];
+	else query[props.param] = String(page);
 	return { path: route.path, query };
 }
 

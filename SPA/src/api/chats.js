@@ -15,6 +15,7 @@ export function safeMediaUrl(value) {
 
 export const MESSAGE_PAGE = 30;
 export const ROSTER_PAGE = 50;
+export const ROOM_PAGE = 50;
 
 async function readPayload(response) {
 	return response.json().catch(() => null);
@@ -33,6 +34,9 @@ function failure(response, payload) {
 	if (response.status === 401) return { status: 'unauthenticated' };
 	if (response.status === 404) return { status: 'not-found' };
 	if (response.status === 409 && code === 'MESSAGE_CONFLICT') return { status: 'conflict' };
+	// A current member holding an old membership ID: nothing was written, and
+	// the write is never repeated against the new membership.
+	if (response.status === 409 && code === 'STALE_MEMBERSHIP') return { status: 'stale-membership' };
 	if (response.status === 413) return { status: 'too-large' };
 	if (response.status === 422 && code === 'INVALID_IMAGE') return { status: 'invalid-image' };
 	if ([400, 403, 405, 415].includes(response.status) && code) {
@@ -282,4 +286,141 @@ export async function fetchImage(url, fetchRef = globalThis.fetch) {
 	}
 	const type = (blob.type || response.headers?.get?.('content-type') || '').split(';')[0].trim();
 	return IMAGE_TYPES.has(type) ? { status: 'ok', blob } : { status: 'unavailable' };
+}
+
+// --- group rooms (SN-A20) -----------------------------------------------------
+
+// A room message is text between a member and the room: no recipient, and no
+// image (the contract neither accepts nor emits one, so a message carrying
+// `image_url` is not shown). Legacy rows may carry a null retry nonce.
+export function normalizeGroupMessage(value) {
+	if (
+		!value ||
+		!isValidId(value.id) ||
+		!isValidId(value.group_id) ||
+		!isValidId(value.sender_id) ||
+		text(value.sender_username) === null ||
+		text(value.body) === null ||
+		!validInstant(value.created_at) ||
+		'image_url' in value
+	)
+		return null;
+	if (
+		value.client_id !== null &&
+		!(typeof value.client_id === 'string' && UUID.test(value.client_id))
+	)
+		return null;
+	return {
+		id: value.id,
+		group_id: value.group_id,
+		sender_id: value.sender_id,
+		sender_username: value.sender_username,
+		body: value.body,
+		created_at: value.created_at,
+		client_id: value.client_id,
+	};
+}
+
+// A room summary names the group, the membership the viewer holds in it (every
+// write carries that generation), the newest message and the viewer's own read
+// cursor and unread count. Nothing else about the group or its members.
+export function normalizeRoom(value) {
+	if (!value?.group || !isValidId(value.group.id) || text(value.group.title) === null) return null;
+	const unread = count(value.unread_count);
+	const readThrough = count(value.read_through_id);
+	if (!isValidId(value.membership_id) || unread === null || readThrough === null) return null;
+	let last = null;
+	if (value.last_message !== null) {
+		last = normalizeGroupMessage(value.last_message);
+		if (!last || last.group_id !== value.group.id) return null;
+	}
+	return {
+		group_id: value.group.id,
+		title: value.group.title,
+		membership_id: value.membership_id,
+		last_message: last,
+		read_through_id: readThrough,
+		unread_count: unread,
+	};
+}
+
+export async function fetchRooms(options, fetchRef) {
+	const result = await send(`/group-chats${pageQuery(options)}`, {}, fetchRef);
+	if (result.status !== 'ok') return result;
+	if (!Array.isArray(result.data)) return { status: 'unavailable' };
+	const rooms = result.data.map(normalizeRoom);
+	if (rooms.includes(null)) return { status: 'unavailable' };
+	const pagination = normalizePagination(result.meta);
+	const ids = new Set(rooms.map((room) => room?.group_id));
+	// One room per group, in ascending group order.
+	const ordered = rooms.every(
+		(room, index) => index === 0 || room.group_id > rooms[index - 1].group_id,
+	);
+	if (!pagination || ids.size !== rooms.length || !ordered) return { status: 'unavailable' };
+	return { status: 'ok', rooms, pagination };
+}
+
+export async function fetchGroupUnread(fetchRef) {
+	const result = await send('/group-chats/unread', {}, fetchRef);
+	if (result.status !== 'ok') return result;
+	const unread = count(result.data?.unread_count);
+	return unread === null ? { status: 'unavailable' } : { status: 'ok', unreadCount: unread };
+}
+
+// Same paging as private history: `beforeId` is an exclusive bound and the page
+// is the newest `limit` messages below it, ascending. Every message must belong
+// to the room the route names.
+export async function fetchGroupMessages(groupId, { beforeId, limit } = {}, fetchRef) {
+	const params = new URLSearchParams();
+	if (limit !== undefined) params.set('limit', String(limit));
+	if (beforeId !== undefined) params.set('before_id', String(beforeId));
+	const query = params.toString();
+	const result = await send(`/groups/${groupId}/messages${query ? `?${query}` : ''}`, {}, fetchRef);
+	if (result.status !== 'ok') return result;
+	const { data } = result;
+	if (!data || !Array.isArray(data.messages) || typeof data.has_more !== 'boolean')
+		return { status: 'unavailable' };
+	const messages = data.messages.map(normalizeGroupMessage);
+	if (messages.includes(null)) return { status: 'unavailable' };
+	const ascending = messages.every(
+		(message, index) => index === 0 || message.id > messages[index - 1].id,
+	);
+	const inRoom = messages.every((message) => message.group_id === groupId);
+	const expectedNext = data.has_more && messages.length > 0 ? messages[0].id : null;
+	if (!ascending || !inRoom || data.next_before_id !== expectedNext)
+		return { status: 'unavailable' };
+	return {
+		status: 'ok',
+		messages,
+		hasMore: data.has_more,
+		nextBeforeId: data.next_before_id,
+	};
+}
+
+// `membershipId` names the generation the sender holds. An old one is refused
+// as `stale-membership` and never retried with the new one. `clientId` is the
+// retry nonce, shared by HTTP and socket sends: an exact replay returns the
+// original message (HTTP 200).
+export async function sendGroupMessage(groupId, { membershipId, clientId, body }, fetchRef) {
+	const json = { membership_id: membershipId, client_id: clientId, body };
+	const result = await send(`/groups/${groupId}/messages`, { method: 'POST', json }, fetchRef);
+	if (result.status !== 'ok') return result;
+	const message = normalizeGroupMessage(result.data);
+	if (!message || message.group_id !== groupId || message.client_id !== clientId)
+		return { status: 'unavailable' };
+	return { status: 'ok', message, duplicate: result.http === 200 };
+}
+
+export async function markGroupRead(groupId, { membershipId, throughId }, fetchRef) {
+	const result = await send(
+		`/groups/${groupId}/messages/read`,
+		{ method: 'PUT', json: { membership_id: membershipId, through_id: throughId } },
+		fetchRef,
+	);
+	if (result.status !== 'ok') return result;
+	const through = count(result.data?.through_id);
+	const unread = count(result.data?.unread_count);
+	return through === null || unread === null
+		? { status: 'unavailable' }
+		: { status: 'ok', throughId: through, unreadCount: unread };
 }

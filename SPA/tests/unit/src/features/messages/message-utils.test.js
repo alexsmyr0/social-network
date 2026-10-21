@@ -12,6 +12,8 @@ import {
 	newClientId,
 	normalizeBody,
 	previewLabel,
+	roomKey,
+	roomPreview,
 	timeLabel,
 } from '../../../../../src/features/messages/message-utils.js';
 
@@ -104,5 +106,22 @@ describe('labels and images', () => {
 			expect(glyph.length).toBeGreaterThan(0);
 			expect(name).toMatch(/^[A-Z]/u);
 		}
+	});
+});
+
+describe('group rooms', () => {
+	test('a room key can never equal a conversation key', () => {
+		expect(roomKey(301)).toBe('room-301');
+		expect(String(42)).not.toBe(roomKey(42));
+	});
+
+	test('the room preview names who wrote last and shortens long text', () => {
+		const room = (last) => ({ last_message: last });
+		expect(roomPreview(room(null), 42)).toBe('No messages yet.');
+		const written = (sender_id, body) => ({ sender_id, sender_username: 'Lee Example', body });
+		expect(roomPreview(room(written(10, 'I do ♟️')), 42)).toBe('Lee Example: I do ♟️');
+		expect(roomPreview(room(written(42, 'mine')), 42)).toBe('You: mine');
+		const long = roomPreview(room(written(10, '😀'.repeat(500))), 42);
+		expect([...long]).toHaveLength('Lee Example: '.length + 200);
 	});
 });

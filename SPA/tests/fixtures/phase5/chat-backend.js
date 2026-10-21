@@ -1,9 +1,11 @@
-// Stateful stand-in for the SN-B20 private-message contract, used only by
-// tests. It extends the Phase 5 event model (users, follows, notices, signals)
-// with direct messages, retry nonces, read cursors, presence and private DM
-// media, following the order and rules of the approved pack's reference model
-// (`validate-phase-5.py`). `chat-model.test.js` proves it against the pack
-// before any UI result relies on it. It is never imported by `SPA/src` (a
+// Stateful stand-in for the SN-B20 private-message and group-room contract,
+// used only by tests. It extends the Phase 5 event model (users, follows,
+// notices, signals) with direct messages, retry nonces, read cursors, presence
+// and private DM media, and with group rooms (members-only messages, per
+// membership-generation cursors that start at the room's latest message),
+// following the order and rules of the approved pack's reference model
+// (`validate-phase-5.py`). `chat-model.test.js` and `room-model.test.js` prove
+// it against the pack before any UI result relies on it. It is never imported by `SPA/src` (a
 // policy test enforces that).
 import { mergeState } from '../phase4/group-backend.js';
 import { pngBytes } from '../phase4/group-content-backend.js';
@@ -51,6 +53,10 @@ const notFound = () => failure(404, 'NOT_FOUND');
 const badRequest = () => failure(400, 'BAD_REQUEST');
 
 const ROUTES = [
+	['roomUnread', /^\/api\/v1\/group-chats\/unread$/u, ['GET']],
+	['rooms', /^\/api\/v1\/group-chats$/u, ['GET']],
+	['roomMessages', /^\/api\/v1\/groups\/([^/]+)\/messages$/u, ['GET', 'POST']],
+	['roomRead', /^\/api\/v1\/groups\/([^/]+)\/messages\/read$/u, ['PUT']],
 	['unread', /^\/api\/v1\/chats\/unread$/u, ['GET']],
 	['roster', /^\/api\/v1\/chats$/u, ['GET']],
 	['messages', /^\/api\/v1\/chats\/([^/]+)\/messages$/u, ['GET', 'POST']],
@@ -99,10 +105,14 @@ function messageText(value, required) {
 const BODY_KEYS = {
 	messages: ['client_id', 'body', 'image_url'],
 	read: ['through_id'],
+	roomMessages: ['membership_id', 'client_id', 'body'],
+	roomRead: ['membership_id', 'through_id'],
 };
 const STRING_KEYS = new Set(['client_id', 'body', 'image_url']);
 
-// Alex (42) is the usual viewer. Ada (7, private) is followed by Alex, so her
+// Alex (42) is the usual viewer. Group 301 (Chess Club, created by Alex) has Ada
+// (7, private) and Lee (10) as members, and a room with three messages that
+// Alex has read; Book Club (302, created by Robin) has Alex's usual strangers. Ada (7, private) is followed by Alex, so her
 // conversation and presence are visible and open to messages; Lee (10)
 // follows Alex, so Alex may message back; Sam (8) has only a pending request
 // and Pat (9) / Robin (99) are strangers.
@@ -155,7 +165,37 @@ export function defaultChatState() {
 		dm_cursors: { '42:7': 501, '7:42': 502, '42:10': 0, '10:42': 504 },
 		media: { 702: { uploader_id: 42, recipient_id: 7, message_id: 502 } },
 		online: { 7: true, 10: true, 11: false, 42: true },
-		next_ids: { ...base.next_ids, dm: 505, media: 703 },
+		group_messages: {
+			801: {
+				id: 801,
+				group_id: 301,
+				sender_id: 7,
+				membership_id: 502,
+				body: 'Welcome to the club.',
+				created_at: '2026-10-15T09:10:00Z',
+				client_id: null,
+			},
+			802: {
+				id: 802,
+				group_id: 301,
+				sender_id: 42,
+				membership_id: 501,
+				body: 'Thanks, Ada. Who has a board?',
+				created_at: '2026-10-15T09:12:00Z',
+				client_id: null,
+			},
+			803: {
+				id: 803,
+				group_id: 301,
+				sender_id: 10,
+				membership_id: 504,
+				body: 'I do ♟️',
+				created_at: '2026-10-15T09:15:00Z',
+				client_id: null,
+			},
+		},
+		group_cursors: { 501: 803, 502: 803, 504: 803 },
+		next_ids: { ...base.next_ids, dm: 505, media: 703, group_messages: 804 },
 	};
 }
 
@@ -171,7 +211,14 @@ export function chatPackToState(pack, given) {
 		online: Object.fromEntries(
 			Object.values(merged.users).map((user) => [user.id, Boolean(user.online)]),
 		),
-		next_ids: { ...state.next_ids, dm: merged.next_ids.dm, media: merged.next_ids.media },
+		group_messages: structuredClone(merged.messages ?? {}),
+		group_cursors: structuredClone(merged.group_cursors ?? {}),
+		next_ids: {
+			...state.next_ids,
+			dm: merged.next_ids.dm,
+			media: merged.next_ids.media,
+			group_messages: merged.next_ids.message,
+		},
 	};
 }
 
@@ -187,6 +234,12 @@ export class ChatBackend extends EventBackend {
 		);
 		this.online = new Map(
 			Object.entries(merged.online ?? {}).map(([id, value]) => [Number(id), Boolean(value)]),
+		);
+		this.groupMessages = new Map(
+			Object.values(merged.group_messages ?? {}).map((message) => [message.id, { ...message }]),
+		);
+		this.groupCursors = new Map(
+			Object.entries(merged.group_cursors ?? {}).map(([id, value]) => [Number(id), value]),
 		);
 		this.uploads = [];
 		this.uploadFault = null;
@@ -204,6 +257,8 @@ export class ChatBackend extends EventBackend {
 			dm_cursors: Object.fromEntries(this.dmCursors),
 			media: table(this.media),
 			online: Object.fromEntries(this.online),
+			group_messages: table(this.groupMessages),
+			group_cursors: Object.fromEntries(this.groupCursors),
 		};
 	}
 
@@ -278,6 +333,91 @@ export class ChatBackend extends EventBackend {
 			.reduce((sum, user) => sum + this.unreadWith(a, user.id), 0);
 	}
 
+	// --- group room rules ---------------------------------------------------------
+
+	// The viewer's current membership in a visible group: the only thing that
+	// opens a room. Outsiders, invitees, requesters and departed members have none.
+	roomMember(userId, groupId) {
+		return this.group(groupId) ? this.membershipOf(groupId, userId) : null;
+	}
+
+	roomMessages(groupId) {
+		return [...this.groupMessages.values()]
+			.filter((message) => message.group_id === groupId)
+			.sort((a, b) => a.id - b.id);
+	}
+
+	latestRoomId(groupId) {
+		return this.roomMessages(groupId).at(-1)?.id ?? 0;
+	}
+
+	roomCursor(membership) {
+		return this.groupCursors.get(membership.id) ?? 0;
+	}
+
+	roomUnread(userId, groupId) {
+		const membership = this.roomMember(userId, groupId);
+		if (!membership) return 0;
+		const cursor = this.roomCursor(membership);
+		return this.roomMessages(groupId).filter(
+			(message) => message.sender_id !== userId && message.id > cursor,
+		).length;
+	}
+
+	roomUnreadTotal(userId) {
+		return [...this.groups.keys()].reduce((sum, id) => sum + this.roomUnread(userId, id), 0);
+	}
+
+	roomRecipients(groupId) {
+		return this.activeMembers(groupId)
+			.map((member) => member.user_id)
+			.sort((a, b) => a - b);
+	}
+
+	roomWire(message) {
+		const { membership_id: _generation, ...wire } = message;
+		return { ...wire, sender_username: this.displayName(message.sender_id) };
+	}
+
+	// A new membership starts reading at the room's latest message: the whole
+	// history is readable and nothing earlier counts as unread.
+	admit(groupId, userId, named) {
+		const membership = super.admit(groupId, userId, named);
+		this.groupCursors.set(membership.id, this.latestRoomId(groupId));
+		return membership;
+	}
+
+	removeMembership(viewer, id, json) {
+		const result = super.removeMembership(viewer, id, json);
+		if (result.status < 400) this.groupCursors.delete(id);
+		return result;
+	}
+
+	removeMember(groupId, userId) {
+		const membership = this.membershipOf(groupId, userId);
+		super.removeMember(groupId, userId);
+		if (membership) this.groupCursors.delete(membership.id);
+	}
+
+	// A room message committed directly, as another member's session would.
+	commitRoom(groupId, senderId, fields = {}) {
+		const membership = this.membershipOf(groupId, senderId);
+		if (!membership) throw new Error(`User ${senderId} is not in group ${groupId}`);
+		const id = this.allocate('group_messages');
+		const message = {
+			id,
+			group_id: groupId,
+			sender_id: senderId,
+			membership_id: membership.id,
+			body: fields.body ?? '',
+			created_at: fields.created_at ?? this.clock,
+			client_id: fields.client_id ?? null,
+		};
+		this.groupMessages.set(id, message);
+		this.signal('group.message', this.roomRecipients(groupId), this.roomWire(message));
+		return message;
+	}
+
 	signal(type, recipients, payload) {
 		const before = this.signals.length;
 		super.signal(type, recipients);
@@ -348,6 +488,7 @@ export class ChatBackend extends EventBackend {
 		return {
 			...super.observable(actorId),
 			dms_count: this.dms.size,
+			group_messages_count: this.groupMessages.size,
 			recipient_unread: this.unreadWith(2, 1),
 			media_701_message: this.media.get(701)?.message_id,
 			dm_cursor: actorId === 1 || actorId === 2 ? this.cursor(actorId, 3 - actorId) : 0,
@@ -438,6 +579,16 @@ export class ChatBackend extends EventBackend {
 		const params = target.searchParams;
 		const id = route.param === undefined ? null : parseId(route.param);
 		switch (route.name) {
+			case 'roomUnread':
+				return this.readRoomUnread(viewer, params);
+			case 'rooms':
+				return this.readRooms(viewer, params);
+			case 'roomMessages':
+				return method === 'GET'
+					? this.roomHistory(viewer, id, params)
+					: this.sendRoomMessage(viewer, id, params, payload.json);
+			case 'roomRead':
+				return this.markRoomRead(viewer, id, params, payload.json);
 			case 'unread':
 				return this.readUnread(viewer, params);
 			case 'roster':
@@ -487,6 +638,110 @@ export class ChatBackend extends EventBackend {
 			);
 		});
 		return this.pagedReply(entries, params, (item) => item.row);
+	}
+
+	readRoomUnread(viewer, params) {
+		if (queryNumbers(params, {}) === null) return badRequest();
+		return reply(200, { data: { unread_count: this.roomUnreadTotal(viewer.id) } });
+	}
+
+	readRooms(viewer, params) {
+		if (queryNumbers(params, { page: 1000000, per_page: 50 }) === null) return badRequest();
+		const rooms = [...this.groups.values()]
+			.sort((a, b) => a.id - b.id)
+			.filter((group) => this.roomMember(viewer.id, group.id))
+			.map((group) => {
+				const membership = this.roomMember(viewer.id, group.id);
+				const last = this.roomMessages(group.id).at(-1);
+				return {
+					group: { id: group.id, title: group.title },
+					membership_id: membership.id,
+					last_message: last ? this.roomWire(last) : null,
+					read_through_id: this.roomCursor(membership),
+					unread_count: this.roomUnread(viewer.id, group.id),
+				};
+			});
+		return this.pagedReply(rooms, params, (room) => room);
+	}
+
+	roomHistory(viewer, groupId, params) {
+		const query = queryNumbers(params, { before_id: MAX_ID, limit: 50 });
+		if (query === null) return badRequest();
+		if (!this.roomMember(viewer.id, groupId)) return notFound();
+		const before = query.before_id ?? MAX_ID + 1;
+		const limit = query.limit ?? 10;
+		const eligible = this.roomMessages(groupId).filter((message) => message.id < before);
+		const page = eligible.slice(-limit);
+		const more = eligible.length > limit;
+		return reply(200, {
+			data: {
+				messages: page.map((message) => this.roomWire(message)),
+				has_more: more,
+				next_before_id: more ? page[0].id : null,
+			},
+		});
+	}
+
+	sendRoomMessage(viewer, groupId, params, json) {
+		if (queryNumbers(params, {}) === null) return badRequest();
+		const { body, error } = this.bodyOf(json, BODY_KEYS.roomMessages);
+		if (error) return error;
+		const fields = {};
+		if (body.client_id === undefined) fields.client_id = 'REQUIRED';
+		else if (!UUID.test(body.client_id)) fields.client_id = 'INVALID_UUID';
+		const checked = messageText(body.body, true);
+		if (checked.error) fields.body = checked.error;
+		if (!this.idField(body.membership_id, { zero: false })) fields.membership_id = 'INVALID_ID';
+		if (Object.keys(fields).length) return failure(400, 'VALIDATION_ERROR', fields);
+		const { membership, error: denied } = this.currentMembership(viewer, groupId, body);
+		if (denied) return denied;
+		const existing = [...this.groupMessages.values()].find(
+			(message) => message.sender_id === viewer.id && message.client_id === body.client_id,
+		);
+		if (existing) {
+			const same =
+				existing.group_id === groupId &&
+				existing.body === checked.text &&
+				existing.membership_id === membership.id;
+			return same
+				? reply(200, { data: this.roomWire(existing) })
+				: failure(409, 'MESSAGE_CONFLICT');
+		}
+		const message = {
+			id: this.allocate('group_messages'),
+			group_id: groupId,
+			sender_id: viewer.id,
+			membership_id: membership.id,
+			body: checked.text,
+			client_id: body.client_id,
+			created_at: this.clock,
+		};
+		this.groupMessages.set(message.id, message);
+		const data = this.roomWire(message);
+		this.signal('group.message', this.roomRecipients(groupId), data);
+		return reply(201, { data });
+	}
+
+	markRoomRead(viewer, groupId, params, json) {
+		if (queryNumbers(params, {}) === null) return badRequest();
+		const { body, error } = this.bodyOf(json, BODY_KEYS.roomRead);
+		if (error) return error;
+		const fields = {};
+		if (!this.idField(body.membership_id, { zero: false })) fields.membership_id = 'INVALID_ID';
+		if (!this.idField(body.through_id, { zero: true })) fields.through_id = 'INVALID_ID';
+		if (Object.keys(fields).length) return failure(400, 'VALIDATION_ERROR', fields);
+		const { membership, error: denied } = this.currentMembership(viewer, groupId, body);
+		if (denied) return denied;
+		const known = new Set(this.roomMessages(groupId).map((message) => message.id));
+		if (body.through_id !== 0 && !known.has(body.through_id))
+			return failure(400, 'VALIDATION_ERROR', { through_id: 'INVALID_ID' });
+		const before = this.roomCursor(membership);
+		const after = Math.max(before, body.through_id);
+		this.groupCursors.set(membership.id, after);
+		const data = { through_id: after, unread_count: this.roomUnread(viewer.id, groupId) };
+		if (after !== before)
+			this.signal('chat.read', [viewer.id], { kind: 'group', target_id: groupId, ...data });
+		return reply(200, { data });
 	}
 
 	history(viewer, partnerId, params) {

@@ -86,6 +86,7 @@ describe('SN-A18 role-appropriate event access', () => {
 			['About', '/groups/301'],
 			['Posts', '/groups/301/posts'],
 			['Events', '/groups/301/events'],
+			['Chat', '/groups/301/chat'],
 			['Members', '/groups/301/members'],
 		]);
 		expect(wrapper.get('.group-nav [aria-current="page"]').text()).toBe('Events');

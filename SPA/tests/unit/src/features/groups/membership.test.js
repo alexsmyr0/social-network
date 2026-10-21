@@ -68,6 +68,7 @@ describe('SN-A15 role-appropriate group controls', () => {
 			['About', '/groups/301'],
 			['Posts', '/groups/301/posts'],
 			['Events', '/groups/301/events'],
+			['Chat', '/groups/301/chat'],
 			['Members', '/groups/301/members'],
 		]);
 		expect(hasButton(wrapper, 'Leave group')).toBe(true);
@@ -88,6 +89,7 @@ describe('SN-A15 role-appropriate group controls', () => {
 			['About', '/groups/301'],
 			['Posts', '/groups/301/posts'],
 			['Events', '/groups/301/events'],
+			['Chat', '/groups/301/chat'],
 			['Members', '/groups/301/members'],
 			['Join requests', '/groups/301/requests'],
 		]);
@@ -139,6 +141,7 @@ describe('SN-A15 admission journeys', () => {
 			'About',
 			'Posts',
 			'Events',
+			'Chat',
 			'Members',
 		]);
 		expect(backend.groupNotices.get(801)).toMatchObject({ state: 'accepted', is_read: true });
