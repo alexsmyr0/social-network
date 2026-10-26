@@ -10,7 +10,9 @@ import {
 	imageProblem,
 	newClientId,
 	normalizeBody,
+	roomKey,
 } from './message-utils.js';
+import { findRoom } from './rooms.js';
 
 export const messagesKey = Symbol('commonplace-messages');
 
@@ -22,6 +24,16 @@ const SEND_MESSAGES = {
 	rejected: 'That message was rejected, so it was not sent. Check it and write it again.',
 	unconfirmed:
 		'We couldn’t confirm that this was sent. Check the conversation. Retrying sends it only once.',
+};
+
+const ROOM_MESSAGES = {
+	denied: 'You are no longer a member of this group, so this was not sent.',
+	stale:
+		'Your membership in this group changed, so this was not sent. Check the room, then write it again.',
+	conflict:
+		'This message was already sent with different content, so it was not sent again. Check the room.',
+	unconfirmed:
+		'We couldn’t confirm that this was sent. Check the room. Retrying sends it only once.',
 };
 
 const IMAGE_FAILURES = {
@@ -37,9 +49,11 @@ function validPresence(user) {
 	return user && isValidId(user.user_id) && typeof user.is_online === 'boolean';
 }
 
+// Another of this account's tabs moved a read cursor: a private conversation
+// (`dm`, named by the partner) or a group room (`group`, named by the group).
 function readEvent(payload) {
 	if (
-		payload?.kind !== 'dm' ||
+		(payload?.kind !== 'dm' && payload?.kind !== 'group') ||
 		!isValidId(payload.target_id) ||
 		!Number.isSafeInteger(payload.through_id) ||
 		payload.through_id < 0 ||
@@ -47,6 +61,14 @@ function readEvent(payload) {
 		payload.unread_count < 0
 	)
 		return null;
+	if (payload.kind === 'group') {
+		return {
+			type: 'group-read',
+			groupId: payload.target_id,
+			throughId: payload.through_id,
+			unreadCount: payload.unread_count,
+		};
+	}
 	return {
 		type: 'read',
 		userId: payload.target_id,
@@ -55,9 +77,10 @@ function readEvent(payload) {
 	};
 }
 
-// One owner for the account's private-message state, separate from notices:
-// the message badge, drafts and attachments, unsent and failed messages, and
-// presence. It reads frames from the notification state's single session-owned
+// One owner for the account's message state, separate from notices: the message
+// badge (private conversations plus group rooms), drafts and attachments,
+// unsent and failed messages, and presence. Group rooms (SN-A20) share the
+// drafts, outbox, retry and read lifecycle under a room key. It reads frames from the notification state's single session-owned
 // socket and keeps no copy of server history. Views hold the conversations
 // they show and merge what the server reports by message ID.
 //
@@ -73,7 +96,10 @@ export function createMessageState({
 	images = createImageCache({ fetchImage: (url) => api.fetchImage(url) }),
 } = {}) {
 	const state = reactive({
+		// Private conversations, and separately group rooms; the indicator shows
+		// their sum, and shows nothing but "unknown" unless both are known.
 		unreadCount: null,
+		groupUnreadCount: null,
 		unreadStatus: 'idle',
 		// Bumped by every message-related change so mounted lists refetch quietly.
 		revision: 0,
@@ -83,6 +109,8 @@ export function createMessageState({
 	});
 	const listeners = new Set();
 	const chains = new Map();
+	const memberships = new Map();
+	let membershipRevision = 0;
 	let generation = 0;
 	let owner = null;
 	let unreadRevision = 0;
@@ -113,8 +141,11 @@ export function createMessageState({
 		unreadRevision += 1;
 		unreadQueued = false;
 		chains.clear();
+		memberships.clear();
+		membershipRevision += 1;
 		images.clear();
 		state.unreadCount = null;
+		state.groupUnreadCount = null;
 		state.unreadStatus = 'idle';
 		state.drafts = {};
 		state.outbox = {};
@@ -123,34 +154,41 @@ export function createMessageState({
 		emit({ type: 'reset' });
 	}
 
+	// Handling a 401 re-reads every view, including this one. A 401 the session
+	// endpoint does not confirm must not loop through that again.
+	async function unauthorizedUnread() {
+		state.unreadCount = null;
+		state.groupUnreadCount = null;
+		state.unreadStatus = 'unavailable';
+		if (handlingUnauthorized) return;
+		handlingUnauthorized = true;
+		try {
+			await social.handleUnauthenticated();
+		} finally {
+			handlingUnauthorized = false;
+		}
+	}
+
 	async function loadUnread() {
 		if (!owner) return;
 		const epoch = generation;
 		const mine = ++unreadRevision;
-		const result = await api.fetchUnread();
+		const [direct, rooms] = await Promise.all([api.fetchUnread(), api.fetchGroupUnread()]);
 		if (epoch !== generation || mine !== unreadRevision) return;
-		if (result.status === 'unauthenticated') {
-			// Handling a 401 re-reads every view, including this one. A 401 the
-			// session endpoint does not confirm must not loop through that again.
-			state.unreadCount = null;
-			state.unreadStatus = 'unavailable';
-			if (handlingUnauthorized) return;
-			handlingUnauthorized = true;
-			try {
-				await social.handleUnauthenticated();
-			} finally {
-				handlingUnauthorized = false;
-			}
+		if (direct.status === 'unauthenticated' || rooms.status === 'unauthenticated') {
+			await unauthorizedUnread();
 			return;
 		}
-		if (result.status === 'ok') {
-			state.unreadCount = result.unreadCount;
-			state.unreadStatus = 'ready';
-		} else {
-			// An unknown total is shown as unknown, never as a stale number.
-			state.unreadCount = null;
-			state.unreadStatus = 'unavailable';
-		}
+		// An unknown total is shown as unknown, never as a stale number.
+		state.unreadCount = direct.status === 'ok' ? direct.unreadCount : null;
+		state.groupUnreadCount = rooms.status === 'ok' ? rooms.unreadCount : null;
+		state.unreadStatus = direct.status === 'ok' && rooms.status === 'ok' ? 'ready' : 'unavailable';
+	}
+
+	// What the indicator shows: private conversations plus group rooms.
+	function totalUnread() {
+		if (state.unreadCount === null || state.groupUnreadCount === null) return null;
+		return state.unreadCount + state.groupUnreadCount;
 	}
 
 	// A burst of frames collapses to one request.
@@ -200,8 +238,17 @@ export function createMessageState({
 		state.presence = { snapshot: false, users: {} };
 	}
 
+	function onGroupMessageFrame(payload) {
+		const message = api.normalizeGroupMessage(payload);
+		if (!message) return;
+		emit({ type: 'group-message', message });
+		touch();
+		queueUnread();
+	}
+
 	const FRAMES = {
 		'dm.message': onMessageFrame,
+		'group.message': onGroupMessageFrame,
 		'chat.read': onReadFrame,
 		'presence.snapshot': onSnapshotFrame,
 		'presence.update': onUpdateFrame,
@@ -309,13 +356,19 @@ export function createMessageState({
 
 	// What a failed send means for the person, and whether a retry is safe.
 	async function settleFailure(entry, result) {
+		const texts = entry.kind === 'group' ? ROOM_MESSAGES : SEND_MESSAGES;
 		if (result.status === 'not-found') {
-			// The relationship may have ended. Nothing is retried; the lists
-			// re-read what the server allows now.
-			fail(entry, SEND_MESSAGES.denied, false);
+			// The relationship or membership may have ended. Nothing is retried;
+			// the lists re-read what the server allows now.
+			fail(entry, texts.denied, false);
+			await social.invalidate();
+		} else if (result.status === 'stale-membership') {
+			// A current member holding an old membership: the message is not
+			// re-sent against the new one, the room re-reads and the person decides.
+			fail(entry, ROOM_MESSAGES.stale, false);
 			await social.invalidate();
 		} else if (result.status === 'conflict') {
-			fail(entry, SEND_MESSAGES.conflict, false);
+			fail(entry, texts.conflict, false);
 			await social.refresh();
 		} else if (result.status === 'rejected') {
 			fail(entry, rejectedMessage(result), false);
@@ -324,8 +377,20 @@ export function createMessageState({
 			// retry nonce makes a retry safe (an exact replay returns the original),
 			// and any later refetch shows the message if it is there. Re-reading now
 			// would only discard the conversation during an outage.
-			fail(entry, SEND_MESSAGES.unconfirmed, true);
+			fail(entry, texts.unconfirmed, true);
 		}
+	}
+
+	// One send, to a private conversation or a group room under its membership.
+	function transmit(entry, userId, clientId) {
+		if (entry.kind === 'group') {
+			return api.sendGroupMessage(entry.group_id, {
+				membershipId: entry.membership_id,
+				clientId,
+				body: entry.body,
+			});
+		}
+		return api.sendMessage(userId, { clientId, body: entry.body, imageUrl: entry.image_url });
 	}
 
 	async function deliver(userId, clientId) {
@@ -335,16 +400,15 @@ export function createMessageState({
 		entry.status = 'sending';
 		entry.message = '';
 		entry.retryable = false;
-		const result = await api.sendMessage(userId, {
-			clientId,
-			body: entry.body,
-			imageUrl: entry.image_url,
-		});
+		const result = await transmit(entry, userId, clientId);
 		const current = epoch === generation ? findEntry(userId, clientId) : null;
 		if (!current) return;
 		if (result.status === 'ok') {
 			removeEntry(userId, clientId);
-			emit({ type: 'message', message: result.message });
+			emit({
+				type: entry.kind === 'group' ? 'group-message' : 'message',
+				message: result.message,
+			});
 			touch();
 			queueUnread();
 		} else if (result.status === 'unauthenticated') {
@@ -365,6 +429,7 @@ export function createMessageState({
 		if (body === '' && !imageUrl) return { status: 'empty' };
 		const entry = {
 			client_id: newId(),
+			kind: 'dm',
 			user_id: userId,
 			body,
 			image_url: imageUrl,
@@ -377,6 +442,35 @@ export function createMessageState({
 		draft.body = '';
 		draft.attachment = null;
 		void enqueue(userId, () => deliver(userId, entry.client_id));
+		return { status: 'queued', clientId: entry.client_id };
+	}
+
+	// A group room message: text only, written under the membership the viewer
+	// holds when they send it. A retry reuses that membership and the same nonce,
+	// so it can never be applied to a later membership.
+	function sendRoom(groupId, membershipId) {
+		if (!(owner && isValidId(groupId) && isValidId(membershipId))) return { status: 'unavailable' };
+		const key = roomKey(groupId);
+		const draft = state.drafts[key];
+		const body = normalizeBody(draft?.body ?? '');
+		const problem = bodyProblem(body);
+		if (problem) return { status: 'invalid', problem };
+		if (body === '') return { status: 'empty' };
+		const entry = {
+			client_id: newId(),
+			kind: 'group',
+			group_id: groupId,
+			membership_id: membershipId,
+			body,
+			image_url: null,
+			status: 'sending',
+			message: '',
+			retryable: false,
+			created_at: new Date().toISOString(),
+		};
+		state.outbox[key] = [...entriesOf(key), entry];
+		draft.body = '';
+		void enqueue(key, () => deliver(key, entry.client_id));
 		return { status: 'queued', clientId: entry.client_id };
 	}
 
@@ -407,12 +501,42 @@ export function createMessageState({
 		}
 	}
 
-	// A conversation the server no longer shows at all (a stranger, a deleted
-	// account) keeps no draft, attachment or pending message here.
-	function forget(userId) {
-		delete state.drafts[userId];
-		delete state.outbox[userId];
-		chains.delete(userId);
+	// A conversation or room the server no longer shows at all (a stranger, a
+	// deleted account, a group the viewer left or was removed from) keeps no
+	// draft, attachment or pending message here.
+	function forget(key) {
+		delete state.drafts[key];
+		delete state.outbox[key];
+		chains.delete(key);
+	}
+
+	// Drafts and pending sends belong to a membership generation even while
+	// its room is unmounted. Only an authoritative room read changes it.
+	function confirmRoom(groupId, membershipId) {
+		const previous = memberships.get(groupId);
+		if (previous === membershipId) return false;
+		if (memberships.has(groupId)) forget(roomKey(groupId));
+		memberships.set(groupId, membershipId);
+		// Only a membership replaced by another one is a "changed" membership;
+		// a first join after being a non-member has nothing to discard.
+		return previous !== undefined && previous !== null;
+	}
+
+	async function refreshMemberships() {
+		if (!owner || !memberships.size) return;
+		const epoch = generation;
+		const mine = ++membershipRevision;
+		const results = await Promise.all(
+			[...memberships.entries()]
+				.filter(([, membershipId]) => membershipId !== null)
+				.map(async ([id, membershipId]) => [id, membershipId, await findRoom(api, id)]),
+		);
+		if (epoch !== generation || mine !== membershipRevision) return;
+		for (const [id, membershipId, result] of results) {
+			// A mounted room may already have confirmed a newer membership.
+			if (memberships.get(id) !== membershipId) continue;
+			if (result.status === 'ok') confirmRoom(id, result.room?.membership_id ?? null);
+		}
 	}
 
 	// --- reading ---------------------------------------------------------------
@@ -436,6 +560,32 @@ export function createMessageState({
 		return result;
 	}
 
+	async function markRoomRead(groupId, membershipId, throughId) {
+		if (!owner) return { status: 'skipped' };
+		const epoch = generation;
+		const result = await api.markGroupRead(groupId, { membershipId, throughId });
+		if (epoch !== generation) return { status: 'superseded' };
+		if (result.status === 'unauthenticated') {
+			await social.handleUnauthenticated();
+			return result;
+		}
+		if (result.status === 'ok') {
+			emit({
+				type: 'group-read',
+				groupId,
+				throughId: result.throughId,
+				unreadCount: result.unreadCount,
+			});
+			touch();
+			queueUnread();
+		} else if (result.status === 'not-found' || result.status === 'stale-membership') {
+			// The membership ended or changed: nothing is marked, and the room
+			// re-reads what this account may see now.
+			await social.invalidate();
+		}
+		return result;
+	}
+
 	// --- lifecycle ---------------------------------------------------------------
 
 	const unregister = social.registerResource({
@@ -443,10 +593,11 @@ export function createMessageState({
 			if (mode === 'clear') {
 				unreadRevision += 1;
 				state.unreadCount = null;
+				state.groupUnreadCount = null;
 				state.unreadStatus = 'idle';
 				return Promise.resolve();
 			}
-			return loadUnread();
+			return Promise.all([loadUnread(), refreshMemberships()]);
 		},
 	});
 
@@ -486,11 +637,15 @@ export function createMessageState({
 		removeAttachment,
 		outbox: (userId) => state.outbox[userId] ?? [],
 		send,
+		sendRoom,
 		retry,
 		discard,
 		acknowledge,
 		forget,
+		confirmRoom,
 		markRead,
+		markRoomRead,
+		totalUnread,
 		refreshUnread: loadUnread,
 		dispose,
 	};

@@ -1,4 +1,4 @@
-/* SN-A19 private messages. Reuses the social view, button, badge and form
+/* SN-A19 private messages and SN-A20 group chat. Reuses the social view, button, badge and form
    patterns; only the conversation arrangement lives here. The message
    indicator is intentionally a different shape and colour from the
    notification badge (a coral square, not an ink circle). */
@@ -449,6 +449,29 @@
 .emoji-picker__item:focus-visible {
 	border-color: var(--ink);
 	background: var(--paper-bright);
+}
+
+/* SN-A20 group rooms. The room reuses the conversation thread and composer; the
+   group navigation carries a small unread count on its Chat tab, and the
+   message list shows the group's rooms below the private conversations. */
+.room-view .group-nav {
+	margin-bottom: 1rem;
+}
+
+.group-nav__unread {
+	margin-left: 0.45rem;
+	min-width: 1.4rem;
+	padding: 0.05rem 0.35rem;
+	font-size: 0.72rem;
+}
+
+.room-roster {
+	margin-top: 2.5rem;
+}
+
+.room-roster h2 {
+	margin: 0 0 0.25rem;
+	overflow-wrap: anywhere;
 }
 
 @media (max-width: 520px) {

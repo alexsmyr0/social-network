@@ -1,6 +1,13 @@
 import { IMAGE_MAX_BYTES, IMAGE_TYPES, normalizeText } from '../content/content-utils.js';
 
 export const MESSAGE_MAX = 2000;
+
+// Drafts, pending messages and chains are kept per conversation. A private
+// conversation is keyed by the partner's account ID; a group room by this key,
+// which can never equal a number.
+export function roomKey(groupId) {
+	return `room-${groupId}`;
+}
 export { IMAGE_MAX_BYTES, IMAGE_TYPES };
 
 // Newline and tab are ordinary message text; every other control character is
@@ -89,6 +96,17 @@ export function lastId(messages) {
 
 export function previewLabel(preview) {
 	return preview === '[image]' ? 'Image' : preview;
+}
+
+const PREVIEW_MAX = 200;
+
+// A room row's last-message line: who wrote it and the start of what they wrote.
+export function roomPreview(room, viewerId) {
+	const last = room.last_message;
+	if (!last) return 'No messages yet.';
+	const who = last.sender_id === viewerId ? 'You' : last.sender_username;
+	const text = [...last.body].slice(0, PREVIEW_MAX).join('');
+	return `${who}: ${text}`;
 }
 
 export function timeLabel(value, { now = Date.now(), timeZone } = {}) {

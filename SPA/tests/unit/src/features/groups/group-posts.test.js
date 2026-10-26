@@ -36,6 +36,7 @@ describe('SN-A16 role-appropriate group posts', () => {
 			['About', '/groups/301'],
 			['Posts', '/groups/301/posts'],
 			['Events', '/groups/301/events'],
+			['Chat', '/groups/301/chat'],
 			['Members', '/groups/301/members'],
 			['Join requests', '/groups/301/requests'],
 		]);

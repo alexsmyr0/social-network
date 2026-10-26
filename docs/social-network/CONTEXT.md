@@ -16,6 +16,7 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 | Understanding the complete delivery scope | [Roadmap](roadmap.md) | Six phases, requirement coverage, open decisions and phase boundaries |
 | Implementing profiles, follows, posts and audiences | [Phase 2–3 decisions](phase-2-3-decisions.md) | Owner-approved privacy, relationship/content behavior, architecture and inherited-feature preservation |
 | Implementing groups and membership | [Phase 4 decisions](phase-4-decisions.md) | Owner-approved discovery, admission/departure, group content and storage |
+| Reviewing group chat, per-group counts and membership-loss handling | [Frontend group chat](frontend-group-chat.md) | SN-A20 Vue room, membership-bound sends, room read marking, Chat tab and Messages-page counts, protected-state lifecycle and fixture-only verification |
 | Reviewing private messages, indicator and live delivery | [Frontend messages](frontend-messages.md) | SN-A19 Vue roster and conversations, retry nonces, mark-read, presence, protected-state lifecycle and fixture-only verification |
 | Reviewing group events, answers and event notices | [Frontend events](frontend-events.md) | SN-A18 Vue journeys, answer concurrency, time-zone handling, protected-state lifecycle and fixture-only verification |
 | Reviewing group-chat rooms, membership-scoped cursors and generation-checked delivery | [Backend group chat](backend-group-chat.md) | SN-B23 migration 10, members-only rooms, retries, cursors, per-session fanout, write-time generation authorization, role matrix and race evidence |
@@ -52,7 +53,11 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 | Selecting or updating implementation work | [Ticket tracker](ticket-tracker.md) | Phase 1–5 status and dependencies for two developers; links to tracks A and B |
 | Creating or reviewing tickets | [Ticket rules](ticket-rules.md) | Compact format, larger Phase 2–4 scope, dependencies and verification; [latest audit](phase-5-ticket-audit.md), [Phase 4 audit](phase-4-ticket-audit.md), [Phase 2–3 audit](phase-2-3-ticket-audit.md), [Phase 1 audit](ticket-audit.md) |
 
-## Current checkpoint — 2026-10-20
+## Current checkpoint — 2026-10-21
+
+- SN-A20 is complete on `chbaikas/A20`, based on merged main `38b0686` (B23 included): [group chat](frontend-group-chat.md) against the approved fixtures. The conforming test model replays all 40 group-room HTTP cases, the 24 room cells of the role matrix, the removal/readmission journey, both removal-versus-send orders and the room delivery cases; the application replays the role matrix, the journey and the race, interaction checks and 9 browser journeys pass, and native `make test` passes (Vitest **2984/2984**, Playwright **92/92**). Frontend-only evidence: no Go, schema or shared-runtime change, and no interface beyond the approved contract. SN-A21 owns real-service acceptance and is the only Phase 5 ticket left.
+
+## Checkpoint — 2026-10-20
 
 - SN-B23 is complete on `asmyrogl/B23`, branched from merged main `5933728` (B22 and A19 included): [group-chat implementation and evidence](backend-group-chat.md) covers migration 10, members-only persisted rooms, membership-scoped read cursors that start at the room's latest message, UUID retries shared by HTTP and sockets, one frame per member session and `group.message`/`chat.ack`/`chat.read` frames authorized against the exact membership generation through the socket write. All 40 room fixtures, the role matrix, the removal/readmission sequence, both race orders and the room delivery cases pass on real sockets, with upgrade, failure, restart, concurrent departure-versus-send and `-race` checks; native `make test` passes (Vitest 2750/2750, Playwright 83/83). Docker, hosted CI and browser acceptance remain unverified; SN-A20 can build on these interfaces and SN-A21 owns real-service acceptance.
 
