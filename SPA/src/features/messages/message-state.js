@@ -12,6 +12,7 @@ import {
 	normalizeBody,
 	roomKey,
 } from './message-utils.js';
+import { findRoom } from './rooms.js';
 
 export const messagesKey = Symbol('commonplace-messages');
 
@@ -108,6 +109,8 @@ export function createMessageState({
 	});
 	const listeners = new Set();
 	const chains = new Map();
+	const memberships = new Map();
+	let membershipRevision = 0;
 	let generation = 0;
 	let owner = null;
 	let unreadRevision = 0;
@@ -138,6 +141,8 @@ export function createMessageState({
 		unreadRevision += 1;
 		unreadQueued = false;
 		chains.clear();
+		memberships.clear();
+		membershipRevision += 1;
 		images.clear();
 		state.unreadCount = null;
 		state.groupUnreadCount = null;
@@ -505,6 +510,35 @@ export function createMessageState({
 		chains.delete(key);
 	}
 
+	// Drafts and pending sends belong to a membership generation even while
+	// its room is unmounted. Only an authoritative room read changes it.
+	function confirmRoom(groupId, membershipId) {
+		const previous = memberships.get(groupId);
+		if (previous === membershipId) return false;
+		if (memberships.has(groupId)) forget(roomKey(groupId));
+		memberships.set(groupId, membershipId);
+		// Only a membership replaced by another one is a "changed" membership;
+		// a first join after being a non-member has nothing to discard.
+		return previous !== undefined && previous !== null;
+	}
+
+	async function refreshMemberships() {
+		if (!owner || !memberships.size) return;
+		const epoch = generation;
+		const mine = ++membershipRevision;
+		const results = await Promise.all(
+			[...memberships.entries()]
+				.filter(([, membershipId]) => membershipId !== null)
+				.map(async ([id, membershipId]) => [id, membershipId, await findRoom(api, id)]),
+		);
+		if (epoch !== generation || mine !== membershipRevision) return;
+		for (const [id, membershipId, result] of results) {
+			// A mounted room may already have confirmed a newer membership.
+			if (memberships.get(id) !== membershipId) continue;
+			if (result.status === 'ok') confirmRoom(id, result.room?.membership_id ?? null);
+		}
+	}
+
 	// --- reading ---------------------------------------------------------------
 
 	async function markRead(userId, throughId) {
@@ -563,7 +597,7 @@ export function createMessageState({
 				state.unreadStatus = 'idle';
 				return Promise.resolve();
 			}
-			return loadUnread();
+			return Promise.all([loadUnread(), refreshMemberships()]);
 		},
 	});
 
@@ -608,6 +642,7 @@ export function createMessageState({
 		discard,
 		acknowledge,
 		forget,
+		confirmRoom,
 		markRead,
 		markRoomRead,
 		totalUnread,

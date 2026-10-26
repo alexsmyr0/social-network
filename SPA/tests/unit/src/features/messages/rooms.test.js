@@ -674,6 +674,32 @@ describe('SN-A20 live delivery and recovery', () => {
 		});
 	}, 30000);
 
+	test('a live frame during the reconnect group read cannot advance the recovery boundary', async () => {
+		const gate = deferred();
+		let hold = false;
+		const app = await mountMessagesApp(ROOM, {
+			before: async (entry) => {
+				if (hold && entry.method === 'GET' && entry.url === '/api/v1/groups/301')
+					await gate.promise;
+			},
+		});
+		seedRoom(app.backend, 35);
+		hold = true;
+		await connect(app);
+		const reply = memberSends(app.backend, 7, 'live during recovery');
+		frame(app, { type: 'group.message', payload: reply.body.data });
+		await settle();
+		expect(messageIds(app.wrapper)).toEqual([801, 802, 803, 839]);
+		hold = false;
+		gate.release();
+		await settle();
+		const expected = Array.from({ length: 39 }, (_, index) => 801 + index);
+		expect(messageIds(app.wrapper)).toEqual(expected);
+		await app.social.refresh();
+		await settle();
+		expect(messageIds(app.wrapper)).toEqual(expected);
+	});
+
 	test('losing the connection says delivery is reconnecting and sending still works', async () => {
 		const app = await mountMessagesApp(ROOM);
 		expect(app.wrapper.find('.message-connection').exists()).toBe(false);
@@ -702,6 +728,92 @@ describe('SN-A20 live delivery and recovery', () => {
 });
 
 describe('SN-A20 membership loss and return', () => {
+	test.each([
+		'/messages',
+		'/people',
+	])('membership ends while %s is open: drafts and failed sends are discarded before readmission', async (path) => {
+		const app = await mountMessagesApp(ROOM, { viewerId: 10 });
+		app.backend.faults.push({ method: 'POST', path: /\/groups\/301\/messages$/u });
+		await submit(app.wrapper, 'failed under old membership');
+		await settle();
+		expect(app.messages.outbox('room-301')).toHaveLength(1);
+		await type(app.wrapper, 'old draft');
+		await app.router.push(path);
+		await settle();
+		// Ordinary navigation preserves a draft in the same membership.
+		expect(app.messages.draft('room-301').body).toBe('old draft');
+		app.backend.removeMember(301, 10);
+		app.backend.signal('social.invalidate', [10]);
+		await deliverFrames(app);
+		expect(app.messages.draft('room-301')).toBeNull();
+		expect(app.messages.outbox('room-301')).toEqual([]);
+		app.backend.admit(301, 10, []);
+		app.backend.signal('social.invalidate', [10]);
+		await deliverFrames(app);
+		await app.router.push(ROOM);
+		await settle();
+		expect(app.wrapper.get('#message-body').element.value).toBe('');
+		expect(pending(app.wrapper)).toHaveLength(0);
+	});
+
+	test('a removal and readmission missed off-room still discards the old membership draft', async () => {
+		const app = await mountMessagesApp(ROOM, { viewerId: 10 });
+		await type(app.wrapper, 'old generation');
+		await app.router.push('/messages');
+		await settle();
+		app.backend.removeMember(301, 10);
+		app.backend.admit(301, 10, []);
+		app.backend.signals = [];
+		// No intervening non-member response, even when reopening directly.
+		await app.router.push(ROOM);
+		await settle();
+		expect(app.wrapper.get('#message-body').element.value).toBe('');
+		expect(pending(app.wrapper)).toHaveLength(0);
+	});
+
+	test('a changed membership off-room clears in-flight and queued sends and ignores a late reply', async () => {
+		const gate = deferred();
+		let hold = false;
+		const app = await mountMessagesApp(ROOM, {
+			viewerId: 10,
+			after: async (entry) => {
+				if (hold && entry.method === 'POST' && /\/groups\/301\/messages$/u.test(entry.url)) {
+					app.backend.signals = [];
+					await gate.promise;
+				}
+			},
+		});
+		await app.router.push('/people');
+		await settle();
+		hold = true;
+		for (const body of ['committed but reply delayed', 'queued under old membership']) {
+			app.messages.setBody('room-301', body);
+			app.messages.sendRoom(301, 504);
+		}
+		app.messages.setBody('room-301', 'old draft');
+		await settle();
+		expect(app.messages.outbox('room-301')).toHaveLength(2);
+		app.backend.removeMember(301, 10);
+		app.backend.admit(301, 10, []);
+		app.backend.signal('social.invalidate', [10]);
+		await deliverFrames(app);
+		expect(app.messages.draft('room-301')).toBeNull();
+		expect(app.messages.outbox('room-301')).toEqual([]);
+		const events = [];
+		const unsubscribe = app.messages.subscribe((event) => events.push(event));
+		gate.release();
+		await settle();
+		unsubscribe();
+		expect(events.filter((event) => event.type === 'group-message')).toEqual([]);
+		expect(sendCalls(app.fetchRef)).toHaveLength(1);
+		expect(app.messages.outbox('room-301')).toEqual([]);
+		await app.router.push(ROOM);
+		await settle();
+		expect(app.wrapper.get('#message-body').element.value).toBe('');
+		expect(bodies(app.wrapper)).toContain('committed but reply delayed');
+		expect(bodies(app.wrapper)).not.toContain('queued under old membership');
+	});
+
 	test('removal during an open room clears the room, composer, draft and cached messages', async () => {
 		const backend = new ChatBackend();
 		const app = await mountMessagesApp(ROOM, { backend, viewerId: 10 });
@@ -758,6 +870,8 @@ describe('SN-A20 membership loss and return', () => {
 		await deliverFrames(app);
 		// The whole room is readable; nothing earlier counts as unread.
 		expect(messageIds(app.wrapper)).toEqual([801, 802, 803, 804]);
+		// A confirmed non-member who joins has nothing discarded to explain.
+		expect(app.wrapper.find('[data-testid="room-notice"]').exists()).toBe(false);
 		expect(indicator(app.wrapper).get('.message-badge').text()).toBe('0');
 		expect(readCalls(app.fetchRef)).toHaveLength(0);
 		await submit(app.wrapper, 'back again');

@@ -40,10 +40,14 @@ export function useRoom(groupId) {
 	const notice = ref('');
 	const older = reactive({ hasMore: false, nextBeforeId: null, loading: false, failed: false });
 	let epoch = 0;
+	// Only successful history recovery advances this boundary. Live frames and
+	// send responses may arrive beyond a gap that has not been fetched yet.
+	let recoveredThrough = 0;
 
 	function clearMessages() {
 		epoch += 1;
 		loaded.value = [];
+		recoveredThrough = 0;
 		entry.value = null;
 		readThrough.value = 0;
 		older.hasMore = false;
@@ -63,7 +67,7 @@ export function useRoom(groupId) {
 	async function loadRoom(id, found) {
 		const api = messages.api;
 		const [history, room] = await Promise.all([
-			fetchNewest((options) => api.fetchGroupMessages(id, options), lastId(loaded.value)),
+			fetchNewest((options) => api.fetchGroupMessages(id, options), recoveredThrough),
 			findRoom(api, id),
 		]);
 		if (history.status === 'unauthenticated' || room.status === 'unauthenticated')
@@ -96,18 +100,19 @@ export function useRoom(groupId) {
 	function showNonMember(id, result) {
 		clear();
 		group.value = result.group;
-		if (id) messages.forget(roomKey(id));
+		if (id) messages.confirmRoom(id, null);
 	}
 
 	function showRoom(id, result) {
-		if (entry.value && entry.value.membership_id !== result.room.membership_id) {
+		const changed = messages.confirmRoom(id, result.room.membership_id);
+		if (changed || (entry.value && entry.value.membership_id !== result.room.membership_id)) {
 			// Left and readmitted between two reads: a fresh room, not the old one.
 			// Anything written under the old membership is not carried over.
 			clearMessages();
-			if (id) messages.forget(roomKey(id));
 			notice.value = REJOINED;
 		}
 		const wasEmpty = loaded.value.length === 0;
+		recoveredThrough = lastId(result.history.messages);
 		loaded.value = mergeMessages(loaded.value, result.history.messages);
 		if (wasEmpty) {
 			older.hasMore = result.history.hasMore;
@@ -124,7 +129,7 @@ export function useRoom(groupId) {
 		if (status !== 'ready' || !result) {
 			if (status === 'loading') return;
 			clear();
-			if (status === 'not-found' && id) messages.forget(roomKey(id));
+			if (status === 'not-found' && id) messages.confirmRoom(id, null);
 		} else if (result.room) showRoom(id, result);
 		else showNonMember(id, result);
 	});
