@@ -1,6 +1,6 @@
 # Phase 5 integrated acceptance — SN-A21
 
-Implementation on `chbaikas/A21`, based on merged main `c5c5a75` (A18–A20 and B21–B23 included). The [events and messaging contract](events-chat-contract.md), its [fixture pack](fixtures/phase-5-contract.json), the [Phase 5 data plan](phase-5-data-plan.md) and the [Phase 5 decisions](phase-5-decisions.md) control expectations. Status lives in the [tracker](ticket-tracker.md). The local gate passed on the working tree described below. **The hosted gate has not run**: it needs this branch pushed and a pull request, which this record does not claim, so the ticket stays in progress until a hosted `make check` passes.
+Implementation on `chbaikas/A21`, based on merged main `c5c5a75` (A18–A20 and B21–B23 included). The [events and messaging contract](events-chat-contract.md), its [fixture pack](fixtures/phase-5-contract.json), the [Phase 5 data plan](phase-5-data-plan.md) and the [Phase 5 decisions](phase-5-decisions.md) control expectations. Status lives in the [tracker](ticket-tracker.md). The local gate passed on the working tree described below. The [hosted `make check`](https://github.com/alexsmyr0/social-network/actions/runs/40474224410) passed on PR #45 (merge ref of implementation `17f42f48df475877e37265f34278becf879750c1`).
 
 ## Execution boundary
 
@@ -58,11 +58,11 @@ One earlier full run reported native Playwright 91/92: `a03-shell` "completes re
 
 Mutation checks (temporary edits to application code, reverted and not committed) confirmed the journeys can fail: sending the creator an event notice fails the events journey; forcing live delivery in only the commit-time predicate does **not** fail the messages journeys because the same predicate is rechecked at the socket write, and forcing it in both layers fails three of the five.
 
-Hosted verification: see the pull request's `make check` run. It needs this branch pushed and a pull request; until a hosted `make check` passes, the ticket stays in progress.
+Hosted verification: [hosted `make check`](https://github.com/alexsmyr0/social-network/actions/runs/40474224410) passed on 2026-10-27 with Vitest **2989/2989** (107 files), native Playwright **92/92**, both image builds, backend and media smoke, integration Playwright **50/50**, outage handling, and the upgrade check (seed 1/1, verify 1/1) including the shallow-checkout fetch of the pinned legacy revision. No retries. It needs this branch pushed and a pull request; until a hosted `make check` passes, the ticket stays in progress.
 
 ## Boundaries and gaps
 
-- **Hosted gate pending.** The ticket's external gate needs a hosted `make check` on a pushed branch. CI uses a shallow checkout; `scripts/test-upgrade.sh` fetches the pinned revision by SHA when it is missing, so no workflow change was made (B owns CI). That fetch path is exercised only on a hosted run.
+- The hosted run used a shallow checkout; `scripts/test-upgrade.sh` fetched the pinned revision by SHA there, so no workflow change was needed (B owns CI).
 - One upgrade source: the Phase 4 head (schema 7), which carries data created under Phases 1–4. Older heads (schema 1–6) and migration failure injection are covered by the Go migration suites ([migrations](backend-migrations.md), [content and media](backend-content-media.md#upgrade-and-recovery-handoff), B21–B23 records), not re-run through images here.
 - The legacy frontend image is not rebuilt: the frontend stores no data, and the legacy phase uses the current frontend as a proxy in front of the legacy backend.
 - Group-chat images, event editing/cancellation and blocking are outside the approved Phase 5 boundary and are asserted absent (no room image control, `405` on event mutation). Phase 6 final delivery is not started and nothing here is Phase 6 evidence.
