@@ -53,7 +53,11 @@ Build the Zone01 Facebook-like social network, using reusable parts of real-time
 | Selecting or updating implementation work | [Ticket tracker](ticket-tracker.md) | Phase 1–5 status and dependencies for two developers; links to tracks A and B |
 | Creating or reviewing tickets | [Ticket rules](ticket-rules.md) | Compact format, larger Phase 2–4 scope, dependencies and verification; [latest audit](phase-5-ticket-audit.md), [Phase 4 audit](phase-4-ticket-audit.md), [Phase 2–3 audit](phase-2-3-ticket-audit.md), [Phase 1 audit](ticket-audit.md) |
 
-## Current checkpoint — 2026-10-21
+## Current checkpoint — 2026-10-26
+
+- SN-A21 is implemented on `chbaikas/A21` (base `c5c5a75`, A18–A20 and B21–B23 included): [real-service Phase 5 acceptance](phase-5-acceptance.md) through both images. 13 journeys cover event creation, notices and responses, the private-message delivery matrix with live versus stored delivery, relationship revocation, images, retries and cursors, members-only group rooms with removal and readmission, offline and dropped-socket recovery, permissions that never widen each other, container recreation and keyboard/360px/desktop; a separate upgrade check seeds earlier-phase data through the last Phase 4 backend image and verifies it, its permissions and its media bytes under the current images. Local `make check` exits 0 (Vitest 2989/2989, native 92/92, integration 50/50). No application code changed. **Hosted gate pending**, so SN-A21 is not yet complete; Phase 6 is not started.
+
+## Checkpoint — 2026-10-21
 
 - SN-A20 is complete on `chbaikas/A20`, based on merged main `38b0686` (B23 included): [group chat](frontend-group-chat.md) against the approved fixtures. The conforming test model replays all 40 group-room HTTP cases, the 24 room cells of the role matrix, the removal/readmission journey, both removal-versus-send orders and the room delivery cases; the application replays the role matrix, the journey and the race, interaction checks and 9 browser journeys pass, and native `make test` passes (Vitest **2984/2984**, Playwright **92/92**). Frontend-only evidence: no Go, schema or shared-runtime change, and no interface beyond the approved contract. SN-A21 owns real-service acceptance and is the only Phase 5 ticket left.
 
