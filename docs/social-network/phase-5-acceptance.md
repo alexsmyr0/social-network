@@ -56,7 +56,9 @@ Focused runs passed: `make test-browser PLAYWRIGHT_ARGS=a21` 13/13 (events 1, pr
 
 One earlier full run reported native Playwright 91/92: `a03-shell` "completes registration against a contract fixture on desktop" timed out once on a fixture-only page (no stack, no A21 file). It passed 27/27 in each of three isolated repeat runs, and in the full runs before and after; it is recorded rather than hidden, and the passing run above is the gate result.
 
-Hosted verification: not run. It needs this branch pushed and a pull request; until a hosted `make check` passes, the ticket stays in progress.
+Mutation checks (temporary edits to application code, reverted and not committed) confirmed the journeys can fail: sending the creator an event notice fails the events journey; forcing live delivery in only the commit-time predicate does **not** fail the messages journeys because the same predicate is rechecked at the socket write, and forcing it in both layers fails three of the five.
+
+Hosted verification: see the pull request's `make check` run. It needs this branch pushed and a pull request; until a hosted `make check` passes, the ticket stays in progress.
 
 ## Boundaries and gaps
 
