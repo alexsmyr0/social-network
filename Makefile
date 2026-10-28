@@ -150,6 +150,12 @@ test-images: stack-build
 	@./scripts/smoke-backend-image.sh social-network-backend
 	@./scripts/smoke-media-images.sh social-network-backend social-network-frontend
 	@$(MAKE) test-browser
+	@$(MAKE) test-upgrade
+
+# SN-A21: seeds earlier-phase data through the last pre-Phase-5 backend image,
+# then runs the current images on that volume. Needs images from stack-build.
+test-upgrade:
+	@./scripts/test-upgrade.sh
 
 
 format: format-backend format-frontend
@@ -276,5 +282,5 @@ stack-ps:
 	docker compose ps
 
 .PHONY: build build-assets build-backend build-frontend test check lint fmt-check vet \
-	test-backend test-race test-race-all test-frontend test-e2e test-browser test-images \
+	test-backend test-race test-race-all test-frontend test-e2e test-browser test-images test-upgrade \
 	deps deps-backend deps-frontend stack-build stack-up stack-down stack-logs stack-ps

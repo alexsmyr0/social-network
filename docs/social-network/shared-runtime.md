@@ -58,6 +58,8 @@ make test-e2e PLAYWRIGHT_ARGS='b07-transport.test.js'
 
 CI runs `make check` on main pushes, pull requests to main, and this resubmission's `asmyrogl/B07-resubmit` pushes; manual dispatch is also available. A fresh hosted checkout installs locked dependencies and Chromium system libraries. Browser reports/traces are uploaded for failed jobs with seven-day retention; stack logs print before cleanup. CI builds locally inside its runner and publishes no images. Access/run failures remain visible in the tracker; this ticket never rewrites history or bypasses protection.
 
+SN-A21 extends the hook without replacing it: `playwright.integration.config.ts` also matches `a21-*.test.js` (shared helpers live in `SPA/tests/e2e/support/real-service.js`), and `make test-upgrade` (also run by `make test-images`) is a second isolated stack with its own `sn-b07-test-*` project and volume. [`scripts/test-upgrade.sh`](../../scripts/test-upgrade.sh) builds the backend image of a pinned earlier revision with `git archive` (default: the last Phase 4 revision, schema 7; override with `LEGACY_REV`, fetched by SHA when a shallow clone lacks it), seeds data through that image's own HTTP and WebSocket interfaces (`playwright.upgrade.config.ts`, `A21_PHASE=seed`), recreates both containers from the current images on the same volume and verifies it (`A21_PHASE=verify`). No SQL touches the volume. See the [Phase 5 acceptance record](phase-5-acceptance.md).
+
 Compose startup follows [Docker's health-dependent ordering](https://docs.docker.com/compose/how-tos/startup-order/); native process lifecycle uses [Playwright web servers](https://playwright.dev/docs/test-webserver).
 
 ## Verification record

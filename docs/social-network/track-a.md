@@ -533,7 +533,7 @@ Work:
 - Extend the shared browser hook with followers, mutual follows, public and private recipients, strangers, and group creator, member, removed and outsider accounts. Exercise event creation, notices and responses and live DM and group chat across separate browser sessions.
 - Change relationships and membership (unfollow, refollow, profile toggle, leave, remove, readmit) and verify sending, history, images, events, notices and indicators follow current permissions, including offline sending.
 - Recreate containers with retained data and media, upgrade earlier-phase data, and verify messages, events, cursors, notices, image bytes and session cleanup alongside preserved DM image, presence and history journeys.
-- Write planned `phase-5-acceptance.md` with commands, revisions, hosted links and failure evidence; update tracker and context only from passing results.
+- Write [`phase-5-acceptance.md`](phase-5-acceptance.md) with commands, revisions, hosted links and failure evidence; update tracker and context only from passing results.
 
 Verification Gate:
 
