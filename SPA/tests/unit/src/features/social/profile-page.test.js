@@ -254,6 +254,51 @@ describe('name-only teasers', () => {
 	});
 });
 
+// The profile knows only the viewer's own follow; a follow the other way still
+// opens a conversation, which the message roster reports.
+describe('message link', () => {
+	const rosterWith = (entries) => ({
+		totalUnread: () => 0,
+		api: {
+			fetchRoster: vi.fn(async () => ({
+				status: 'ok',
+				entries,
+				pagination: { page: 1, per_page: 50, total: entries.length, total_pages: 1 },
+			})),
+		},
+	});
+
+	test('someone who follows the viewer can be messaged from their profile', async () => {
+		const backend = new FixtureBackend({ follows: [accepted(301, 42, 7)] });
+		const messages = rosterWith([{ user_id: 42, can_send: true }]);
+		const { wrapper } = await mountSocialApp('/users/42', { backend, messages });
+		await settle();
+
+		expect(wrapper.get('.profile-head__message').text()).toContain('Message Alex Example');
+		expect(wrapper.get('.profile-head__message').attributes('href')).toBe('/messages/42');
+		expect(messages.api.fetchRoster).toHaveBeenCalled();
+	});
+
+	test('a stranger has no message link', async () => {
+		const backend = new FixtureBackend();
+		const messages = rosterWith([]);
+		const { wrapper } = await mountSocialApp('/users/42', { backend, messages });
+		await settle();
+
+		expect(wrapper.find('.profile-head__message').exists()).toBe(false);
+	});
+
+	test('a followed profile links to messages without a roster lookup', async () => {
+		const backend = new FixtureBackend({ follows: [accepted(201, 7, 42)] });
+		const messages = rosterWith([]);
+		const { wrapper } = await mountSocialApp('/users/42', { backend, messages });
+		await settle();
+
+		expect(wrapper.get('.profile-head__message').attributes('href')).toBe('/messages/42');
+		expect(messages.api.fetchRoster).not.toHaveBeenCalled();
+	});
+});
+
 describe('routes and failures', () => {
 	test('a missing or inactive profile is reported without details', async () => {
 		const backend = new FixtureBackend();

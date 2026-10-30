@@ -11,7 +11,7 @@ import { lastId, mergeMessages } from './message-utils.js';
 // Finds the roster row for one partner. The roster is the only source of
 // "may I still write to them" and of the name of someone with no history, so a
 // partner outside the first page is looked for page by page.
-async function findRosterEntry(api, userId) {
+export async function findRosterEntry(api, userId) {
 	let page = 1;
 	for (;;) {
 		const result = await api.fetchRoster({ page, perPage: ROSTER_PAGE });

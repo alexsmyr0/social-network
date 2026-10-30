@@ -235,12 +235,23 @@ describe('SN-A19 conversation access', () => {
 		expect(messageIds(wrapper)).toEqual([503, 504]);
 	});
 
-	test('a message without a partner profile link still shows the profile entry point', async () => {
+	test('a profile links to messages when either person follows the other', async () => {
+		// Alex follows Ada.
 		const accepted = await mountMessagesApp('/users/7');
 		expect(accepted.wrapper.find('a[href="/messages/7"]').exists()).toBe(true);
 		cleanupMounted();
-		const none = await mountMessagesApp('/users/10');
-		expect(none.wrapper.find('a[href="/messages/10"]').exists()).toBe(false);
+		// Lee follows Alex, who does not follow back: Alex may still write.
+		const incoming = await mountMessagesApp('/users/10');
+		await settle();
+		expect(incoming.wrapper.find('a[href="/messages/10"]').exists()).toBe(true);
+		cleanupMounted();
+		// Sam has only a pending request; Pat is a stranger.
+		for (const id of [8, 9]) {
+			const none = await mountMessagesApp(`/users/${id}`);
+			await settle();
+			expect(none.wrapper.find(`a[href="/messages/${id}"]`).exists()).toBe(false);
+			cleanupMounted();
+		}
 	});
 });
 

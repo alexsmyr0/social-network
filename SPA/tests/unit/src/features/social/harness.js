@@ -5,6 +5,7 @@ import { createMemoryHistory } from 'vue-router';
 import App from '../../../../../src/app/App.vue';
 import { createAppRouter } from '../../../../../src/app/router.js';
 import { createSessionState, sessionKey } from '../../../../../src/features/auth/session-state.js';
+import { messagesKey } from '../../../../../src/features/messages/message-state.js';
 import {
 	createNotificationState,
 	notificationsKey,
@@ -30,7 +31,7 @@ export function cleanupMounted() {
 // Mounts the real shell and router against the stateful contract model. The
 // session lookup, social reads and writes all go through the same stubbed
 // fetch, so 401 handling and redirects behave as they would in the browser.
-export async function mountSocialApp(path, { backend, viewerId = 7, before } = {}) {
+export async function mountSocialApp(path, { backend, viewerId = 7, before, messages } = {}) {
 	const current = { viewerId };
 	const fetchRef = createFixtureFetch(backend, { viewer: () => current.viewerId, before });
 	vi.stubGlobal('fetch', fetchRef);
@@ -55,7 +56,12 @@ export async function mountSocialApp(path, { backend, viewerId = 7, before } = {
 		attachTo: document.body,
 		global: {
 			plugins: [router],
-			provide: { [sessionKey]: session, [socialKey]: social, [notificationsKey]: notifications },
+			provide: {
+				[sessionKey]: session,
+				[socialKey]: social,
+				[notificationsKey]: notifications,
+				...(messages ? { [messagesKey]: messages } : {}),
+			},
 		},
 	});
 	mounted.push(wrapper);

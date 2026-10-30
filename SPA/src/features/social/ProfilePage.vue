@@ -1,9 +1,11 @@
 <script setup>
-import { computed, inject } from 'vue';
+import { computed, inject, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 // biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
 import ActivityPanel from '../content/ActivityPanel.vue';
+import { messagesKey } from '../messages/message-state.js';
+import { findRosterEntry } from '../messages/use-thread.js';
 // biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
 import FollowControl from './FollowControl.vue';
 // biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
@@ -25,6 +27,27 @@ const { status, result, reload } = useSocialResource(
 );
 
 const subject = computed(() => result.value?.profile ?? null);
+
+// A conversation is open when either person follows the other. The profile
+// only says whether the viewer follows the subject, so the other direction is
+// read from the message roster, which marks who the viewer may write to.
+const messages = inject(messagesKey, null);
+const rosterCanSend = ref(false);
+watch(
+	() => [subject.value?.id, subject.value?.relationship.state],
+	async ([id, state]) => {
+		rosterCanSend.value = false;
+		if (!id || !messages || state === 'self' || state === 'accepted') return;
+		const lookup = await findRosterEntry(messages.api, id);
+		if (subject.value?.id !== id || subject.value?.relationship.state !== state) return;
+		rosterCanSend.value = lookup.status === 'ok' && Boolean(lookup.entry?.can_send);
+	},
+	{ immediate: true },
+);
+// biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
+const canMessage = computed(
+	() => subject.value?.relationship.state === 'accepted' || rosterCanSend.value,
+);
 const full = computed(() => subject.value?.access === 'full');
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 const owner = computed(() => subject.value?.relationship.state === 'self');
@@ -71,7 +94,7 @@ const details = computed(() => {
 					<p v-else class="profile-head__visibility">
 						<span class="badge badge--private">Private profile</span>
 					</p>
-					<RouterLink v-if="subject.relationship.state === 'accepted'" class="text-link profile-head__message" :to="{ name: 'conversation', params: { id: subject.id } }">Message {{ subject.display_name }} <span aria-hidden="true">→</span></RouterLink>
+					<RouterLink v-if="canMessage" class="text-link profile-head__message" :to="{ name: 'conversation', params: { id: subject.id } }">Message {{ subject.display_name }} <span aria-hidden="true">→</span></RouterLink>
 				</div>
 				<FollowControl :person="subject" />
 			</header>
