@@ -1,6 +1,8 @@
 <script setup>
 import { computed, inject, nextTick, ref } from 'vue';
 
+// biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
+import ConfirmDialog from '../../components/ConfirmDialog.vue';
 import { socialKey } from './social-state.js';
 
 const props = defineProps({
@@ -10,7 +12,6 @@ const props = defineProps({
 const social = inject(socialKey);
 const confirming = ref(false);
 const toggle = ref(null);
-const confirmGroup = ref(null);
 const isPrivate = computed(() => props.profile.visibility === 'private');
 const pending = computed(() => social.state.privacyPending);
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
@@ -22,31 +23,24 @@ async function closeConfirm() {
 	toggle.value?.focus();
 }
 
-async function submit(visibility) {
-	await social.changePrivacy({ visibility, expectedVersion: props.profile.version });
-	if (confirming.value) await closeConfirm();
-}
-
+// Both directions ask first: going public shows details to everyone and
+// accepts pending requests; going private hides them from non-followers.
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 function choose() {
-	if (pending.value) return;
-	if (isPrivate.value) {
-		confirming.value = true;
-		void nextTick().then(() => confirmGroup.value?.focus());
-		return;
-	}
-	void submit('private');
+	if (!pending.value) confirming.value = true;
 }
 
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
-function keepPrivate() {
+function keepAsIs() {
 	if (!pending.value) void closeConfirm();
 }
 
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
-function confirmPublic() {
+async function confirmChange() {
 	if (pending.value) return;
-	void submit('public');
+	const visibility = isPrivate.value ? 'public' : 'private';
+	await social.changePrivacy({ visibility, expectedVersion: props.profile.version });
+	if (confirming.value) await closeConfirm();
 }
 </script>
 
@@ -63,19 +57,32 @@ function confirmPublic() {
 			Anyone signed in can see your details. Making it private keeps current followers; new followers will need your approval.
 		</p>
 
-		<div v-if="confirming" ref="confirmGroup" class="privacy-control__confirm" role="group" aria-labelledby="privacy-confirm-title" tabindex="-1">
-			<h3 id="privacy-confirm-title">Make your profile public?</h3>
-			<p>Every signed-in person will be able to see your details. Any pending follow requests will be accepted automatically.</p>
-			<div class="privacy-control__actions">
-				<button class="button button--primary" type="button" :aria-disabled="pending" :aria-busy="pending" @click="confirmPublic">
-					{{ pending ? 'Saving…' : 'Make public and accept requests' }}
-				</button>
-				<button class="button button--secondary" type="button" :aria-disabled="pending" @click="keepPrivate">Keep private</button>
-			</div>
-		</div>
-		<button v-else ref="toggle" class="button button--secondary" type="button" :aria-disabled="pending" :aria-busy="pending" @click="choose">
+		<button ref="toggle" class="button button--secondary" type="button" :aria-disabled="pending" :aria-busy="pending" @click="choose">
 			{{ pending ? 'Saving…' : isPrivate ? 'Make profile public' : 'Make profile private' }}
 		</button>
+
+		<ConfirmDialog
+			v-if="confirming && isPrivate"
+			title="Make your profile public?"
+			confirm-label="Make public and accept requests"
+			cancel-label="Keep private"
+			:busy="pending"
+			@confirm="confirmChange"
+			@cancel="keepAsIs"
+		>
+			<p>Every signed-in person will be able to see your details. Any pending follow requests will be accepted automatically.</p>
+		</ConfirmDialog>
+		<ConfirmDialog
+			v-else-if="confirming"
+			title="Make your profile private?"
+			confirm-label="Make private"
+			cancel-label="Keep public"
+			:busy="pending"
+			@confirm="confirmChange"
+			@cancel="keepAsIs"
+		>
+			<p>Only you and your current followers will see your details. New followers will need your approval.</p>
+		</ConfirmDialog>
 
 		<p class="privacy-control__message" aria-live="polite">{{ message }}</p>
 	</section>

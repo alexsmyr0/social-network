@@ -115,6 +115,9 @@ test.describe('SN-A09 people, profiles and follow controls (fixture-backed)', ()
 		await expect(page.locator('.avatar img')).toHaveAttribute('src', '/api/v1/users/42/avatar');
 
 		await page.getByRole('button', { name: 'Unfollow Alex Example' }).click();
+		const confirm = page.getByRole('dialog', { name: 'Unfollow Alex Example?' });
+		await expect(confirm.getByRole('button', { name: 'Keep following' })).toBeFocused();
+		await confirm.getByRole('button', { name: 'Unfollow', exact: true }).click();
 		await expect(page.locator('[data-state="teaser"]')).toBeVisible();
 		await expect(page.locator('main')).not.toContainText('alex@example.com');
 		await expect(page.locator('.avatar img')).toHaveCount(0);
@@ -137,7 +140,7 @@ test.describe('SN-A09 people, profiles and follow controls (fixture-backed)', ()
 		const make = page.getByRole('button', { name: 'Make profile public' });
 		await make.focus();
 		await page.keyboard.press('Enter');
-		await expect(page.getByRole('group', { name: 'Make your profile public?' })).toContainText(
+		await expect(page.getByRole('dialog', { name: 'Make your profile public?' })).toContainText(
 			'accepted automatically',
 		);
 		expect(backend.users.get(42).visibility).toBe('private');

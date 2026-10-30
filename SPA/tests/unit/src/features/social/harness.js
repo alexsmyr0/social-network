@@ -69,6 +69,11 @@ export async function mountSocialApp(path, { backend, viewerId = 7, before, mess
 	return { wrapper, router, session, social, fetchRef, current, backend, notifications };
 }
 
+// Accepts the open confirmation dialog, as a person pressing its main button.
+export async function confirmDialog(wrapper) {
+	await wrapper.get('.confirm-dialog .button--primary').trigger('click');
+}
+
 export function socialCalls(fetchRef, { method } = {}) {
 	return fetchRef.calls.filter(
 		(call) =>
