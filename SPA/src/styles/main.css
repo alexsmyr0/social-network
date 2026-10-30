@@ -142,8 +142,13 @@ button {
 }
 
 .site-nav {
+	/* Shrinks and wraps rather than pushing Sign out past the edge when a long
+	   name or wide fonts make the links wider than the header. */
+	min-width: 0;
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
+	justify-content: flex-end;
 	gap: clamp(0.2rem, 1.1vw, 1.1rem);
 	font-size: 0.92rem;
 	font-weight: 600;
