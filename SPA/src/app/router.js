@@ -214,8 +214,9 @@ export function createAppRouter(history = createWebHistory(), session) {
 	if (session) {
 		router.beforeEach(async (to) => {
 			// Recheck a cached account before route changes. Another tab may have
-			// revoked the shared cookie since the previous lookup.
-			await session.restore({ force: session.state.status === 'authenticated' });
+			// revoked the shared cookie since the previous lookup. The recheck is
+			// quiet, so the signed-in shell does not flash while it runs.
+			await session.restore({ force: session.state.status === 'authenticated', quiet: true });
 			const status = session.state.status;
 			if (to.meta.publicOnly && status === 'authenticated') {
 				return safeReturnPath(to.query.redirect);
