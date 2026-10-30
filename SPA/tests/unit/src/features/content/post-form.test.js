@@ -122,12 +122,12 @@ describe('creating posts', () => {
 		form.body = 'Text';
 		expect(chooseImage(form, new File(['x'], 'a.webp', { type: 'image/webp' }))).toBe(false);
 		expect(form.errors.image).toMatch(/JPEG, PNG or GIF/u);
-		const big = new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'big.png', { type: 'image/png' });
+		const big = new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'big.png', { type: 'image/png' });
 		expect(chooseImage(form, big)).toBe(false);
-		expect(form.errors.image).toMatch(/5 MiB/u);
+		expect(form.errors.image).toMatch(/10 MiB/u);
 		expect(form.image).toBeNull();
 		expect(validateForm(form, { publishing: true, eligibleIds: [] })).toBe(true);
-		expect(form.errors.image).toMatch(/5 MiB/u);
+		expect(form.errors.image).toMatch(/10 MiB/u);
 	});
 
 	test('selected audiences need current followers and at least one recipient to publish', () => {

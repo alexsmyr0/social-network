@@ -21,7 +21,20 @@ import (
 	"github.com/google/uuid"
 )
 
-const avatarMaxBytes = 5 << 20
+// Upload bounds shared by avatars, post/comment images and DM images. The pixel
+// caps bound decoding work: still images are fully decoded, and GIF frames are
+// budgeted at the full canvas size before decoding.
+const (
+	imageMaxBytes    = 10 << 20
+	imageMaxSide     = 8192
+	imageMaxPixels   = 40_000_000
+	gifMaxFrames     = 500
+	gifMaxCanvasArea = 128_000_000
+
+	// registrationMaxBytes bounds a registration multipart request: one avatar
+	// plus text fields and multipart framing.
+	registrationMaxBytes = imageMaxBytes + 1<<20
+)
 
 func invalidAvatar() *APIError {
 	err := NewError("INVALID_AVATAR", "invalid avatar", http.StatusUnprocessableEntity)
@@ -30,7 +43,7 @@ func invalidAvatar() *APIError {
 }
 
 func readAvatar(file *multipart.FileHeader) ([]byte, string, *APIError) {
-	if file.Size > avatarMaxBytes {
+	if file.Size > imageMaxBytes {
 		return nil, "", NewError("PAYLOAD_TOO_LARGE", "avatar is too large", http.StatusRequestEntityTooLarge)
 	}
 	f, err := file.Open()
@@ -38,18 +51,19 @@ func readAvatar(file *multipart.FileHeader) ([]byte, string, *APIError) {
 		return nil, "", invalidAvatar()
 	}
 	defer f.Close()
-	data, err := io.ReadAll(io.LimitReader(f, avatarMaxBytes+1))
+	data, err := io.ReadAll(io.LimitReader(f, imageMaxBytes+1))
 	if err != nil {
 		return nil, "", invalidAvatar()
 	}
-	if len(data) > avatarMaxBytes {
+	if len(data) > imageMaxBytes {
 		return nil, "", NewError("PAYLOAD_TOO_LARGE", "avatar is too large", http.StatusRequestEntityTooLarge)
 	}
 	if len(data) == 0 {
 		return nil, "", invalidAvatar()
 	}
 	config, format, err := image.DecodeConfig(bytes.NewReader(data))
-	if err != nil || config.Width < 1 || config.Height < 1 || config.Width > 4096 || config.Height > 4096 {
+	if err != nil || config.Width < 1 || config.Height < 1 || config.Width > imageMaxSide || config.Height > imageMaxSide ||
+		config.Width*config.Height > imageMaxPixels {
 		return nil, "", invalidAvatar()
 	}
 	types := map[string]string{"jpeg": "image/jpeg", "png": "image/png", "gif": "image/gif"}
@@ -117,7 +131,7 @@ func gifBudgetOK(data []byte, width, height int) bool {
 				return false
 			}
 			frames++
-			if frames > 100 || uint64(frames)*uint64(width)*uint64(height) > 64_000_000 {
+			if frames > gifMaxFrames || uint64(frames)*uint64(width)*uint64(height) > gifMaxCanvasArea {
 				return false
 			}
 			packed := data[i+9]

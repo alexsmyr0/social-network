@@ -142,8 +142,13 @@ button {
 }
 
 .site-nav {
+	/* Shrinks and wraps rather than pushing Sign out past the edge when a long
+	   name or wide fonts make the links wider than the header. */
+	min-width: 0;
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
+	justify-content: flex-end;
 	gap: clamp(0.2rem, 1.1vw, 1.1rem);
 	font-size: 0.92rem;
 	font-weight: 600;
@@ -854,5 +859,58 @@ h2 {
 		transition-duration: 0.01ms;
 		animation-duration: 0.01ms;
 		animation-iteration-count: 1;
+	}
+}
+
+/* Modal confirmation (ConfirmDialog.vue). */
+.confirm-dialog {
+	width: min(32rem, calc(100vw - 2rem));
+	max-width: 100%;
+	padding: 1.5rem 1.6rem;
+	border: 1px solid var(--ink);
+	background: var(--paper-bright);
+	box-shadow: 6px 6px 0 var(--forest);
+	color: var(--ink);
+}
+
+.confirm-dialog::backdrop {
+	background: rgba(23, 33, 29, 0.45);
+}
+
+.confirm-dialog__title {
+	margin-bottom: 0.6rem;
+	font-family: var(--serif);
+	font-size: 1.4rem;
+	font-weight: 500;
+}
+
+.confirm-dialog__body p {
+	line-height: 1.6;
+	overflow-wrap: anywhere;
+}
+
+.confirm-dialog__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	margin-top: 1.25rem;
+}
+
+.confirm-dialog .button {
+	cursor: pointer;
+}
+
+.confirm-dialog .button--secondary {
+	color: var(--ink);
+}
+
+.confirm-dialog .button[aria-disabled="true"] {
+	cursor: wait;
+	opacity: 0.65;
+}
+
+@media (max-width: 30rem) {
+	.confirm-dialog__actions .button {
+		width: 100%;
 	}
 }

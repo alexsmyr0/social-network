@@ -18,7 +18,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.
 const PNG = readFileSync(path.join(ROOT, 'SPA/tests/fixtures/a07/avatar.png'));
 const MAX_ID = Number.MAX_SAFE_INTEGER;
 const NO_STORE = { 'Cache-Control': 'no-store' };
-const IMAGE_MAX = 5 * 1024 * 1024;
+const IMAGE_MAX = 10 * 1024 * 1024;
 const CONTENT_NOTICES = new Set([
 	'post_like',
 	'post_dislike',

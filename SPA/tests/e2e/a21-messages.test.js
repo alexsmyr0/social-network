@@ -73,7 +73,7 @@ function expectRosterShape(entries) {
 test.describe('SN-A21 real private messages', () => {
 	test.setTimeout(240000);
 
-	test('the delivery matrix: only eligible pairs send, live follows the approved rule, strangers read nothing', async ({
+	test('the delivery matrix: only eligible pairs send, every permitted message is live, strangers read nothing', async ({
 		browser,
 		baseURL,
 	}) => {
@@ -119,31 +119,23 @@ test.describe('SN-A21 real private messages', () => {
 			expect(await noticeCount(pub)).toBe(0);
 			await expect(trigger(pub.page)).toContainText('0');
 
-			// Every other eligible pair stores the message; live where the rule says so.
-			for (const [name, to] of Object.entries({ mut, fan, fanPriv })) {
+			// Every other eligible pair receives the message live, whatever the
+			// recipient's privacy or follow direction. Priv is private and does not
+			// follow Sam.
+			for (const [name, to] of Object.entries({ mut, fan, fanPriv, priv })) {
 				await send(sam, to, `Hi ${name}`);
 				await expect(indicator(to.page), name).toHaveAttribute('aria-label', unreadLabel(1));
 			}
-			// Priv is private and does not follow Sam: stored, but no live frame.
-			await send(sam, priv, 'Hi Priv');
+			// The live message is also stored: reloading still shows it unread.
 			expect(await unread(priv)).toBe(1);
-			await priv.page.waitForTimeout(3000);
-			await expect(indicator(priv.page)).toHaveAttribute('aria-label', unreadLabel(0));
-			// Reloading fetches the stored message.
 			await priv.page.reload();
 			await expect(indicator(priv.page)).toHaveAttribute('aria-label', unreadLabel(1));
 
-			// Priv answers: Sam is public, so Priv's reply is live for Sam.
+			// Priv answers: the reply is live for Sam.
 			await sam.page.goto('/people');
 			await expect(indicator(sam.page)).toHaveAttribute('aria-label', unreadLabel(0));
 			await send(priv, sam, 'Hi back');
 			await expect(indicator(sam.page)).toHaveAttribute('aria-label', unreadLabel(1));
-
-			// Turning Priv public makes later messages live for Priv.
-			await privacy(priv, 'public');
-			await send(sam, priv, 'Now public');
-			await expect(indicator(priv.page)).toHaveAttribute('aria-label', unreadLabel(2));
-			await privacy(priv, 'private');
 
 			// Presence needs profile access: Sam sees Priv (follows them) but not FanPriv.
 			const rows = Object.fromEntries((await roster(sam)).map((entry) => [entry.user_id, entry]));
@@ -224,6 +216,9 @@ test.describe('SN-A21 real private messages', () => {
 			await expect(indicator(pub.page)).toHaveAttribute('aria-label', unreadLabel(0));
 			expect(await unread(pub)).toBe(0);
 			expect(await noticeCount(pub)).toBe(notices);
+			// Pub leaves the conversation, so a live message is not read on arrival.
+			await pub.page.goto('/people');
+			await expect(indicator(pub.page)).toHaveAttribute('aria-label', unreadLabel(0));
 
 			// Exact retries: same nonce and payload returns the original with no new row.
 			const nonce = uuid();
@@ -233,8 +228,10 @@ test.describe('SN-A21 real private messages', () => {
 			expect(again).toEqual(created);
 			expect(created.client_id).toBe(nonce);
 			expect((await history(sam, pub)).filter((m) => m.client_id === nonce)).toHaveLength(1);
-			// Pub had read everything, so the retried message is the only unread one, counted once.
+			// Pub had read everything, so the retried message is the only unread one,
+			// counted once and shown live although Pub is private and does not follow Sam.
 			expect(await unread(pub)).toBe(1);
+			await expect(indicator(pub.page)).toHaveAttribute('aria-label', unreadLabel(1));
 			// A different payload under the same nonce is a conflict; a new nonce is a new message.
 			expect(
 				await errorCode(sam, 'post', url(pub), { client_id: nonce, body: 'changed' }, 409),

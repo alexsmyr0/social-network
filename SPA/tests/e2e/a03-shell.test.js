@@ -72,6 +72,20 @@ test.describe('SN-A03 framework shell', () => {
 		await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible();
 	});
 	test('completes registration against a contract fixture on desktop', async ({ page }) => {
+		const account = { id: 42, display_name: 'Alex Example' };
+		// The fixture issues no real cookie, so once it has "registered" the
+		// account, the session lookup answers for it too. Otherwise the signed-in
+		// shell's first real request is a 401 that signs the page out again.
+		let registered = false;
+		await page.route('**/api/v1/users/me', (route) =>
+			registered
+				? route.fulfill({
+						status: 200,
+						contentType: 'application/json',
+						body: JSON.stringify({ data: account }),
+					})
+				: route.continue(),
+		);
 		await page.route('**/api/v1/users/register', async (route) => {
 			const request = route.request();
 			expect(request.method()).toBe('POST');
@@ -85,10 +99,11 @@ test.describe('SN-A03 framework shell', () => {
 				nickname: null,
 				about_me: null,
 			});
+			registered = true;
 			await route.fulfill({
 				status: 201,
 				contentType: 'application/json',
-				body: JSON.stringify({ data: { id: 42, display_name: 'Alex Example' } }),
+				body: JSON.stringify({ data: account }),
 			});
 		});
 		await page.goto('/register');

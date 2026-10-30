@@ -305,6 +305,41 @@ describe('SN-A15 stale, simultaneous and uncertain actions', () => {
 	});
 });
 
+describe('inviting followers', () => {
+	test('the invite list can show just the viewer’s followers', async () => {
+		const backend = new GroupBackend({
+			given: { follows: { 950: { id: 950, follower_id: 99, followed_id: 7, state: 'accepted' } } },
+		});
+		const { wrapper, fetchRef } = await mountGroupApp('/groups/301', { backend, viewerId: 7 });
+		const people = () => wrapper.findAll('[aria-label="People to invite"] [data-person-id]');
+		expect(people().length).toBeGreaterThan(1);
+
+		await button(wrapper, 'Your followers').trigger('click');
+		await settle();
+		expect(button(wrapper, 'Your followers').attributes('aria-pressed')).toBe('true');
+		expect(wrapper.find('#group-invite-search').exists()).toBe(false);
+		expect(people().map((item) => item.attributes('data-person-id'))).toEqual(['10', '99']);
+		expect(fetchRef.calls.some((call) => call.url.startsWith('/api/v1/users/7/followers'))).toBe(
+			true,
+		);
+
+		await button(wrapper, 'Invite Robin Example to Chess Club').trigger('click');
+		await settle();
+		expect(textOf(wrapper.get('[data-person-id="99"]'))).toContain('Invitation pending for Robin');
+
+		await button(wrapper, 'Everyone').trigger('click');
+		await settle();
+		expect(wrapper.find('#group-invite-search').exists()).toBe(true);
+	});
+
+	test('with no followers the list says so', async () => {
+		const { wrapper } = await mountGroupApp('/groups/301', { viewerId: 42 });
+		await button(wrapper, 'Your followers').trigger('click');
+		await settle();
+		expect(textOf(wrapper.get('.group-invite'))).toContain('No one follows you yet.');
+	});
+});
+
 describe('SN-A15 notices, signals and session changes', () => {
 	async function openNotices(wrapper) {
 		await wrapper.get('.notification-trigger').trigger('click');

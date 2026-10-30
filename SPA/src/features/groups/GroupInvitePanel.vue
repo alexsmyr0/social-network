@@ -17,6 +17,8 @@ const session = inject(sessionKey);
 const social = inject(socialKey);
 const groups = inject(groupsKey);
 const viewerId = computed(() => session.state.account?.id ?? null);
+// Who the list shows: everyone (searchable) or just the viewer's followers.
+const source = ref('everyone');
 const draft = ref('');
 const query = ref('');
 const page = ref(1);
@@ -29,6 +31,7 @@ watch(
 	() => [props.group.id, viewerId.value],
 	() => {
 		draft.value = query.value = searchError.value = '';
+		source.value = 'everyone';
 		page.value = 1;
 		results.value = {};
 	},
@@ -36,14 +39,30 @@ watch(
 
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 const { status, result, reload } = useSocialResource(
-	() => social.api.searchPeople({ q: query.value, page: page.value, perPage: 10 }),
-	{ social, sources: () => [query.value, page.value, viewerId.value], retain: true },
+	() =>
+		source.value === 'followers'
+			? social.api.fetchFollowers(viewerId.value, { page: page.value, perPage: 10 })
+			: social.api.searchPeople({ q: query.value, page: page.value, perPage: 10 }),
+	{ social, sources: () => [source.value, query.value, page.value, viewerId.value], retain: true },
 );
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 const people = computed(() => (result.value?.people ?? []).filter((p) => p.id !== viewerId.value));
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 const pagination = computed(() => result.value?.pagination ?? null);
 const busy = (person) => groups.isPending(`invite-${props.group.id}-${person.id}`);
+
+// biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
+const SOURCES = [
+	{ value: 'everyone', label: 'Everyone' },
+	{ value: 'followers', label: 'Your followers' },
+];
+
+// biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
+function chooseSource(value) {
+	if (source.value === value) return;
+	source.value = value;
+	page.value = 1;
+}
 
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 function search() {
@@ -81,7 +100,10 @@ async function invite(person) {
 	<section class="group-section group-invite" aria-labelledby="group-invite-heading">
 		<h2 id="group-invite-heading">Invite people</h2>
 		<p>Any member can invite someone. An invitation alone grants no access; they join only when they accept.</p>
-		<form class="people-search" role="search" novalidate @submit.prevent="search">
+		<div class="groups-tabs group-invite__source" role="group" aria-label="People to show">
+			<button v-for="option in SOURCES" :key="option.value" type="button" :aria-pressed="source === option.value" @click="chooseSource(option.value)">{{ option.label }}</button>
+		</div>
+		<form v-if="source === 'everyone'" class="people-search" role="search" novalidate @submit.prevent="search">
 			<label class="people-search__label" for="group-invite-search">Find people to invite</label>
 			<div class="people-search__row">
 				<input id="group-invite-search" v-model="draft" type="search" autocomplete="off" placeholder="Search by name" :aria-invalid="Boolean(searchError)" :aria-describedby="searchError ? 'group-invite-error' : undefined" />
@@ -95,7 +117,7 @@ async function invite(person) {
 			<button class="button button--secondary" type="button" @click="reload('hard')">Try again</button>
 		</div>
 		<template v-else-if="status === 'ready'">
-			<p v-if="people.length === 0" class="social-status" role="status">No one to invite matches that search.</p>
+			<p v-if="people.length === 0" class="social-status" role="status">{{ source === 'followers' ? 'No one follows you yet. Choose Everyone to find people.' : 'No one to invite matches that search.' }}</p>
 			<ul v-else class="person-list" aria-label="People to invite">
 				<li v-for="person in people" :key="person.id" class="person" :data-person-id="person.id">
 					<SocialAvatar :name="person.display_name" :src="person.avatar_url ?? null" size="sm" />

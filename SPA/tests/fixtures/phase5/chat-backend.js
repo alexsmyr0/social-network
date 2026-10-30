@@ -298,15 +298,10 @@ export class ChatBackend extends EventBackend {
 		);
 	}
 
-	// Instant delivery to the recipient: allowed to send, online, and either they
-	// follow the sender or their profile is public.
+	// Instant delivery to the recipient: allowed to send and online.
 	live(sender, recipient) {
-		const subject = this.user(recipient);
 		return Boolean(
-			subject &&
-				this.canSend(sender, recipient) &&
-				this.online.get(recipient) &&
-				(this.accepted(recipient, sender) || subject.visibility === 'public'),
+			this.user(recipient) && this.canSend(sender, recipient) && this.online.get(recipient),
 		);
 	}
 

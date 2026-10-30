@@ -288,7 +288,9 @@ func TestDirectMessageDownRefusesLossAndRoundTripsWhenUnchanged(t *testing.T) {
 	if err := ApplyQASeeds(context.Background(), database); err != nil {
 		t.Fatal("QA reset with cursors", err)
 	}
-	if count(t, database, `SELECT COUNT(*) FROM dm_read_cursors`) != 0 {
+	// Only the seed's own conversations remain: four cursors for two pairs.
+	if count(t, database, `SELECT COUNT(*) FROM private_messages WHERE body='new'`) != 0 ||
+		count(t, database, `SELECT COUNT(*) FROM dm_read_cursors`) != 4 {
 		t.Fatal("QA reset kept cursors")
 	}
 }
@@ -340,16 +342,20 @@ func TestSendDirectMessagePermissionRetriesAndConflicts(t *testing.T) {
 	if err != nil || first.Duplicate || first.Message.ClientID == nil || *first.Message.ClientID != testNonce(1) || first.Message.SenderUsername != "Test Person" {
 		t.Fatalf("first %+v %v", first, err)
 	}
-	// The recipient is private and does not follow the sender: stored, not live.
+	// A private recipient who does not follow the sender still receives the
+	// message live: delivery follows the send permission alone.
 	mustExec(t, database, `UPDATE users SET profile_visibility='private' WHERE id=2`)
-	quiet, err := send(1, 2, testNonce(2), "quiet", "")
-	if err != nil || quiet.RecipientEligible {
-		t.Fatalf("private non-following recipient was eligible: %+v %v", quiet, err)
+	if _, err := send(1, 2, testNonce(2), "private", ""); err != nil {
+		t.Fatalf("send to private recipient: %v", err)
+	}
+	for viewer, want := range map[int64]bool{1: true, 2: true, 3: false} {
+		if ok, err := DirectDeliveryAllowed(ctx, database, viewer, 1, 2); err != nil || ok != want {
+			t.Fatalf("viewer %d delivery=%v err=%v; want %v", viewer, ok, err, want)
+		}
 	}
 	mustExec(t, database, `UPDATE users SET profile_visibility='public' WHERE id=2`)
-	loud, err := send(1, 2, testNonce(3), "loud", "")
-	if err != nil || !loud.RecipientEligible {
-		t.Fatalf("public recipient was not eligible: %+v %v", loud, err)
+	if _, err := send(1, 2, testNonce(3), "public", ""); err != nil {
+		t.Fatalf("send to public recipient: %v", err)
 	}
 	again, err := send(1, 2, testNonce(1), "hello", "")
 	if err != nil || !again.Duplicate || again.Message.ID != first.Message.ID || again.Message.CreatedAt != first.Message.CreatedAt {

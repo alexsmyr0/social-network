@@ -284,10 +284,10 @@ describe('SN-A04 registration UI', () => {
 			const wrapper = mountPage();
 			await selectAvatar(wrapper, new File(['png'], 'valid.png', { type: 'image/png' }));
 			const huge = new File(['gif'], 'huge.gif', { type: 'image/gif' });
-			Object.defineProperty(huge, 'size', { value: 5 * 1024 * 1024 + 1 });
+			Object.defineProperty(huge, 'size', { value: 10 * 1024 * 1024 + 1 });
 			await selectAvatar(wrapper, huge);
 
-			expect(wrapper.text()).toContain('under 5 MiB');
+			expect(wrapper.text()).toContain('under 10 MiB');
 			expect(wrapper.text()).toContain('Choose an avatar');
 			expect(wrapper.text()).toContain('Clear image selection');
 		});
@@ -328,7 +328,7 @@ describe('SN-A04 registration UI', () => {
 
 		test.each([
 			['INVALID_AVATAR', 422, 'valid JPEG, PNG or GIF'],
-			['PAYLOAD_TOO_LARGE', 413, 'under 5 MiB'],
+			['PAYLOAD_TOO_LARGE', 413, 'under 10 MiB'],
 		])('drops a server-rejected avatar (%s) so it is never resent', async (code, status, text) => {
 			const fetchRef = contractFetch({
 				'/api/v1/users/register': [

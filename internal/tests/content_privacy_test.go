@@ -134,7 +134,7 @@ func TestSocialMediaHTTPValidationPrivacyAndDMOwnership(t *testing.T) {
 	}
 	bad := contentUpload(t, handler, owner, "/api/v1/posts", []byte("\x89PNG\r\n\x1a\ncorrupt"), map[string]string{"title": "bad", "body": "bad", "category_ids": "1"})
 	assertSocialCode(t, bad, 422, "INVALID_IMAGE")
-	tooLarge := contentUpload(t, handler, owner, "/api/v1/posts", make([]byte, (5<<20)+1), map[string]string{"title": "bad", "body": "bad", "category_ids": "1"})
+	tooLarge := contentUpload(t, handler, owner, "/api/v1/posts", make([]byte, (10<<20)+1), map[string]string{"title": "bad", "body": "bad", "category_ids": "1"})
 	assertSocialCode(t, tooLarge, 413, "PAYLOAD_TOO_LARGE")
 	// A failed DB insert cleans both staged manifest and private bytes.
 	if _, err := conn.Exec(`CREATE TRIGGER fail_post BEFORE INSERT ON posts BEGIN SELECT RAISE(ABORT,'failure');END;`); err != nil {

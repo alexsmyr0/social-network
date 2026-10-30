@@ -110,7 +110,7 @@ defineExpose({ focus: () => field.value?.focus() });
 				<label class="file-button" for="message-image">{{ hasImage ? 'Replace image' : 'Add an image' }}</label>
 				<button v-if="attachment && !uploading" class="text-button" type="button" @click="emit('remove-attachment')">Remove image</button>
 			</div>
-			<p id="message-image-hint" class="field-hint">JPEG, PNG or GIF · up to 5 MiB</p>
+			<p id="message-image-hint" class="field-hint">JPEG, PNG or GIF · up to 10 MiB</p>
 		</div>
 
 		<div class="message-composer__actions">

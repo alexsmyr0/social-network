@@ -460,10 +460,11 @@ func TestQASeedResetClearsGroupPosts(t *testing.T) {
 	if err := ApplyQASeeds(context.Background(), database); err != nil {
 		t.Fatalf("QA reset with group posts: %v", err)
 	}
-	if n := count(t, database, `SELECT COUNT(*) FROM groups`); n != 0 {
+	if n := count(t, database, `SELECT COUNT(*) FROM groups WHERE title='Chess'`); n != 0 {
 		t.Fatalf("reset kept %d groups", n)
 	}
-	if n := count(t, database, `SELECT COUNT(*) FROM posts WHERE group_id IS NOT NULL`); n != 0 {
+	if n := count(t, database, `SELECT COUNT(*) FROM posts WHERE body='group post'`); n != 0 {
 		t.Fatalf("reset kept %d group posts", n)
 	}
+	assertSeedAllocation(t, database, "groups")
 }

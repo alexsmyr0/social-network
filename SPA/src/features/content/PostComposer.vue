@@ -188,7 +188,7 @@ onUnmounted(() => clearImageChoice(props.form));
 				<button v-else-if="form.existingImageUrl && !form.removeImage" class="text-button" type="button" @click="removeStored">Remove image</button>
 				<button v-else-if="form.existingImageUrl && form.removeImage" class="text-button" type="button" @click="keepStored">Keep the current image</button>
 			</div>
-			<p :id="id('image-hint')" class="field-hint">JPEG, PNG or GIF · up to 5 MiB</p>
+			<p :id="id('image-hint')" class="field-hint">JPEG, PNG or GIF · up to 10 MiB</p>
 			<p v-if="form.errors.image" :id="id('image-error')" class="field-error" role="alert">{{ form.errors.image }}</p>
 		</div>
 

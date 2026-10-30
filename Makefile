@@ -281,6 +281,10 @@ stack-logs:
 stack-ps:
 	docker compose ps
 
+# Resets the running stack's database to the QA sample data (see README).
+stack-seed:
+	docker compose exec backend /app/server -seed-qa
+
 .PHONY: build build-assets build-backend build-frontend test check lint fmt-check vet \
 	test-backend test-race test-race-all test-frontend test-e2e test-browser test-images test-upgrade \
-	deps deps-backend deps-frontend stack-build stack-up stack-down stack-logs stack-ps
+	deps deps-backend deps-frontend stack-build stack-up stack-down stack-logs stack-ps stack-seed

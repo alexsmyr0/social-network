@@ -166,6 +166,10 @@ test.describe('SN-A11 real Phase 2 acceptance through both images', () => {
 			await expect(outsider.page.locator('.profile-details')).toContainText(owner.email);
 			await owner.page.goto(profilePath(owner));
 			await owner.page.getByRole('button', { name: 'Make profile private' }).click();
+			await owner.page
+				.getByRole('dialog', { name: 'Make your profile private?' })
+				.getByRole('button', { name: 'Make private', exact: true })
+				.click();
 			await expect(owner.page.locator('[data-visibility]')).toContainText('Private profile');
 			await expect(outsider.page.locator('[data-state="teaser"]')).toBeVisible();
 			await expect(outsider.page.locator('main')).not.toContainText(owner.email);
@@ -242,6 +246,10 @@ test.describe('SN-A11 real Phase 2 acceptance through both images', () => {
 				(await http(follower, 'get', `/api/v1/users/${owner.account.id}/profile`)).data.access,
 			).toBe('full');
 			await follower.page.getByRole('button', { name: `Unfollow ${owner.name}` }).click();
+			await follower.page
+				.getByRole('dialog', { name: `Unfollow ${owner.name}?` })
+				.getByRole('button', { name: 'Unfollow', exact: true })
+				.click();
 			await expect(follower.page.locator('[data-state="teaser"]')).toBeVisible();
 			await expect(follower.page.locator('main')).not.toContainText(owner.email);
 			expect((await follower.context.request.get(owner.account.avatar_url)).status()).toBe(404);
@@ -535,6 +543,11 @@ test.describe('SN-A11 real Phase 2 acceptance through both images', () => {
 				await expect(follower.page.locator('.profile-details')).toContainText(owner.email);
 				const unfollow = follower.page.getByRole('button', { name: `Unfollow ${owner.name}` });
 				await unfollow.focus();
+				await follower.page.keyboard.press('Enter');
+				// The confirmation focuses the safe choice; the person moves to Unfollow.
+				const confirm = follower.page.getByRole('dialog', { name: `Unfollow ${owner.name}?` });
+				await expect(confirm.getByRole('button', { name: 'Keep following' })).toBeFocused();
+				await follower.page.keyboard.press('Shift+Tab');
 				await follower.page.keyboard.press('Enter');
 				await expect(follower.page.locator('[data-state="teaser"]')).toBeVisible();
 				await expect(follower.page.locator('main')).not.toContainText(owner.email);

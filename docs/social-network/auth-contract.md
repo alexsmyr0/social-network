@@ -20,7 +20,7 @@ The project owner approved this contract in chat on 2026-09-24 with “Approve p
 - JSON success is `{ "data": ... }`. JSON failure is `{ "error": { "code": "...", "message": "..." } }`, optionally with `error.fields`, a map of input name to validation code. Clients branch on codes, not human-readable messages. No password, hash, session token, filesystem path or SQL error appears in bodies or logs.
 - Auth JSON responses and avatar responses, including errors, use `Cache-Control: no-store`. API errors remain JSON regardless of `Accept`; avatar success returns image bytes.
 - JSON inputs must be a single object without unknown or repeated keys or trailing JSON values. Input strings must be valid UTF-8. Wrong types, unknown fields and malformed bodies return `400 BAD_REQUEST`; unsupported request content type returns `415 UNSUPPORTED_MEDIA_TYPE`.
-- JSON bodies are at most 16 KiB. Registration multipart bodies are at most 6 MiB, with at most 16 KiB combined text-part content and one avatar file of at most 5 MiB. MiB means 1,048,576 bytes. Exceeding a body/file/text budget returns `413 PAYLOAD_TOO_LARGE`.
+- JSON bodies are at most 16 KiB. Registration multipart bodies are at most 11 MiB, with at most 16 KiB combined text-part content and one avatar file of at most 10 MiB (relaxed 2026-10-29, pending owner approval). MiB means 1,048,576 bytes. Exceeding a body/file/text budget returns `413 PAYLOAD_TOO_LARGE`.
 
 ## Registration fields and validation
 
@@ -112,9 +112,9 @@ Other errors use the same envelope: `401 INVALID_CREDENTIALS` / `UNAUTHORIZED`, 
 
 ## Avatar ownership and failure behavior
 
-The backend accepts a nonempty, decodable JPEG, PNG or GIF, including animated GIF, of at most 5 MiB. File content determines type; do not trust filename or declared MIME alone. If a specific declared MIME or recognized image extension contradicts decoded type, return `422 INVALID_AVATAR`; absent MIME or `application/octet-stream` is permitted. Unknown extensions do not authorize another format. Malformed/truncated/unsupported image content returns `422 INVALID_AVATAR`; request content-type errors remain 415.
+The backend accepts a nonempty, decodable JPEG, PNG or GIF, including animated GIF, of at most 10 MiB. File content determines type; do not trust filename or declared MIME alone. If a specific declared MIME or recognized image extension contradicts decoded type, return `422 INVALID_AVATAR`; absent MIME or `application/octet-stream` is permitted. Unknown extensions do not authorize another format. Malformed/truncated/unsupported image content returns `422 INVALID_AVATAR`; request content-type errors remain 415.
 
-Maximum width/height is 4,096 pixels each; GIF is additionally limited to 100 frames and 64 million cumulative canvas pixels across frames. Exceeding image dimensions/frame limits returns `422 INVALID_AVATAR`. These limits bound decoding work as well as upload size. The original filename never selects a storage path.
+Maximum width/height is 8,192 pixels each and 40 million pixels in total; GIF is additionally limited to 500 frames and 128 million cumulative canvas pixels across frames (relaxed 2026-10-29, pending owner approval). Exceeding image dimensions/frame limits returns `422 INVALID_AVATAR`. These limits bound decoding work as well as upload size. The original filename never selects a storage path.
 
 The registration request owns its new avatar; it cannot name another account, attachment ID, stored path or URL. No standalone anonymous-upload, avatar replacement/deletion or profile-edit endpoint is introduced. Retrieval is owner-only in Phase 1; user B requesting user A's avatar gets the same 404 as a missing avatar. Profile/media visibility must be revisited in Phase 2 before avatars appear on other users' profiles.
 
@@ -141,7 +141,7 @@ Server revocation must prevent new privileged HTTP/WS work under that token and 
 For all cookie-authenticated API writes and public register/login/logout:
 
 - Require `X-Requested-With: XMLHttpRequest`, including multipart requests. Missing/wrong value returns `403 CSRF_CHECK_FAILED` before state changes. Do not permit cross-origin credentialed access to satisfy this header through permissive CORS.
-- Verify `Origin` against the configured public frontend origin by parsed scheme, hostname and effective port. If Origin is absent, use the parsed Referer origin; reject absent both, `null`, malformed or mismatched values with `403 ORIGIN_FORBIDDEN`. Do not fall back to Referer when a present Origin is invalid.
+- Verify `Origin` against the configured public frontend origin by parsed scheme, hostname and effective port. If Origin is absent, use the parsed Referer origin; reject absent both, `null`, malformed or mismatched values with `403 ORIGIN_FORBIDDEN`. Do not fall back to Referer when a present Origin is invalid. When the configured hostname is a loopback name, any loopback name (`localhost`, `127.0.0.1`, `[::1]`) matches it on the same scheme and port; no other hostname gains an alias (added 2026-10-29, pending owner approval).
 - Compare with the configured browser origin (`FRONTEND_URL`), never the rewritten backend Host or arbitrary forwarded headers. Production allows the one origin approved by SN-A02; local Vite work configures its exact origin explicitly. Preserve these headers through the proxy. CLI/tests must supply the same origin and custom header.
 - GET/HEAD do not perform business writes. `/ws` separately requires a valid cookie and matching Origin; reject missing/null/wrong Origin before upgrade. Its browser handshake cannot use the custom request header. Session lookup failures fail closed as 5xx, not successful upgrades.
 
@@ -164,7 +164,7 @@ These are required future checks, not results from B02. The approved examples an
 | Duplicate email differing only in case/outer whitespace | 409 EMAIL_TAKEN; original account/session unchanged | A04 / B04 |
 | JPEG, PNG and animated GIF registration | 201; returned URL retrieves correct type/content as owner | A04 / B09 |
 | Empty/corrupt/truncated image, JPEG declared as PNG, SVG bytes | 422 INVALID_AVATAR; no account/attachment | A04 / B09 |
-| File over 5 MiB, body over 6 MiB; dimensions/frame budget exceeded | 413 for byte limits; 422 for image limits; no partial writes | A04 / B09 |
+| File over 10 MiB, body over 11 MiB; dimensions/frame budget exceeded | 413 for byte limits; 422 for image limits; no partial writes | A04 / B09 |
 | Forged `avatar_id`, `user_id` or JSON avatar URL | 400 BAD_REQUEST; no attachment reassignment | B09 |
 | User B requests A's avatar; unauthenticated request | 404 for B, 401 without session; no media bytes | B09 |
 | Duplicate simultaneous submit or injected media/session/commit failure | At most one successful account; failure cleanup as above; no false 201 | B04 / B05 / B09 |

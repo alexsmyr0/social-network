@@ -45,11 +45,13 @@ export function createSessionState({
 		state.logoutError = '';
 	}
 
-	async function restore({ force = false } = {}) {
+	// `quiet` rechecks an authenticated session in place: the shell keeps showing
+	// the account until the answer arrives, which then applies as usual.
+	async function restore({ force = false, quiet = false } = {}) {
 		if (!force && state.status !== 'checking' && state.status !== 'unavailable')
 			return state.status;
 		if (restoration) return restoration;
-		state.status = 'checking';
+		if (!quiet || state.status !== 'authenticated') state.status = 'checking';
 		const startedAt = revision;
 		restoration = fetchCurrent()
 			.then((result) => {

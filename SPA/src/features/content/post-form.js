@@ -213,7 +213,7 @@ export function applyFailure(form, result) {
 			...form.errors,
 			image:
 				result.status === 'too-large'
-					? 'That image is too large. Images can be up to 5 MiB.'
+					? 'That image is too large. Images can be up to 10 MiB.'
 					: fieldMessage('image', 'INVALID_IMAGE'),
 		};
 		form.alert = 'The image couldn’t be uploaded. Your text and choices are still here.';

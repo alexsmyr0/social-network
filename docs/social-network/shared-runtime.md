@@ -13,6 +13,7 @@ make stack-up             # build both images; wait for health, no QA seeding
 make stack-ps
 make stack-logs           # Ctrl-C stops log following
 make stack-down           # remove containers/network; preserve accounts and media
+make stack-seed           # reset the running stack's database to the README's sample data
 ```
 
 Only the frontend publishes a host port, bound to loopback. The backend stays on the Compose network at `backend:8080`; the frontend uses `BACKEND_URL=http://backend:8080`. Backend readiness gates frontend startup using the images' healthchecks. Both images retain their own build recipes and unprivileged runtime users.
@@ -26,7 +27,7 @@ FRONTEND_PORT=3400 COMPOSE_PROJECT_NAME=sn-dev make stack-up
 FRONTEND_PORT=3400 COMPOSE_PROJECT_NAME=sn-dev make stack-down
 ```
 
-Open **http://localhost:3400**, matching the backend's allowed browser origin exactly. This is a local HTTP stack; deployment/TLS configuration is outside this ticket. The frontend port changes both the host mapping and `FRONTEND_URL`. Do not browse through `127.0.0.1` while the allowed origin uses `localhost`.
+Open **http://localhost:3400**, matching the backend's allowed browser origin. This is a local HTTP stack; deployment/TLS configuration is outside this ticket. The frontend port changes both the host mapping and `FRONTEND_URL`. Loopback names are one host for this check, so `127.0.0.1` and `[::1]` on the same port also work (added 2026-10-29, pending owner approval).
 
 ## Shared checks
 

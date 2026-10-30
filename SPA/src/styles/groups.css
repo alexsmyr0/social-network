@@ -48,7 +48,8 @@
 	background: var(--paper-bright);
 }
 
-.groups-tabs a {
+.groups-tabs a,
+.groups-tabs button {
 	min-width: 7rem;
 	min-height: 2.75rem;
 	display: inline-flex;
@@ -59,11 +60,22 @@
 	text-decoration: none;
 }
 
-.groups-tabs a + a {
+.groups-tabs a + a,
+.groups-tabs button + button {
 	border-left: 1px solid var(--ink);
 }
 
-.groups-tabs a[aria-current="page"] {
+.groups-tabs button {
+	border: 0;
+	background: transparent;
+	color: inherit;
+	cursor: pointer;
+	font: inherit;
+	font-weight: 700;
+}
+
+.groups-tabs a[aria-current="page"],
+.groups-tabs button[aria-pressed="true"] {
 	background: var(--forest);
 	color: var(--paper-bright);
 }

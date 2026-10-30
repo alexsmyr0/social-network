@@ -10,6 +10,7 @@ import {
 } from '../../../../fixtures/phase2/fixture-backend.js';
 import {
 	cleanupMounted,
+	confirmDialog,
 	deferred,
 	mountSocialApp,
 	settle,
@@ -109,6 +110,7 @@ describe('full profiles', () => {
 		expect(wrapper.find('.privacy-control').exists()).toBe(false);
 
 		await wrapper.get('.follow-control button').trigger('click');
+		await confirmDialog(wrapper);
 		await settle();
 		// Access is gone with the relationship, and no detail lingers.
 		expect(backend.follows).toEqual([]);
@@ -139,6 +141,7 @@ describe('full profiles', () => {
 		expect(wrapper.find('.profile-details').exists()).toBe(true);
 		hold = true;
 		await wrapper.get('.follow-control button').trigger('click');
+		await confirmDialog(wrapper);
 		await settle();
 		try {
 			expect(backend.follows).toEqual([]);
@@ -254,6 +257,51 @@ describe('name-only teasers', () => {
 	});
 });
 
+// The profile knows only the viewer's own follow; a follow the other way still
+// opens a conversation, which the message roster reports.
+describe('message link', () => {
+	const rosterWith = (entries) => ({
+		totalUnread: () => 0,
+		api: {
+			fetchRoster: vi.fn(async () => ({
+				status: 'ok',
+				entries,
+				pagination: { page: 1, per_page: 50, total: entries.length, total_pages: 1 },
+			})),
+		},
+	});
+
+	test('someone who follows the viewer can be messaged from their profile', async () => {
+		const backend = new FixtureBackend({ follows: [accepted(301, 42, 7)] });
+		const messages = rosterWith([{ user_id: 42, can_send: true }]);
+		const { wrapper } = await mountSocialApp('/users/42', { backend, messages });
+		await settle();
+
+		expect(wrapper.get('.profile-head__message').text()).toContain('Message Alex Example');
+		expect(wrapper.get('.profile-head__message').attributes('href')).toBe('/messages/42');
+		expect(messages.api.fetchRoster).toHaveBeenCalled();
+	});
+
+	test('a stranger has no message link', async () => {
+		const backend = new FixtureBackend();
+		const messages = rosterWith([]);
+		const { wrapper } = await mountSocialApp('/users/42', { backend, messages });
+		await settle();
+
+		expect(wrapper.find('.profile-head__message').exists()).toBe(false);
+	});
+
+	test('a followed profile links to messages without a roster lookup', async () => {
+		const backend = new FixtureBackend({ follows: [accepted(201, 7, 42)] });
+		const messages = rosterWith([]);
+		const { wrapper } = await mountSocialApp('/users/42', { backend, messages });
+		await settle();
+
+		expect(wrapper.get('.profile-head__message').attributes('href')).toBe('/messages/42');
+		expect(messages.api.fetchRoster).not.toHaveBeenCalled();
+	});
+});
+
 describe('routes and failures', () => {
 	test('a missing or inactive profile is reported without details', async () => {
 		const backend = new FixtureBackend();
@@ -350,6 +398,7 @@ describe('privacy switching', () => {
 		);
 
 		await wrapper.get('.privacy-control button').trigger('click');
+		await confirmDialog(wrapper);
 		await settle();
 		expect(socialCalls(fetchRef, { method: 'PATCH' })[0].json).toEqual({
 			visibility: 'private',
@@ -367,18 +416,18 @@ describe('privacy switching', () => {
 
 		await wrapper.get('.privacy-control button').trigger('click');
 		await flushPromises();
-		const confirm = wrapper.get('.privacy-control__confirm');
+		const confirm = wrapper.get('.confirm-dialog');
 		expect(confirm.text()).toContain('pending follow requests will be accepted automatically');
 		expect(socialCalls(fetchRef, { method: 'PATCH' })).toHaveLength(0);
 
 		await confirm.findAll('button')[1].trigger('click');
 		await flushPromises();
-		expect(wrapper.find('.privacy-control__confirm').exists()).toBe(false);
+		expect(wrapper.find('.confirm-dialog').exists()).toBe(false);
 		expect(socialCalls(fetchRef, { method: 'PATCH' })).toHaveLength(0);
 		expect(backend.users.get(42).visibility).toBe('private');
 
 		await wrapper.get('.privacy-control button').trigger('click');
-		await wrapper.get('.privacy-control__confirm button').trigger('click');
+		await wrapper.get('.confirm-dialog button').trigger('click');
 		await settle();
 		expect(socialCalls(fetchRef, { method: 'PATCH' })).toHaveLength(1);
 		expect(wrapper.get('[data-visibility] .badge').text()).toBe('Public profile');
@@ -393,16 +442,17 @@ describe('privacy switching', () => {
 		toggle.element.focus();
 		await toggle.trigger('click');
 		await settle();
-		expect(document.activeElement).toBe(wrapper.get('.privacy-control__confirm').element);
+		// The safe choice takes focus inside the dialog.
+		expect(document.activeElement).toBe(wrapper.get('.confirm-dialog .button--secondary').element);
 
-		await wrapper.get('.privacy-control__confirm .button--secondary').trigger('click');
+		await wrapper.get('.confirm-dialog .button--secondary').trigger('click');
 		await settle();
-		expect(wrapper.find('.privacy-control__confirm').exists()).toBe(false);
+		expect(wrapper.find('.confirm-dialog').exists()).toBe(false);
 		expect(document.activeElement?.textContent).toBe('Make profile public');
 
 		await wrapper.get('.privacy-control > button').trigger('click');
 		await settle();
-		await wrapper.get('.privacy-control__confirm .button--primary').trigger('click');
+		await wrapper.get('.confirm-dialog .button--primary').trigger('click');
 		await settle();
 		expect(document.activeElement?.textContent).toBe('Make profile private');
 	});
@@ -416,12 +466,16 @@ describe('privacy switching', () => {
 			before: (request) => (hold && request.method === 'PATCH' ? gate.promise : undefined),
 		});
 		hold = true;
-		const button = wrapper.get('.privacy-control button');
+		const button = wrapper.get('.privacy-control > button');
 		await button.trigger('click');
+		const confirm = wrapper.get('.confirm-dialog .button--primary');
+		await confirm.trigger('click');
+		await confirm.trigger('click');
 		await button.trigger('click');
 		await flushPromises();
 		expect(button.attributes('aria-disabled')).toBe('true');
 		expect(button.text()).toBe('Saving…');
+		expect(confirm.attributes('aria-disabled')).toBe('true');
 		gate.release();
 		await settle();
 		expect(socialCalls(fetchRef, { method: 'PATCH' })).toHaveLength(1);
@@ -440,6 +494,7 @@ describe('privacy switching', () => {
 		expect(backend.users.get(7).version).toBe(3);
 
 		await wrapper.get('.privacy-control button').trigger('click');
+		await confirmDialog(wrapper);
 		await settle();
 		expect(textOf(wrapper.get('.privacy-control'))).toContain('changed somewhere else');
 		expect(backend.users.get(7).visibility).toBe('public');
@@ -447,6 +502,7 @@ describe('privacy switching', () => {
 
 		// The reloaded version is used on the next explicit attempt.
 		await wrapper.get('.privacy-control button').trigger('click');
+		await confirmDialog(wrapper);
 		await settle();
 		expect(backend.users.get(7).visibility).toBe('private');
 		expect(backend.users.get(7).version).toBe(4);
@@ -464,6 +520,7 @@ describe('privacy switching', () => {
 			},
 		});
 		await wrapper.get('.privacy-control button').trigger('click');
+		await confirmDialog(wrapper);
 		await settle();
 		expect(textOf(wrapper.get('.privacy-control'))).toContain(
 			'couldn’t confirm that privacy change',
@@ -481,8 +538,79 @@ describe('privacy switching', () => {
 			},
 		});
 		await wrapper.get('.privacy-control button').trigger('click');
+		await confirmDialog(wrapper);
 		await settle();
 		expect(textOf(wrapper.get('.privacy-control'))).toContain('That privacy change was rejected');
 		expect(backend.users.get(7).visibility).toBe('public');
+	});
+});
+
+describe('confirmations', () => {
+	test('public to private asks first, and keeping it public changes nothing', async () => {
+		const backend = new FixtureBackend();
+		const { wrapper, fetchRef } = await mountSocialApp('/users/7', { backend });
+		const toggle = wrapper.get('.privacy-control > button');
+		await toggle.trigger('click');
+		await settle();
+		const dialog = wrapper.get('.confirm-dialog');
+		expect(dialog.element.tagName).toBe('DIALOG');
+		expect(textOf(dialog)).toContain('Make your profile private?');
+		expect(textOf(dialog)).toContain('New followers will need your approval.');
+
+		await dialog.get('.button--secondary').trigger('click');
+		await settle();
+		expect(wrapper.find('.confirm-dialog').exists()).toBe(false);
+		expect(socialCalls(fetchRef, { method: 'PATCH' })).toHaveLength(0);
+		expect(document.activeElement).toBe(toggle.element);
+		expect(backend.users.get(7).visibility).toBe('public');
+	});
+
+	test('Escape dismisses a confirmation without changing anything', async () => {
+		const backend = new FixtureBackend();
+		const { wrapper, fetchRef } = await mountSocialApp('/users/7', { backend });
+		await wrapper.get('.privacy-control > button').trigger('click');
+		await settle();
+		await wrapper.get('.confirm-dialog').trigger('cancel');
+		await settle();
+		expect(wrapper.find('.confirm-dialog').exists()).toBe(false);
+		expect(socialCalls(fetchRef, { method: 'PATCH' })).toHaveLength(0);
+	});
+
+	test('unfollowing asks first, and keeping the follow changes nothing', async () => {
+		const backend = new FixtureBackend({ follows: [accepted(201, 7, 42)] });
+		const { wrapper, fetchRef } = await mountSocialApp('/users/42', { backend });
+		const button = wrapper.get('.follow-control > button');
+		await button.trigger('click');
+		await settle();
+		const dialog = wrapper.get('.confirm-dialog');
+		expect(textOf(dialog)).toContain('Unfollow Alex Example?');
+		expect(document.activeElement).toBe(dialog.get('.button--secondary').element);
+
+		await dialog.get('.button--secondary').trigger('click');
+		await settle();
+		expect(wrapper.find('.confirm-dialog').exists()).toBe(false);
+		expect(socialCalls(fetchRef, { method: 'DELETE' })).toHaveLength(0);
+		expect(backend.follows).toHaveLength(1);
+		expect(document.activeElement).toBe(button.element);
+
+		await button.trigger('click');
+		await confirmDialog(wrapper);
+		await settle();
+		expect(socialCalls(fetchRef, { method: 'DELETE' })).toHaveLength(1);
+		expect(backend.follows).toEqual([]);
+		expect(wrapper.find('.confirm-dialog').exists()).toBe(false);
+	});
+
+	test('following and cancelling a request do not ask', async () => {
+		const backend = new FixtureBackend();
+		const { wrapper } = await mountSocialApp('/users/42', { backend });
+		await wrapper.get('.follow-control > button').trigger('click');
+		await settle();
+		expect(wrapper.find('.confirm-dialog').exists()).toBe(false);
+		expect(backend.follows[0].state).toBe('pending');
+		await wrapper.get('.follow-control > button').trigger('click');
+		await settle();
+		expect(wrapper.find('.confirm-dialog').exists()).toBe(false);
+		expect(backend.follows).toEqual([]);
 	});
 });

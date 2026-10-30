@@ -36,6 +36,40 @@ describe('SN-A05 session state', () => {
 		expect(session.state.status).toBe('unauthenticated');
 	});
 
+	test('a quiet recheck keeps the signed-in state until its answer arrives', async () => {
+		const answers = [];
+		const fetchCurrent = vi.fn(
+			() =>
+				new Promise((resolve) => {
+					answers.push(resolve);
+				}),
+		);
+		const session = createSessionState({ fetchCurrent });
+		session.acceptAccount(account);
+
+		const same = session.restore({ force: true, quiet: true });
+		expect(session.state.status).toBe('authenticated');
+		expect(session.state.account).toEqual(account);
+		answers[0]({ status: 'authenticated', account: { ...account, display_name: 'Alex' } });
+		await same;
+		expect(session.state.account.display_name).toBe('Alex');
+
+		const revoked = session.restore({ force: true, quiet: true });
+		expect(session.state.status).toBe('authenticated');
+		answers[1]({ status: 'unauthenticated' });
+		await revoked;
+		expect(session.state.status).toBe('unauthenticated');
+		expect(session.state.account).toBeNull();
+
+		// A loud recheck still shows the checking state.
+		session.acceptAccount(account);
+		const loud = session.restore({ force: true });
+		expect(session.state.status).toBe('checking');
+		answers[2]({ status: 'unavailable' });
+		await loud;
+		expect(session.state.status).toBe('unavailable');
+	});
+
 	test('keeps account and resources on failed logout, then clears both on success', async () => {
 		const releaseSocket = vi.fn();
 		const onLogout = vi.fn();

@@ -103,7 +103,7 @@ func parseRegistration(w http.ResponseWriter, r *http.Request) (registrationInpu
 		}
 		return input, nil, nil
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, 6<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, registrationMaxBytes)
 	if err := r.ParseMultipartForm(1 << 20); err != nil {
 		return input, nil, registrationParseError(err)
 	}

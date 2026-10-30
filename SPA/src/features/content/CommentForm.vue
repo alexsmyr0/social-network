@@ -136,7 +136,7 @@ async function save() {
  <form class="comment-form" :aria-busy="busy" @submit.prevent="save">
   <label :for="`comment-body-${comment?.id ?? 'new'}`">{{ comment ? 'Edit comment' : parentId ? `Reply to comment ${parentId}` : 'Your comment' }}</label>
   <textarea :id="`comment-body-${comment?.id ?? 'new'}`" v-model="text" rows="4" :disabled="busy" :aria-describedby="error ? `comment-error-${comment?.id ?? 'new'}` : undefined"></textarea>
-  <label>JPEG, PNG or GIF (up to 5 MiB)<input ref="input" type="file" accept="image/jpeg,image/png,image/gif" :disabled="busy" @change="choose" /></label>
+  <label>JPEG, PNG or GIF (up to 10 MiB)<input ref="input" type="file" accept="image/jpeg,image/png,image/gif" :disabled="busy" @change="choose" /></label>
   <figure v-if="preview || storedImage" class="post-card__media"><img :src="preview || storedImage" alt="Comment attachment preview" /></figure>
   <button v-if="preview || storedImage" type="button" :disabled="busy" @click="remove">Remove image</button>
   <p v-if="error" :id="`comment-error-${comment?.id ?? 'new'}`" class="field-error" role="alert">{{ error }}</p>

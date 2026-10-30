@@ -53,8 +53,9 @@ export function imageProblem(file) {
 const IMAGE_MESSAGES = {
 	REQUIRED: 'Choose an image first.',
 	TYPE: 'Choose a JPEG, PNG or GIF image.',
-	TOO_LARGE: 'Images can be up to 5 MiB.',
-	INVALID: 'That file isn’t a valid JPEG, PNG or GIF image.',
+	TOO_LARGE: 'Images can be up to 10 MiB.',
+	INVALID:
+		'That image couldn’t be used. Choose a valid JPEG, PNG or GIF up to 8192 px per side and 40 megapixels (animated GIFs: up to 500 frames).',
 	DENIED: 'You can’t send images to this person any more.',
 	UNAVAILABLE: 'We couldn’t upload that image. Nothing was sent; try again.',
 };

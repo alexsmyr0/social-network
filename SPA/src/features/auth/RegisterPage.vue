@@ -8,6 +8,7 @@ import { sessionKey } from './session-state.js';
 const session = inject(sessionKey, null);
 
 const avatarTypes = new Set(['image/jpeg', 'image/png', 'image/gif']);
+const AVATAR_MAX_BYTES = 10 * 1024 * 1024;
 const form = reactive({
 	email: '',
 	password: '',
@@ -55,8 +56,9 @@ const messages = {
 	TOO_LONG: 'This entry is too long.',
 	INVALID_TEXT: 'Remove unsupported characters.',
 	EMAIL_TAKEN: 'That email already belongs to an account. Try signing in instead.',
-	INVALID_AVATAR: 'Choose a valid JPEG, PNG or GIF image.',
-	PAYLOAD_TOO_LARGE: 'That image is too large. Choose one under 5 MiB.',
+	INVALID_AVATAR:
+		'Choose a valid JPEG, PNG or GIF up to 8192 px per side and 40 megapixels (animated GIFs: up to 500 frames).',
+	PAYLOAD_TOO_LARGE: 'That image is too large. Choose one under 10 MiB.',
 };
 const serverNames = {
 	email: 'email',
@@ -147,9 +149,9 @@ function chooseAvatar(event) {
 	form.avatar = null;
 	delete errors.avatar;
 	avatarProblem.value = '';
-	if (!avatarTypes.has(file.type) || file.size > 5 * 1024 * 1024) {
+	if (!avatarTypes.has(file.type) || file.size > AVATAR_MAX_BYTES) {
 		avatarProblem.value =
-			file.size > 5 * 1024 * 1024 ? messages.PAYLOAD_TOO_LARGE : messages.INVALID_AVATAR;
+			file.size > AVATAR_MAX_BYTES ? messages.PAYLOAD_TOO_LARGE : messages.INVALID_AVATAR;
 		errors.avatar = avatarProblem.value;
 		event.target.value = '';
 		return;
@@ -391,7 +393,7 @@ onBeforeUnmount(revokePreview);
 						<div>
 							<input id="register-avatar" ref="avatarInput" class="visually-hidden file-input" name="avatar" type="file" accept="image/jpeg,image/png,image/gif" :aria-describedby="errors.avatar ? 'avatar-hint avatar-error' : 'avatar-hint'" :aria-invalid="Boolean(errors.avatar)" @change="chooseAvatar" />
 							<label class="file-button" for="register-avatar">{{ form.avatar ? 'Choose another image' : 'Choose an avatar' }}</label>
-							<p id="avatar-hint" class="field-hint">JPEG, PNG or GIF · up to 5 MiB</p>
+							<p id="avatar-hint" class="field-hint">JPEG, PNG or GIF · up to 10 MiB</p>
 							<button v-if="form.avatar || avatarProblem" class="text-button" type="button" @click="removeAvatar">{{ form.avatar ? 'Remove selected image' : 'Clear image selection' }}</button>
 							<p v-if="errors.avatar" id="avatar-error" class="field-error" role="alert">{{ errors.avatar }}</p>
 						</div>

@@ -139,7 +139,9 @@ describe('SN-A18 event list', () => {
 		expect(textOf(app.wrapper)).toContain('No events yet.');
 		expect(app.wrapper.find('.event-list').exists()).toBe(false);
 		backend.faults.push({ method: 'GET', path: /\/events$/u, repeat: true });
+		// Leave the list and come back, letting each navigation finish.
 		await app.wrapper.get('a[href="/groups/301"]').trigger('click');
+		await settle();
 		await app.router.push('/groups/301/events');
 		await settle();
 		expect(textOf(app.wrapper)).toContain('We can’t load the events right now.');

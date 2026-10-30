@@ -1,6 +1,6 @@
 # Backend avatars — SN-B09
 
-Registration accepts one optional JPEG, PNG or GIF file in the approved multipart request. The server checks the decoded type, declared MIME and recognized extension, complete image decoding, 5 MiB byte limit, 4,096-pixel side limit, and GIF limits of 100 frames and 64 million cumulative canvas pixels. JSON registration without an avatar still works. Invalid input creates no account or session.
+Registration accepts one optional JPEG, PNG or GIF file in the approved multipart request. The server checks the decoded type, declared MIME and recognized extension, complete image decoding, 10 MiB byte limit, 8,192-pixel side limit with a 40-megapixel total, and GIF limits of 500 frames and 128 million cumulative canvas pixels (relaxed 2026-10-29, pending owner approval). JSON registration without an avatar still works. Invalid input creates no account or session.
 
 `MEDIA_ROOT` stores private originals. If unset, the root is `media/` beside the SQLite database. New files first go to a temporary name, are synced, then renamed under `objects/` with a generated opaque key. The account and first session commit in one SQLite transaction with that key. A failed transaction removes the file. Startup removes temporary files and object files with no committed account reference before HTTP readiness; failure to prepare writable storage prevents startup. Persist or back up the database and media directory together.
 

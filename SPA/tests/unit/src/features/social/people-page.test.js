@@ -10,6 +10,7 @@ import {
 } from '../../../../fixtures/phase2/fixture-backend.js';
 import {
 	cleanupMounted,
+	confirmDialog,
 	deferred,
 	mountSocialApp,
 	settle,
@@ -251,6 +252,7 @@ describe('follow controls in the directory', () => {
 		});
 
 		await button().trigger('click');
+		await confirmDialog(wrapper);
 		await settle();
 		expect(button().text()).toBe('Follow');
 		expect(backend.follows).toEqual([]);
