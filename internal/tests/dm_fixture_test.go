@@ -1117,9 +1117,9 @@ func TestDirectMessageImageBoundFixtures(t *testing.T) {
 			switch {
 			case c.Valid:
 				data = paddedImage(t, c.Mime, c.Width, c.Height, c.Bytes)
-			case c.Bytes > 5<<20:
+			case c.Bytes > 10<<20:
 				data = make([]byte, c.Bytes)
-			case c.BodyBytes > 10<<20:
+			case c.BodyBytes > 12<<20:
 				data = make([]byte, c.BodyBytes)
 			case c.Frames > 1 && c.Width == c.Height && c.Width > 1000:
 				data = manyFrameGIF(t, c.Frames, c.Width, 1)
@@ -1131,7 +1131,7 @@ func TestDirectMessageImageBoundFixtures(t *testing.T) {
 				data = []byte("GIF89a\x01\x00\x01")
 			case c.Mime == "image/svg+xml":
 				data = []byte(`<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>`)
-			case c.Width > 4096:
+			case c.Width > 8192:
 				data = paddedImage(t, "image/png", c.Width, c.Height, 5000)
 				name, c.Mime = "a.png", "image/png"
 			default:

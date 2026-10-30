@@ -136,12 +136,19 @@ func TestSocialAvatarRoundTripAndAccess(t *testing.T) {
 func TestSocialAvatarValidationAndCleanup(t *testing.T) {
 	handler, conn := socialAPI(t)
 	valid := avatarImage(t, "png")
-	large := image.NewRGBA(image.Rect(0, 0, 4097, 1))
+	large := image.NewRGBA(image.Rect(0, 0, 8193, 1))
 	var largePNG bytes.Buffer
 	if err := png.Encode(&largePNG, large); err != nil {
 		t.Fatal(err)
 	}
-	frames := make([]*image.Paletted, 101)
+	// Each side is within bounds, but the total exceeds the 40-megapixel cap; it
+	// would decode fine without that cap.
+	tall := image.NewPaletted(image.Rect(0, 0, 8000, 5001), color.Palette{color.Black, color.White})
+	var tallPNG bytes.Buffer
+	if err := png.Encode(&tallPNG, tall); err != nil {
+		t.Fatal(err)
+	}
+	frames := make([]*image.Paletted, 501)
 	for i := range frames {
 		frames[i] = image.NewPaletted(image.Rect(0, 0, 1, 1), color.Palette{color.Black, color.White})
 	}
@@ -161,7 +168,8 @@ func TestSocialAvatarValidationAndCleanup(t *testing.T) {
 		{"extension mismatch", "a.jpg", "image/png", "INVALID_AVATAR", valid, 422},
 		{"dimensions", "wide.png", "image/png", "INVALID_AVATAR", largePNG.Bytes(), 422},
 		{"gif frames", "long.gif", "image/gif", "INVALID_AVATAR", longGIF.Bytes(), 422},
-		{"too large", "a.png", "image/png", "PAYLOAD_TOO_LARGE", bytes.Repeat([]byte("a"), (5<<20)+1), 413},
+		{"megapixels", "tall.png", "image/png", "INVALID_AVATAR", tallPNG.Bytes(), 422},
+		{"too large", "a.png", "image/png", "PAYLOAD_TOO_LARGE", bytes.Repeat([]byte("a"), (10<<20)+1), 413},
 	}
 	for i, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

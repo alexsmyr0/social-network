@@ -6100,7 +6100,7 @@
 				"files": {
 					"image": {
 						"repeat_byte": 0,
-						"count": 5242881,
+						"count": 10485761,
 						"filename": "large.png",
 						"mime": "image/png"
 					}

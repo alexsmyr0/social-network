@@ -267,7 +267,7 @@ describe('message state', () => {
 		await messages.attachImage(10, file());
 		expect(messages.draft(10).attachment).toMatchObject({
 			status: 'error',
-			message: 'Images can be up to 5 MiB.',
+			message: 'Images can be up to 10 MiB.',
 		});
 		backend.uploadFault = 500;
 		await messages.attachImage(10, file());

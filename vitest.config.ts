@@ -20,23 +20,16 @@ export default defineConfig({
 			reportsDirectory: '.tmp/coverage',
 			// Only the shipped SPA. The test tree, the Playwright specs and the
 			// legacy `web/` surface would otherwise dilute the numbers.
-			include: [
-				'SPA/core/**/*.js',
-				'SPA/features/**/*.js',
-				'SPA/components/**/*.js',
-				'SPA/main.js',
-				'SPA/src/**/*.js',
-				'SPA/src/**/*.vue',
-			],
+			include: ['SPA/src/**/*.js', 'SPA/src/**/*.vue'],
 			// Thresholds are a ratchet, not an aspiration: they sit a couple of
 			// points under the suite's actual numbers so ordinary churn does not
 			// turn CI red, while a real drop in coverage does. Raise them when the
 			// measured figures rise; never lower them to make a build pass.
 			thresholds: {
-				statements: 75,
-				branches: 73,
-				functions: 78,
-				lines: 75,
+				statements: 96,
+				branches: 89,
+				functions: 91,
+				lines: 96,
 			},
 		},
 	},

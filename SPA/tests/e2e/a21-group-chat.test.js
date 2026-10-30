@@ -149,8 +149,8 @@ test.describe('SN-A21 real group chat', () => {
 			await expect(ben.page.locator('.message--mine').last()).toContainText('👍');
 			await expect(indicator(annSecond)).toHaveAttribute('aria-label', unreadLabel(2));
 			await ann.page.goto(`/groups/${group.id}/chat`);
-			const names = await ann.page.locator('.message__who').allTextContents();
-			expect(names).toEqual([creator.name, ben.name]);
+			// Retrying assertion: the room's history renders after navigation settles.
+			await expect(ann.page.locator('.message__who')).toHaveText([creator.name, ben.name]);
 			await expect(indicator(ann.page)).toHaveAttribute('aria-label', unreadLabel(0));
 
 			// Everyone who is not a current member gets 404 on every room route and sees

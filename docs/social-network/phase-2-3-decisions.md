@@ -100,14 +100,14 @@ These are code-inspection findings, not fresh runtime verification. The current 
 
 | Existing capability / evidence | Delivery ownership |
 |---|---|
-| [Categories and filtered feed](../../SPA/features/feed/feed.page.js), category summaries and post navigation | Privacy boundary in SN-B13; audience-aware queries and Vue flows in SN-B15/B16 and SN-A12/A13. Category administration is not an established routed feature. |
+| [Categories and filtered feed](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/feed/feed.page.js), category summaries and post navigation | Privacy boundary in SN-B13; audience-aware queries and Vue flows in SN-B15/B16 and SN-A12/A13. Category administration is not an established routed feature. |
 | [Post/comment reactions](../../internal/db/reactions.go), toggle/remove/switch and counts | SN-B16 and SN-A13; protect inherited access in SN-B13. |
-| [Drafts](../../internal/db/post_drafts.go), publishing/unpublishing, [owner activity](../../SPA/features/activity/activity.page.js) | SN-B15/B16 and SN-A12/A13; retain private liked/disliked and comment history. |
+| [Drafts](../../internal/db/post_drafts.go), publishing/unpublishing, [owner activity](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/activity/activity.page.js) | SN-B15/B16 and SN-A12/A13; retain private liked/disliked and comment history. |
 | [Post editing/deletion](../../internal/handlers/posts.go), [comment editing/deletion and nesting](../../internal/db/comments.go) | SN-B15/B16 and SN-A12/A13; preserve existing deletion behavior and document its descendant/attachment effects in SN-B14. Retain nested-comment API support without inventing category/admin features. |
 | JPEG/PNG/GIF, image-only content, replacement/removal | SN-B13 storage/read migration; SN-B15/B16 mutation flows; SN-A12/A13 UI. |
 | [Notifications](../../internal/handlers/notifications.go), unread/read controls and socket delivery | SN-B12 and SN-A10, then content-event adaptations in SN-B16/SN-A13. |
-| [Read-only profiles](../../SPA/features/profile/profile.page.js) | SN-B11 and SN-A09; Phase 3 adds permitted posts/activity. A general profile editor was not found as an existing feature. |
-| [DMs, images, presence, history and roster](../../SPA/features/chat/), reconnect and unread behavior | Preserve source and compatibility now; discuss and ticket their social-network adaptation in Phase 5. |
+| [Read-only profiles](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/profile/profile.page.js) | SN-B11 and SN-A09; Phase 3 adds permitted posts/activity. A general profile editor was not found as an existing feature. |
+| [DMs, images, presence, history and roster](https://github.com/alexsmyr0/social-network/tree/cc5161c/SPA/features/chat/), reconnect and unread behavior | Preserve source and compatibility now; discuss and ticket their social-network adaptation in Phase 5. |
 
 ## Contract handoffs and implementation gates
 

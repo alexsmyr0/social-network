@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -9,6 +10,8 @@ import (
 
 // BrowserOriginAllowed compares parsed scheme, host and effective port. A
 // present Origin never falls back to Referer; WebSockets require Origin.
+// Loopback names count as one host, so a localhost origin also admits the same
+// local frontend opened as 127.0.0.1 or [::1].
 func BrowserOriginAllowed(r *http.Request, configured string, refererFallback bool) bool {
 	allowed, ok := parseBrowserURL(configured, false)
 	if !ok {
@@ -25,8 +28,20 @@ func BrowserOriginAllowed(r *http.Request, configured string, refererFallback bo
 	}
 	actual, ok := parseBrowserURL(values[0], fromReferer)
 	return ok && strings.EqualFold(actual.Scheme, allowed.Scheme) &&
-		strings.EqualFold(actual.Hostname(), allowed.Hostname()) &&
+		sameHost(actual.Hostname(), allowed.Hostname()) &&
 		effectivePort(actual) == effectivePort(allowed)
+}
+
+func sameHost(actual, allowed string) bool {
+	return strings.EqualFold(actual, allowed) || (isLoopback(actual) && isLoopback(allowed))
+}
+
+func isLoopback(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 func parseBrowserURL(raw string, allowPath bool) (*url.URL, bool) {

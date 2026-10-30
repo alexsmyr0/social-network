@@ -261,7 +261,7 @@ export class DiscussionBackend extends ContentBackend {
 		const file = payload.form?.image;
 		if (file && !['image/png', 'image/jpeg', 'image/gif'].includes(file.type))
 			return fail(422, 'INVALID_IMAGE', { image: 'INVALID_IMAGE' });
-		if (file?.size > 5 * 1024 * 1024) return fail(413, 'PAYLOAD_TOO_LARGE');
+		if (file?.size > 10 * 1024 * 1024) return fail(413, 'PAYLOAD_TOO_LARGE');
 		let image =
 			fields.remove_image === true || fields.remove_image === 'true'
 				? null

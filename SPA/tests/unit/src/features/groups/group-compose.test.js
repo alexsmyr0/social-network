@@ -125,9 +125,9 @@ describe('SN-A16 group composer', () => {
 		expect(textOf(app.wrapper)).toContain('Choose a JPEG, PNG or GIF image.');
 		await chooseFile(
 			app.wrapper.get('#compose-image'),
-			new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'big.png', { type: 'image/png' }),
+			new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'big.png', { type: 'image/png' }),
 		);
-		expect(textOf(app.wrapper)).toContain('Images can be up to 5 MiB.');
+		expect(textOf(app.wrapper)).toContain('Images can be up to 10 MiB.');
 		expect(app.wrapper.get('#compose-body').element.value).toBe('Keep me');
 		expect(contentWrites(app.fetchRef)).toHaveLength(0);
 	});

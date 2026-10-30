@@ -12,7 +12,7 @@ Discovery first ran against a checkout that included a since-removed commit, `62
 
 ## 1. What exists today
 
-**Observed.** The frontend is a vanilla-JS SPA in [SPA/](../../SPA/), served by a Go static+proxy server in [cmd/frontend/](../../cmd/frontend/). There is no build step: [SPA/index.html](../../SPA/index.html) loads [SPA/main.js](../../SPA/main.js) as a native ES module and every import is a relative browser path.
+**Observed.** The frontend is a vanilla-JS SPA in [SPA/](../../SPA/), served by a Go static+proxy server in [cmd/frontend/](../../cmd/frontend/). There is no build step: [SPA/index.html](../../SPA/index.html) loads [SPA/main.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/main.js) as a native ES module and every import is a relative browser path.
 
 ### 1.1 Topology
 
@@ -27,7 +27,7 @@ The SPA fallback is conditional, not a blanket catch-all: [`isNavigationRequest`
 
 ### 1.2 Routing
 
-**Observed.** Routes are a static table in [routes.js:3-42](../../SPA/core/router/routes.js#L3-L42), compiled to regexes at module load. Eight routes exist:
+**Observed.** Routes are a static table in [routes.js:3-42](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/router/routes.js#L3-L42), compiled to regexes at module load. Eight routes exist:
 
 | id | path | access |
 |---|---|---|
@@ -40,32 +40,32 @@ The SPA fallback is conditional, not a blanket catch-all: [`isNavigationRequest`
 | `activity` | `/activity` | protected |
 | `profile` | `/profile/:id` | protected |
 
-Two legacy path rewrites are baked into [`normalizePathname`](../../SPA/core/router/routes.js#L80-L101): `/view-post/:id` and `/post/:id` both normalize to `/posts/:id`. **Observed.** SN-A02 must decide explicitly whether these survive; they are currently invisible redirects with no test naming them as a product requirement.
+Two legacy path rewrites are baked into [`normalizePathname`](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/router/routes.js#L80-L101): `/view-post/:id` and `/post/:id` both normalize to `/posts/:id`. **Observed.** SN-A02 must decide explicitly whether these survive; they are currently invisible redirects with no test naming them as a product requirement.
 
-**There is no `/chat` route.** Chat is not routed at all — the roster and conversation panels are markup inside the authenticated shell ([shell.views.js:34-47](../../SPA/features/shell/shell.views.js#L34-L47)) and are re-initialized on *every* protected route render ([create-app.js:278-282](../../SPA/core/app/create-app.js#L278-L282)). **Observed.** This is the single most consequential structural fact for a framework port: chat lives in the layout, not in the route tree.
+**There is no `/chat` route.** Chat is not routed at all — the roster and conversation panels are markup inside the authenticated shell ([shell.views.js:34-47](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/shell/shell.views.js#L34-L47)) and are re-initialized on *every* protected route render ([create-app.js:278-282](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L278-L282)). **Observed.** This is the single most consequential structural fact for a framework port: chat lives in the layout, not in the route tree.
 
-Navigation is delegated, not per-link: one document-level `click` listener intercepts `a[data-link]` ([create-app.js:384-412](../../SPA/core/app/create-app.js#L384-L412)), and one document-level `submit` listener intercepts auth forms ([create-app.js:414-431](../../SPA/core/app/create-app.js#L414-L431)).
+Navigation is delegated, not per-link: one document-level `click` listener intercepts `a[data-link]` ([create-app.js:384-412](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L384-L412)), and one document-level `submit` listener intercepts auth forms ([create-app.js:414-431](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L414-L431)).
 
 ### 1.3 Auth boot sequence
 
-**Observed**, from [`boot`](../../SPA/core/app/create-app.js#L438-L449):
+**Observed**, from [`boot`](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L438-L449):
 
-1. `GET /api/v1/users/me` with `credentials: 'include'` → `isAuthenticated = response.ok` ([create-app.js:34-52](../../SPA/core/app/create-app.js#L34-L52)).
+1. `GET /api/v1/users/me` with `credentials: 'include'` → `isAuthenticated = response.ok` ([create-app.js:34-52](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L34-L52)).
 2. `handleLocationChange()` matches the route and applies access rules.
 3. The `#loading-overlay` is faded and removed.
 4. If authenticated, the notification centre and the chat WebSocket start.
 
-Access enforcement is in [`enforceRouteAccess`](../../SPA/core/app/create-app.js#L54-L72): an unmatched route redirects to `/` (authenticated) or `/login`; `protected` without a session → `/login`; `public-only` with a session → `/`. **Observed.**
+Access enforcement is in [`enforceRouteAccess`](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L54-L72): an unmatched route redirects to `/` (authenticated) or `/login`; `protected` without a session → `/login`; `public-only` with a session → `/`. **Observed.**
 
-Session *state* lives in a Proxy store slice, not in the app closure: [session.js](../../SPA/core/state/session.js) over [app-state.js](../../SPA/core/state/app-state.js) and [store.js](../../SPA/core/state/store.js). Four slots: `isAuthenticated`, `currentUserId`, `onlineUserIds`, `hasPresenceSnapshot` ([app-state.js:23-28](../../SPA/core/state/app-state.js#L23-L28)).
+Session *state* lives in a Proxy store slice, not in the app closure: [session.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/state/session.js) over [app-state.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/state/app-state.js) and [store.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/state/store.js). Four slots: `isAuthenticated`, `currentUserId`, `onlineUserIds`, `hasPresenceSnapshot` ([app-state.js:23-28](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/state/app-state.js#L23-L28)).
 
-A global 401 interceptor wraps every feature fetch: `appFetch` calls `onUnauthorized()` on a 401, which clears the session, stops notifications and chat, and redirects to `/login` ([create-app.js:93-105](../../SPA/core/app/create-app.js#L93-L105), [create-app.js:123-132](../../SPA/core/app/create-app.js#L123-L132)). **Observed.** Note the asymmetry: `appFetch` is passed to feature initializers, but the auth form submit and logout use the *raw* `fetchRef` ([create-app.js:357-377](../../SPA/core/app/create-app.js#L357-L377), [create-app.js:422](../../SPA/core/app/create-app.js#L422)) — deliberate, since those paths handle their own non-OK responses.
+A global 401 interceptor wraps every feature fetch: `appFetch` calls `onUnauthorized()` on a 401, which clears the session, stops notifications and chat, and redirects to `/login` ([create-app.js:93-105](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L93-L105), [create-app.js:123-132](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L123-L132)). **Observed.** Note the asymmetry: `appFetch` is passed to feature initializers, but the auth form submit and logout use the *raw* `fetchRef` ([create-app.js:357-377](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L357-L377), [create-app.js:422](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L422)) — deliberate, since those paths handle their own non-OK responses.
 
 ### 1.4 Socket ownership
 
-**Observed.** Exactly one WebSocket exists per session and it is owned by the app shell, not by a feature: `createChatSocket` is constructed in [create-app.js:153](../../SPA/core/app/create-app.js#L153) and opened/closed only alongside the session lifecycle.
+**Observed.** Exactly one WebSocket exists per session and it is owned by the app shell, not by a feature: `createChatSocket` is constructed in [create-app.js:153](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L153) and opened/closed only alongside the session lifecycle.
 
-The socket never touches the DOM for rendering. Inbound frames are re-published as DOM `CustomEvent`s on the shared `documentRef` ([chat-socket.js:53-84](../../SPA/core/realtime/chat-socket.js#L53-L84)), and slices subscribe to those events without holding a socket reference. The mapping is frozen in [`WS_EVENTS`](../../SPA/core/realtime/chat-socket.js#L20-L26):
+The socket never touches the DOM for rendering. Inbound frames are re-published as DOM `CustomEvent`s on the shared `documentRef` ([chat-socket.js:53-84](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/realtime/chat-socket.js#L53-L84)), and slices subscribe to those events without holding a socket reference. The mapping is frozen in [`WS_EVENTS`](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/realtime/chat-socket.js#L20-L26):
 
 | Server frame | DOM event |
 |---|---|
@@ -75,7 +75,7 @@ The socket never touches the DOM for rendering. Inbound frames are re-published 
 | `notification.new` | `chat:notification-new` |
 | `chat.error` | `chat:error` |
 
-Outbound goes the other way: the composer dispatches `SEND_MESSAGE_EVENT`, the shell listener builds the `dm.send` payload and calls `chatSocket.send` ([create-app.js:200-224](../../SPA/core/app/create-app.js#L200-L224)). Reconnect is exponential backoff, 1s base to 30s cap ([chat-socket.js:31-32](../../SPA/core/realtime/chat-socket.js#L31-L32)).
+Outbound goes the other way: the composer dispatches `SEND_MESSAGE_EVENT`, the shell listener builds the `dm.send` payload and calls `chatSocket.send` ([create-app.js:200-224](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L200-L224)). Reconnect is exponential backoff, 1s base to 30s cap ([chat-socket.js:31-32](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/realtime/chat-socket.js#L31-L32)).
 
 **This event-bus indirection is the most portable thing in the codebase** and is the strongest reuse candidate in [§2](#2-reuse-candidates).
 
@@ -91,13 +91,13 @@ These import no DOM API and are pure logic or pure string-building. A framework 
 
 | Module | Role |
 |---|---|
-| [core/state/store.js](../../SPA/core/state/store.js) | Proxy reactive store — likely superseded by the framework's own state layer |
-| [core/state/app-state.js](../../SPA/core/state/app-state.js), [session.js](../../SPA/core/state/session.js) | Session slots and identity resolution |
-| [core/router/routes.js](../../SPA/core/router/routes.js) | Route table + `normalizePathname` legacy rewrites |
-| [core/api/session.api.js](../../SPA/core/api/session.api.js), [constants.js](../../SPA/core/api/constants.js) | `API_BASE` and `/users/me` |
-| [features/*/\*.api.js](../../SPA/features/) (activity, chat ×2, notification, post ×2) | Endpoint URL construction, payload shaping, response unwrapping |
-| [core/utils/throttle.js](../../SPA/core/utils/throttle.js), [html.js](../../SPA/core/utils/html.js), [core/ui/pagination.js](../../SPA/core/ui/pagination.js) | Small pure helpers |
-| [features/post/post.reactions.logic.js](../../SPA/features/post/post.reactions.logic.js), [chat/chat.roster.logic.js](../../SPA/features/chat/chat.roster.logic.js), [feed/feed.state.js](../../SPA/features/feed/feed.state.js) | Domain logic — reaction toggling, roster ordering, feed paging state |
+| [core/state/store.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/state/store.js) | Proxy reactive store — likely superseded by the framework's own state layer |
+| [core/state/app-state.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/state/app-state.js), [session.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/state/session.js) | Session slots and identity resolution |
+| [core/router/routes.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/router/routes.js) | Route table + `normalizePathname` legacy rewrites |
+| [core/api/session.api.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/api/session.api.js), [constants.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/api/constants.js) | `API_BASE` and `/users/me` |
+| [features/*/\*.api.js](https://github.com/alexsmyr0/social-network/tree/cc5161c/SPA/features/) (activity, chat ×2, notification, post ×2) | Endpoint URL construction, payload shaping, response unwrapping |
+| [core/utils/throttle.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/utils/throttle.js), [html.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/utils/html.js), [core/ui/pagination.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/ui/pagination.js) | Small pure helpers |
+| [features/post/post.reactions.logic.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/post/post.reactions.logic.js), [chat/chat.roster.logic.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/chat/chat.roster.logic.js), [feed/feed.state.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/feed/feed.state.js) | Domain logic — reaction toggling, roster ordering, feed paging state |
 
 **The `.api.js` layer is the highest-value reuse target.** It encodes the live backend contract and is independent of any rendering approach.
 
@@ -105,9 +105,9 @@ These import no DOM API and are pure logic or pure string-building. A framework 
 
 **Observed.** The files below have zero matches for the DOM APIs in §2. They build markup strings rather than manipulating DOM nodes. Their markup is throwaway in a framework port, but the *structure* they encode (field names, data attributes, ARIA roles, empty/error states) is a specification worth translating rather than rediscovering.
 
-Files: [auth.views.js](../../SPA/features/auth/auth.views.js), [shell.views.js](../../SPA/features/shell/shell.views.js), [feed.views.js](../../SPA/features/feed/feed.views.js), [post.views.js](../../SPA/features/post/post.views.js), [post-detail.views.js](../../SPA/features/post/post-detail.views.js), [profile.views.js](../../SPA/features/profile/profile.views.js), [activity.views.js](../../SPA/features/activity/activity.views.js), [notification.views.js](../../SPA/features/notification/notification.views.js), [chat.roster.views.js](../../SPA/features/chat/chat.roster.views.js), [chat.conversation.views.js](../../SPA/features/chat/chat.conversation.views.js).
+Files: [auth.views.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/auth/auth.views.js), [shell.views.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/shell/shell.views.js), [feed.views.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/feed/feed.views.js), [post.views.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/post/post.views.js), [post-detail.views.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/post/post-detail.views.js), [profile.views.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/profile/profile.views.js), [activity.views.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/activity/activity.views.js), [notification.views.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/notification/notification.views.js), [chat.roster.views.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/chat/chat.roster.views.js), [chat.conversation.views.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/chat/chat.conversation.views.js).
 
-Unlike these string builders, [post-card.views.js](../../SPA/features/post/post-card.views.js#L170-L177) creates and mutates DOM nodes; it belongs in §2.3. Its [upload-URL allowlist](../../SPA/features/post/post-card.views.js#L102-L116) is security logic worth carrying over deliberately (see [§3.4](#34-uploads)).
+Unlike these string builders, [post-card.views.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/post/post-card.views.js#L170-L177) creates and mutates DOM nodes; it belongs in §2.3. Its [upload-URL allowlist](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/post/post-card.views.js#L102-L116) is security logic worth carrying over deliberately (see [§3.4](#34-uploads)).
 
 ### 2.3 Rewrite required (DOM-dependent modules)
 
@@ -115,25 +115,25 @@ These are mostly `init*Page` functions that query, mutate and bind directly agai
 
 | Module | Matching lines | Lines | Notes |
 |---|---|---|---|
-| [features/post/post.page.js](../../SPA/features/post/post.page.js) | 66 | 766 | Largest single file; owns detail + create/edit forms |
-| [features/activity/activity.page.js](../../SPA/features/activity/activity.page.js) | 61 | 488 | |
-| [features/chat/chat.conversation.page.js](../../SPA/features/chat/chat.conversation.page.js) | 45 | 566 | Scroll pagination + composer + upload |
-| [features/feed/feed.page.js](../../SPA/features/feed/feed.page.js) | 34 | — | |
-| [core/app/create-app.js](../../SPA/core/app/create-app.js) | 33 | 475 | Router, access control, shell, socket wiring, delegation |
-| [features/notification/notification.page.js](../../SPA/features/notification/notification.page.js) | 31 | — | |
-| [features/chat/chat.roster.page.js](../../SPA/features/chat/chat.roster.page.js) | 20 | — | |
-| [features/profile/profile.page.js](../../SPA/features/profile/profile.page.js) | 19 | — | |
-| [core/realtime/chat-socket.js](../../SPA/core/realtime/chat-socket.js) | 17 | — | DOM refs are **event dispatch only**, not rendering — cheap to port |
-| [features/post/post.reactions.bindings.js](../../SPA/features/post/post.reactions.bindings.js) | 14 | — | |
-| [core/shared/image-picker.js](../../SPA/core/shared/image-picker.js) | 10 | — | Preview/`URL.createObjectURL` lifecycle |
-| [features/auth/auth.handlers.js](../../SPA/features/auth/auth.handlers.js) | 9 | — | DOM refs are inline error rendering + submit-button busy state |
-| [features/post/post-card.views.js](../../SPA/features/post/post-card.views.js) | 6 | — | Builds a DOM article and attaches a click listener; preserve its upload-URL allowlist |
+| [features/post/post.page.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/post/post.page.js) | 66 | 766 | Largest single file; owns detail + create/edit forms |
+| [features/activity/activity.page.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/activity/activity.page.js) | 61 | 488 | |
+| [features/chat/chat.conversation.page.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/chat/chat.conversation.page.js) | 45 | 566 | Scroll pagination + composer + upload |
+| [features/feed/feed.page.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/feed/feed.page.js) | 34 | — | |
+| [core/app/create-app.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js) | 33 | 475 | Router, access control, shell, socket wiring, delegation |
+| [features/notification/notification.page.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/notification/notification.page.js) | 31 | — | |
+| [features/chat/chat.roster.page.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/chat/chat.roster.page.js) | 20 | — | |
+| [features/profile/profile.page.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/profile/profile.page.js) | 19 | — | |
+| [core/realtime/chat-socket.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/realtime/chat-socket.js) | 17 | — | DOM refs are **event dispatch only**, not rendering — cheap to port |
+| [features/post/post.reactions.bindings.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/post/post.reactions.bindings.js) | 14 | — | |
+| [core/shared/image-picker.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/shared/image-picker.js) | 10 | — | Preview/`URL.createObjectURL` lifecycle |
+| [features/auth/auth.handlers.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/auth/auth.handlers.js) | 9 | — | DOM refs are inline error rendering + submit-button busy state |
+| [features/post/post-card.views.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/post/post-card.views.js) | 6 | — | Builds a DOM article and attaches a click listener; preserve its upload-URL allowlist |
 
-**Unverified:** that `create-app.js` has no framework-agnostic core worth extracting. Its access-control rules and the outlet-preservation logic ([create-app.js:75-88](../../SPA/core/app/create-app.js#L73-L91), [create-app.js:229-257](../../SPA/core/app/create-app.js#L229-L257)) may be reusable as pure functions, but this was not tested.
+**Unverified:** that `create-app.js` has no framework-agnostic core worth extracting. Its access-control rules and the outlet-preservation logic ([create-app.js:75-88](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L73-L91), [create-app.js:229-257](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L229-L257)) may be reusable as pure functions, but this was not tested.
 
 ### 2.4 CSS
 
-**Observed.** 4,377 lines of vanilla CSS across 14 files. [assets/css/tokens.css](../../SPA/assets/css/tokens.css) (138) and [design-system.css](../../SPA/assets/css/design-system.css) (581) are framework-neutral and are strong reuse candidates. Feature stylesheets are coupled to the current class names — [post-card.css](../../SPA/features/post/post-card.css) is 1,111 lines alone — and their fate follows the markup rewrite.
+**Observed.** 4,377 lines of vanilla CSS across 14 files. [assets/css/tokens.css](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/assets/css/tokens.css) (138) and [design-system.css](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/assets/css/design-system.css) (581) are framework-neutral and are strong reuse candidates. Feature stylesheets are coupled to the current class names — [post-card.css](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/post/post-card.css) is 1,111 lines alone — and their fate follows the markup rewrite.
 
 ---
 
@@ -143,59 +143,59 @@ Every assumption the frontend makes about the backend. **All Observed** unless m
 
 ### 3.1 Base path and transport
 
-- `API_BASE = '/api/v1'` — [constants.js:1](../../SPA/core/api/constants.js#L1).
-- **Exception:** [auth.handlers.js:5-6](../../SPA/features/auth/auth.handlers.js#L5-L6) hardcodes `/api/v1/users/login` and `/api/v1/users/register` instead of using `API_BASE`. [create-app.js:40](../../SPA/core/app/create-app.js#L40) and [create-app.js:363](../../SPA/core/app/create-app.js#L363) likewise hardcode `/api/v1/users/me` and `/api/v1/users/logout`. Four literals to update if the base path changes.
+- `API_BASE = '/api/v1'` — [constants.js:1](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/api/constants.js#L1).
+- **Exception:** [auth.handlers.js:5-6](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/auth/auth.handlers.js#L5-L6) hardcodes `/api/v1/users/login` and `/api/v1/users/register` instead of using `API_BASE`. [create-app.js:40](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L40) and [create-app.js:363](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L363) likewise hardcode `/api/v1/users/me` and `/api/v1/users/logout`. Four literals to update if the base path changes.
 - Every request sends `credentials: 'include'`. The SPA reads no token and sets no `Authorization` header — **auth is cookie-only end to end.**
-- WebSocket URL is derived from `location`, not configured: `wss:` if the page is HTTPS, else `ws:`, always same-origin `/ws` ([chat-socket.js:37-41](../../SPA/core/realtime/chat-socket.js#L37-L41)). A cross-origin frontend container would break this.
+- WebSocket URL is derived from `location`, not configured: `wss:` if the page is HTTPS, else `ws:`, always same-origin `/ws` ([chat-socket.js:37-41](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/realtime/chat-socket.js#L37-L41)). A cross-origin frontend container would break this.
 
 ### 3.2 Endpoints the SPA calls
 
 | Method | Path | Caller |
 |---|---|---|
-| GET | `/users/me` | [session.api.js](../../SPA/core/api/session.api.js#L18), [create-app.js:40](../../SPA/core/app/create-app.js#L40) |
-| POST | `/users/login`, `/users/register` | [auth.handlers.js](../../SPA/features/auth/auth.handlers.js#L5-L6) |
-| POST | `/users/logout` | [create-app.js:363](../../SPA/core/app/create-app.js#L363) |
-| GET | `/users/:id/profile` | [profile.page.js](../../SPA/features/profile/profile.page.js) |
-| GET | `/users/activity` | [activity.api.js](../../SPA/features/activity/activity.api.js) |
-| GET/POST | `/posts` | [post.api.js](../../SPA/features/post/post.api.js), [feed.page.js](../../SPA/features/feed/feed.page.js) |
-| GET/PATCH/DELETE | `/posts/:id` | [post.api.js](../../SPA/features/post/post.api.js), [activity.api.js](../../SPA/features/activity/activity.api.js) |
-| GET/POST | `/posts/:id/comments` | [post.api.js](../../SPA/features/post/post.api.js) |
-| PATCH/DELETE | `/comments/:id` | [activity.api.js](../../SPA/features/activity/activity.api.js) |
-| POST | `/posts/:id/:type`, `/comments/:id/:type` (reactions) | [post.reactions.api.js](../../SPA/features/post/post.reactions.api.js) |
-| GET | `/categories` | [post.api.js](../../SPA/features/post/post.api.js) |
-| GET | `/notifications` | [notification.api.js](../../SPA/features/notification/notification.api.js) |
-| GET | `/chats` | [chat.roster.api.js](../../SPA/features/chat/chat.roster.api.js) |
-| GET | `/chats/:userId/messages` | [chat.conversation.api.js](../../SPA/features/chat/chat.conversation.api.js) |
-| POST | `/chats/:userId/images` | [chat.conversation.api.js:55](../../SPA/features/chat/chat.conversation.api.js#L55) |
-| WS | `/ws` | [chat-socket.js](../../SPA/core/realtime/chat-socket.js#L37-L41) |
+| GET | `/users/me` | [session.api.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/api/session.api.js#L18), [create-app.js:40](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L40) |
+| POST | `/users/login`, `/users/register` | [auth.handlers.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/auth/auth.handlers.js#L5-L6) |
+| POST | `/users/logout` | [create-app.js:363](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L363) |
+| GET | `/users/:id/profile` | [profile.page.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/profile/profile.page.js) |
+| GET | `/users/activity` | [activity.api.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/activity/activity.api.js) |
+| GET/POST | `/posts` | [post.api.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/post/post.api.js), [feed.page.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/feed/feed.page.js) |
+| GET/PATCH/DELETE | `/posts/:id` | [post.api.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/post/post.api.js), [activity.api.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/activity/activity.api.js) |
+| GET/POST | `/posts/:id/comments` | [post.api.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/post/post.api.js) |
+| PATCH/DELETE | `/comments/:id` | [activity.api.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/activity/activity.api.js) |
+| POST | `/posts/:id/:type`, `/comments/:id/:type` (reactions) | [post.reactions.api.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/post/post.reactions.api.js) |
+| GET | `/categories` | [post.api.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/post/post.api.js) |
+| GET | `/notifications` | [notification.api.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/notification/notification.api.js) |
+| GET | `/chats` | [chat.roster.api.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/chat/chat.roster.api.js) |
+| GET | `/chats/:userId/messages` | [chat.conversation.api.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/chat/chat.conversation.api.js) |
+| POST | `/chats/:userId/images` | [chat.conversation.api.js:55](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/chat/chat.conversation.api.js#L55) |
+| WS | `/ws` | [chat-socket.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/realtime/chat-socket.js#L37-L41) |
 
 ### 3.3 Auth assumptions
 
-1. **Session detection is `GET /users/me` response-ok**, nothing more ([create-app.js:48](../../SPA/core/app/create-app.js#L48)). Any non-2xx — including 500 — reads as "logged out".
-2. **Identity shape:** `payload.data.id`, must be a finite number ([session.api.js:25-26](../../SPA/core/api/session.api.js#L25-L26)). `0` means unresolved; a failed lookup is deliberately not cached so the next caller retries ([session.js:38-57](../../SPA/core/state/session.js#L38-L57)).
-3. **Login accepts either username or email in one field.** The SPA routes the value to `email` if it contains `@`, else `username` ([auth.handlers.js:94-109](../../SPA/features/auth/auth.handlers.js#L94-L109)). The inline comment asserts "the backend rejects usernames containing `@`" — **Unverified against current backend code; SN-B02 must confirm or drop this heuristic.**
-4. **Registration payload:** `first_name`, `last_name`, `gender`, `username`, `email`, `password`, and `age` as an integer ([auth.handlers.js:111-128](../../SPA/features/auth/auth.handlers.js#L111-L128)). `age` is omitted entirely if it does not match `/^-?\d+$/`.
-5. **Error envelope:** the SPA reads `responseBody.error.message` and falls back to a generic string ([auth.handlers.js:186-195](../../SPA/features/auth/auth.handlers.js#L186-L195)).
-6. **Logout finalizes on ok *or* 401** ([create-app.js:353-355](../../SPA/core/app/create-app.js#L353-L355)) — an already-dead session still logs the user out locally. A network throw does *not* finalize ([create-app.js:374-376](../../SPA/core/app/create-app.js#L374-L376)).
+1. **Session detection is `GET /users/me` response-ok**, nothing more ([create-app.js:48](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L48)). Any non-2xx — including 500 — reads as "logged out".
+2. **Identity shape:** `payload.data.id`, must be a finite number ([session.api.js:25-26](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/api/session.api.js#L25-L26)). `0` means unresolved; a failed lookup is deliberately not cached so the next caller retries ([session.js:38-57](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/state/session.js#L38-L57)).
+3. **Login accepts either username or email in one field.** The SPA routes the value to `email` if it contains `@`, else `username` ([auth.handlers.js:94-109](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/auth/auth.handlers.js#L94-L109)). The inline comment asserts "the backend rejects usernames containing `@`" — **Unverified against current backend code; SN-B02 must confirm or drop this heuristic.**
+4. **Registration payload:** `first_name`, `last_name`, `gender`, `username`, `email`, `password`, and `age` as an integer ([auth.handlers.js:111-128](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/auth/auth.handlers.js#L111-L128)). `age` is omitted entirely if it does not match `/^-?\d+$/`.
+5. **Error envelope:** the SPA reads `responseBody.error.message` and falls back to a generic string ([auth.handlers.js:186-195](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/auth/auth.handlers.js#L186-L195)).
+6. **Logout finalizes on ok *or* 401** ([create-app.js:353-355](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L353-L355)) — an already-dead session still logs the user out locally. A network throw does *not* finalize ([create-app.js:374-376](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L374-L376)).
 7. **401 on any feature request is a global logout signal** (§1.3).
 
-> **Requirement gap — flagged for SN-A02/SN-B02, not resolved here.** The [authentication requirement](requirements.md#authentication) asks for Email, Password, First Name, Last Name, **Date of Birth**, and optional **Avatar/Image**, **Nickname** and **About Me**. The inherited form collects **Age** and **Gender** and a required **Username**, and has no avatar, nickname or about-me field ([auth.views.js:89-149](../../SPA/features/auth/auth.views.js#L89-L149)). Age→DOB is a data-model change, not a form change. This is recorded as a finding; the fix belongs to the registration ticket.
+> **Requirement gap — flagged for SN-A02/SN-B02, not resolved here.** The [authentication requirement](requirements.md#authentication) asks for Email, Password, First Name, Last Name, **Date of Birth**, and optional **Avatar/Image**, **Nickname** and **About Me**. The inherited form collects **Age** and **Gender** and a required **Username**, and has no avatar, nickname or about-me field ([auth.views.js:89-149](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/auth/auth.views.js#L89-L149)). Age→DOB is a data-model change, not a form change. This is recorded as a finding; the fix belongs to the registration ticket.
 
 ### 3.4 Uploads
 
-1. **Four image-capable post/comment operations plus DM upload.** `POST /posts` and `PATCH /posts/:id` use multipart built by [`buildPostMultipartFormData`](../../SPA/core/shared/utils.js#L33-L50) when an image is selected ([post.api.js:125-190](../../SPA/features/post/post.api.js#L125-L190)). `POST /posts/:id/comments` and `PATCH /comments/:id` also accept a multipart `image` field ([post.api.js:198-214](../../SPA/features/post/post.api.js#L198-L214), [activity.api.js:142-162](../../SPA/features/activity/activity.api.js#L142-L162)). These operations send JSON when no new image is selected. DMs use `POST /chats/:userId/images` with an `image` field, returning a URL the client then attaches to a `dm.send` frame ([chat.conversation.api.js:43-69](../../SPA/features/chat/chat.conversation.api.js#L43-L69), [create-app.js:164-183](../../SPA/core/app/create-app.js#L164-L183)).
-2. **Client-side size cap is 20 MiB** — `MAX_IMAGE_BYTES = 20 * 1024 * 1024` ([utils.js:1](../../SPA/core/shared/utils.js#L1)). **Unverified** whether the backend enforces the same limit; a client-only cap is not a control.
-3. **Multipart requests must not set `Content-Type`.** [`buildImageRequestOptions`](../../SPA/core/shared/utils.js#L5-L20) passes only `Accept: application/json` so the browser writes its own boundary.
-4. **Served upload URLs must start with `/static/uploads/`.** [post-card.views.js:102-116](../../SPA/features/post/post-card.views.js#L102-L116) rejects anything else, including absolute URLs whose pathname fails the prefix. DM images are documented as landing under `/static/uploads/dm/` ([chat.conversation.views.js:18](../../SPA/features/chat/chat.conversation.views.js#L18)).
+1. **Four image-capable post/comment operations plus DM upload.** `POST /posts` and `PATCH /posts/:id` use multipart built by [`buildPostMultipartFormData`](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/shared/utils.js#L33-L50) when an image is selected ([post.api.js:125-190](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/post/post.api.js#L125-L190)). `POST /posts/:id/comments` and `PATCH /comments/:id` also accept a multipart `image` field ([post.api.js:198-214](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/post/post.api.js#L198-L214), [activity.api.js:142-162](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/activity/activity.api.js#L142-L162)). These operations send JSON when no new image is selected. DMs use `POST /chats/:userId/images` with an `image` field, returning a URL the client then attaches to a `dm.send` frame ([chat.conversation.api.js:43-69](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/chat/chat.conversation.api.js#L43-L69), [create-app.js:164-183](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L164-L183)).
+2. **Client-side size cap is 20 MiB** — `MAX_IMAGE_BYTES = 20 * 1024 * 1024` ([utils.js:1](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/shared/utils.js#L1)). **Unverified** whether the backend enforces the same limit; a client-only cap is not a control.
+3. **Multipart requests must not set `Content-Type`.** [`buildImageRequestOptions`](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/shared/utils.js#L5-L20) passes only `Accept: application/json` so the browser writes its own boundary.
+4. **Served upload URLs must start with `/static/uploads/`.** [post-card.views.js:102-116](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/post/post-card.views.js#L102-L116) rejects anything else, including absolute URLs whose pathname fails the prefix. DM images are documented as landing under `/static/uploads/dm/` ([chat.conversation.views.js:18](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/features/chat/chat.conversation.views.js#L18)).
 5. **`/static/` is served from `./web/static` by the frontend server** ([routes.go:49-54](../../cmd/frontend/routes.go#L49-L54)) — so uploads written by the *backend* are read from the *frontend* container's filesystem. **This is a shared-filesystem assumption that breaks under the two-container requirement** ([docker](requirements.md#docker)). Flagged for SN-A02; not resolved here.
 6. **CSP constrains images to `'self' data: blob:`** ([routes.go:25](../../cmd/frontend/routes.go#L25)) — no third-party image host, and `data:`/`blob:` exist specifically for the picker preview.
 
 ### 3.5 WebSocket assumptions
 
-- Outbound `dm.send` payload: `{ recipient_id: number, body: string, image_url?: string }`. A frame with neither body nor image is dropped client-side ([create-app.js:169-183](../../SPA/core/app/create-app.js#L169-L183)).
-- A closed socket surfaces a synthetic `chat:error` with code `NOT_CONNECTED` ([create-app.js:185-198](../../SPA/core/app/create-app.js#L185-L198)).
-- Unknown inbound frame types are ignored, not fatal ([chat-socket.js:82](../../SPA/core/realtime/chat-socket.js#L82)).
-- `presence.snapshot` supersedes the REST roster's `is_online` once received ([app-state.js:27](../../SPA/core/state/app-state.js#L27)).
+- Outbound `dm.send` payload: `{ recipient_id: number, body: string, image_url?: string }`. A frame with neither body nor image is dropped client-side ([create-app.js:169-183](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L169-L183)).
+- A closed socket surfaces a synthetic `chat:error` with code `NOT_CONNECTED` ([create-app.js:185-198](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/app/create-app.js#L185-L198)).
+- Unknown inbound frame types are ignored, not fatal ([chat-socket.js:82](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/realtime/chat-socket.js#L82)).
+- `presence.snapshot` supersedes the REST roster's `is_online` once received ([app-state.js:27](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/core/state/app-state.js#L27)).
 
 ### 3.6 CSP constraints the SPA must keep satisfying
 
@@ -396,12 +396,12 @@ For SN-A02/SN-A03: these are the assertions that encode a contract rather than a
 |---|---|---|
 | [policy/csp-conformance.test.js](../../SPA/tests/unit/policy/csp-conformance.test.js) | No inline `<script>` / `on*` handlers — enforces `script-src 'self'` | **Yes, unchanged.** A framework-choice guardrail — keep it running during the port. |
 | [policy/spa-import-paths.test.js](../../SPA/tests/unit/policy/spa-import-paths.test.js) | No imports reach back into `web/static/` or `/static/js/` | Yes, while `SPA/` exists |
-| [core/router/routes.test.js](../../SPA/tests/unit/core/router/routes.test.js) | Route matching + legacy `/view-post/:id`, `/post/:id` rewrites | **Yes as a spec** — the rewrites are the only executable record of that behavior |
-| [core/state/session.test.js](../../SPA/tests/unit/core/state/session.test.js), [core/api/session.api.test.js](../../SPA/tests/unit/core/api/session.api.test.js) | Identity resolution, dedup, non-caching of failures | Yes — logic is DOM-free |
-| [features/auth/auth.handlers.test.js](../../SPA/tests/unit/features/auth/auth.handlers.test.js) | Login identifier heuristic, registration payload shape, error envelope | **Yes as a contract spec.** Re-verify against SN-B02; the `@` heuristic may change. |
-| [core/realtime/chat-socket.test.js](../../SPA/tests/unit/core/realtime/chat-socket.test.js), [chat-socket.reconnect.test.js](../../SPA/tests/unit/core/realtime/chat-socket.reconnect.test.js) | Frame→event mapping, backoff, unknown-frame tolerance | Yes — the socket is DOM-free apart from dispatch |
-| [features/chat/chat.roster.logic.test.js](../../SPA/tests/unit/features/chat/chat.roster.logic.test.js) | Roster ordering (history-first, then alphabetical) | Yes — pure logic, and the requirement is product-level |
-| [core/app/create-app.test.js](../../SPA/tests/unit/core/app/create-app.test.js) | Access control, redirects, 401 handling, logout finalization | **Assertions yes, harness no.** The rules are the spec; the DOM mock is disposable. |
+| [core/router/routes.test.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/tests/unit/core/router/routes.test.js) | Route matching + legacy `/view-post/:id`, `/post/:id` rewrites | **Yes as a spec** — the rewrites are the only executable record of that behavior |
+| [core/state/session.test.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/tests/unit/core/state/session.test.js), [core/api/session.api.test.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/tests/unit/core/api/session.api.test.js) | Identity resolution, dedup, non-caching of failures | Yes — logic is DOM-free |
+| [features/auth/auth.handlers.test.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/tests/unit/features/auth/auth.handlers.test.js) | Login identifier heuristic, registration payload shape, error envelope | **Yes as a contract spec.** Re-verify against SN-B02; the `@` heuristic may change. |
+| [core/realtime/chat-socket.test.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/tests/unit/core/realtime/chat-socket.test.js), [chat-socket.reconnect.test.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/tests/unit/core/realtime/chat-socket.reconnect.test.js) | Frame→event mapping, backoff, unknown-frame tolerance | Yes — the socket is DOM-free apart from dispatch |
+| [features/chat/chat.roster.logic.test.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/tests/unit/features/chat/chat.roster.logic.test.js) | Roster ordering (history-first, then alphabetical) | Yes — pure logic, and the requirement is product-level |
+| [core/app/create-app.test.js](https://github.com/alexsmyr0/social-network/blob/cc5161c/SPA/tests/unit/core/app/create-app.test.js) | Access control, redirects, 401 handling, logout finalization | **Assertions yes, harness no.** The rules are the spec; the DOM mock is disposable. |
 | [e2e/tickets.test.js](../../SPA/tests/e2e/tickets.test.js) (A02–A10) | Deep links, refresh, back/forward, shell persistence, logout, proxy | **Yes — highest value.** Framework-agnostic browser-level assertions; they are the natural regression gate for SN-A03's route smoke tests. |
 | [e2e/chat.test.js](../../SPA/tests/e2e/chat.test.js) | Two-context live DM delivery | Yes |
 | [unit/docs-consistency.test.js](../../SPA/tests/unit/docs-consistency.test.js) | Docs match code | **Rewrite during the port.** Passing at this revision (§5.3), but asserts against forum docs. |

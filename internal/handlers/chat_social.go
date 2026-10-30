@@ -145,19 +145,16 @@ func parseDirectInput(input map[string]json.RawMessage, withRecipient bool) (dir
 	return in, fields, nil
 }
 
-// publishDirectMessage fans out a committed message: always the sender's own
-// sessions, and the recipient's only when the committed live predicate holds.
-// Whether recipient sessions exist, and whether the predicate still holds, is
-// decided again at each queued write.
+// publishDirectMessage fans out a committed message to the sender's and the
+// recipient's sessions. Whether recipient sessions exist, and whether the pair
+// may still message each other, is decided again at each queued write.
 func publishDirectMessage(hub *ws.Hub, result db.DirectSendResult) {
 	if hub == nil || result.Duplicate {
 		return
 	}
 	data := marshalEvent("dm.message", result.Message)
 	_ = hub.SendToUser(result.Message.SenderID, data)
-	if result.RecipientEligible {
-		_ = hub.SendToUser(result.Message.RecipientID, data)
-	}
+	_ = hub.SendToUser(result.Message.RecipientID, data)
 }
 
 type chatReadPayload struct {
@@ -413,7 +410,7 @@ func (h *ChatsHandler) socialUpload(w http.ResponseWriter, r *http.Request, view
 		return
 	}
 	defer file.Close()
-	data, err := io.ReadAll(io.LimitReader(file, avatarMaxBytes+1))
+	data, err := io.ReadAll(io.LimitReader(file, imageMaxBytes+1))
 	if err != nil {
 		chatError(w, r, err)
 		return

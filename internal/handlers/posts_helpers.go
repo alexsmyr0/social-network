@@ -22,6 +22,10 @@ import (
 
 const maxUploadSize int64 = 20 << 20
 
+// socialMultipartMaxBytes bounds a whole social multipart request: one image at
+// imageMaxBytes plus text fields and multipart framing.
+const socialMultipartMaxBytes int64 = 12 << 20
+
 type imageTypeValidationError struct {
 	message string
 }
@@ -165,7 +169,7 @@ func multipartOptionalBool(form *multipart.Form, key string) (*bool, error) {
 func parseMultipartForm(w http.ResponseWriter, r *http.Request) (func(), bool) {
 	limit := maxUploadSize
 	if _, ok := repository.SocialViewer(r.Context()); ok {
-		limit = 10 << 20
+		limit = socialMultipartMaxBytes
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, limit)
 	if err := r.ParseMultipartForm(limit); err != nil {
@@ -361,11 +365,11 @@ type memoryImage struct{ *bytes.Reader }
 func (memoryImage) Close() error { return nil }
 func saveRequestImage(r *http.Request, database *sql.DB, file io.Reader, mime string) (string, string, error) {
 	if viewer, ok := repository.SocialViewer(r.Context()); ok {
-		data, err := io.ReadAll(io.LimitReader(file, avatarMaxBytes+1))
+		data, err := io.ReadAll(io.LimitReader(file, imageMaxBytes+1))
 		if err != nil {
 			return "", "", err
 		}
-		if len(data) > avatarMaxBytes {
+		if len(data) > imageMaxBytes {
 			return "", "", repository.ErrInvalidInput
 		}
 		return repository.StageMedia(r.Context(), database, viewer, 0, "content", data, mime)

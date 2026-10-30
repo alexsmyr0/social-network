@@ -34,9 +34,6 @@ type DirectSendRequest struct {
 type DirectSendResult struct {
 	Message   DirectMessage
 	Duplicate bool
-	// RecipientEligible is the committed half of the live-delivery predicate.
-	// Whether the recipient is online is decided at delivery.
-	RecipientEligible bool
 }
 
 type DirectHistoryPage struct {
@@ -98,26 +95,19 @@ func DirectAccessible(ctx context.Context, q ProfileReader, viewer, other int64)
 	return ok, err
 }
 
-// DirectDeliveryAllowed rechecks both delivery predicates for one queued dm.message
+// DirectDeliveryAllowed rechecks the delivery predicate for one queued dm.message
 // frame. The sender's own sessions always receive the committed echo; a recipient
-// session receives it only while the sender may still message them and the
-// recipient follows the sender or is public.
+// session receives it while the sender may still message them, so every permitted
+// message reaches an online recipient instantly.
 func DirectDeliveryAllowed(ctx context.Context, q ProfileReader, viewer, sender, recipient int64) (bool, error) {
 	switch viewer {
 	case sender:
 		return true, nil
 	case recipient:
-		var ok bool
-		err := q.QueryRowContext(ctx, `SELECT `+dmCanSendSQL+` AND `+dmRecipientOpen, sender, recipient).Scan(&ok)
-		return ok, err
+		return dmCanSend(ctx, q, sender, recipient)
 	}
 	return false, nil
 }
-
-// dmRecipientOpen is the recipient half of the live predicate: ?2 follows ?1 or
-// ?2's profile is public (?1 sender, ?2 recipient).
-const dmRecipientOpen = `(EXISTS(SELECT 1 FROM follows f WHERE f.state='accepted' AND f.follower_id=?2 AND f.followed_id=?1)
- OR EXISTS(SELECT 1 FROM users WHERE id=?2 AND profile_visibility='public'))`
 
 func dmCursorEnsure(ctx context.Context, tx *sql.Tx, a, b int64) error {
 	_, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO dm_read_cursors(viewer_id,other_id,through_id) VALUES(?1,?2,0),(?2,?1,0)`, a, b)
@@ -231,14 +221,10 @@ func SendDirectMessage(ctx context.Context, database *sql.DB, req DirectSendRequ
 	if err != nil {
 		return DirectSendResult{}, err
 	}
-	var eligible bool
-	if err := tx.QueryRowContext(ctx, `SELECT `+dmRecipientOpen, req.SenderID, req.RecipientID).Scan(&eligible); err != nil {
-		return DirectSendResult{}, err
-	}
 	if err := tx.Commit(); err != nil {
 		return DirectSendResult{}, err
 	}
-	return DirectSendResult{Message: message, RecipientEligible: eligible}, nil
+	return DirectSendResult{Message: message}, nil
 }
 
 // DirectHistory returns one snapshot page, ascending within the page. Participants

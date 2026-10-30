@@ -169,9 +169,9 @@ describe('SN-A12 composer', () => {
 
 	test('an oversize choice is refused before upload; an oversize upload reply is explained', async () => {
 		const app = await compose();
-		const big = new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'big.png', { type: 'image/png' });
+		const big = new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'big.png', { type: 'image/png' });
 		await chooseFile(app.wrapper.get('#compose-image'), big);
-		expect(textOf(app.wrapper)).toContain('Images can be up to 5 MiB.');
+		expect(textOf(app.wrapper)).toContain('Images can be up to 10 MiB.');
 		expect(app.wrapper.find('.composer__preview').exists()).toBe(false);
 		cleanupMounted();
 

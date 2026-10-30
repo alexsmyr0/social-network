@@ -75,8 +75,7 @@ def history_allowed(s, a, b):
 
 
 def live(s, sender, recipient):
-    return (can_send(s, sender, recipient) and s['users'][str(recipient)]['online']
-            and (follow(s, recipient, sender) or s['users'][str(recipient)]['visibility'] == 'public'))
+    return can_send(s, sender, recipient) and s['users'][str(recipient)]['online']
 
 
 def name(s, uid):
@@ -808,14 +807,14 @@ def check_pack(pack):
                     deliver = deliver and c['viewer'] == c['sender'] and m['id'] == c['membership_id']
         require(deliver == c['deliver'], f'{c["id"]}: delivery predicate differs')
     for c in pack['media_cases']:
-        if c.get('bytes', 0) > 5 * 1024 * 1024 or c.get('body_bytes', 0) > 10 * 1024 * 1024:
+        if c.get('bytes', 0) > 10 * 1024 * 1024 or c.get('body_bytes', 0) > 12 * 1024 * 1024:
             status = 413
         elif c.get('extra_part'):
             status = 400
         elif (c['mime'] not in ('image/jpeg', 'image/png', 'image/gif') or c.get('corrupt')
               or c.get('decoded_mime', c['mime']) != c['mime']
-              or not 1 <= c['width'] <= 4096 or not 1 <= c['height'] <= 4096
-              or (c['mime'] == 'image/gif' and (not 1 <= c['frames'] <= 100 or c['width'] * c['height'] * c['frames'] > 64000000))):
+              or not 1 <= c['width'] <= 8192 or not 1 <= c['height'] <= 8192 or c['width'] * c['height'] > 40000000
+              or (c['mime'] == 'image/gif' and (not 1 <= c['frames'] <= 500 or c['width'] * c['height'] * c['frames'] > 128000000))):
             status = 422
         else:
             status = 200

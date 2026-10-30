@@ -674,10 +674,10 @@ describe('SN-A19 images', () => {
 		);
 		await choose(
 			app.wrapper,
-			new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'big.png', { type: 'image/png' }),
+			new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'big.png', { type: 'image/png' }),
 		);
 		expect(app.wrapper.get('.message-composer__image .field-error').text()).toBe(
-			'Images can be up to 5 MiB.',
+			'Images can be up to 10 MiB.',
 		);
 		expect(chatCalls(app.fetchRef, { method: 'POST', path: /\/images$/u })).toHaveLength(1);
 	});
@@ -689,7 +689,7 @@ describe('SN-A19 images', () => {
 		await type(app.wrapper, 'caption');
 		await choose(app.wrapper, png());
 		expect(app.wrapper.get('.message-composer__image .field-error').text()).toContain(
-			'isn’t a valid JPEG, PNG or GIF',
+			'couldn’t be used. Choose a valid JPEG, PNG or GIF',
 		);
 		expect(send(app.wrapper).attributes('disabled')).toBeUndefined();
 		await send(app.wrapper).trigger('click');
@@ -775,19 +775,29 @@ describe('SN-A19 live delivery', () => {
 		expect(app.wrapper.find('.message-list').exists()).toBe(false);
 	});
 
-	test('a message withheld from live delivery appears on the next focus, refetch or reopen', async () => {
+	test('a private recipient who does not follow the sender still receives the message live', async () => {
 		// Alex is private and does not follow Lee, who follows Alex: Lee may
-		// message Alex, but instant delivery is withheld from Alex.
+		// message Alex, and the message reaches Alex's open thread at once.
 		const backend = new ChatBackend();
 		backend.users.get(42).visibility = 'private';
 		const app = await mountMessagesApp('/messages/10', { backend });
-		backend.commit(10, 42, { body: 'quiet one' });
+		backend.commit(10, 42, { body: 'live one' });
+		expect(backend.signals[0].recipients).toEqual([10, 42]);
+		await deliverFrames(app);
+		expect(bodies(app.wrapper).at(-1)).toBe('live one');
+	});
+
+	test('a message missed while offline appears on the next focus, refetch or reopen', async () => {
+		const backend = new ChatBackend();
+		backend.online.set(42, false);
+		const app = await mountMessagesApp('/messages/10', { backend });
+		backend.commit(10, 42, { body: 'missed one' });
 		expect(backend.signals[0].recipients).toEqual([10]);
 		await deliverFrames(app);
-		expect(textOf(app.wrapper)).not.toContain('quiet one');
+		expect(textOf(app.wrapper)).not.toContain('missed one');
 		window.dispatchEvent(new Event('focus'));
 		await settle();
-		expect(bodies(app.wrapper).at(-1)).toBe('quiet one');
+		expect(bodies(app.wrapper).at(-1)).toBe('missed one');
 	});
 });
 

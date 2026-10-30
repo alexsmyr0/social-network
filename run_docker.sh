@@ -1,18 +1,26 @@
 #!/usr/bin/env bash
-set -e
+# Builds the backend and frontend images, starts both containers and opens the
+# app. Docker must already be running; this script never starts the daemon.
+set -euo pipefail
+cd "$(dirname "$0")"
 
-echo "🛑 Stopping existing container (if any)..."
-make docker-stop || true
+if ! docker info >/dev/null 2>&1; then
+    echo "❌ Docker is not running. Start Docker, then run this script again." >&2
+    exit 1
+fi
 
-echo "🐳 Building Docker image..."
-make docker-build
+echo "🐳 Building images and starting the backend and frontend containers..."
+make stack-up
 
-echo "🚀 Starting Docker container..."
-make docker-run
+PROJECT="${COMPOSE_PROJECT_NAME:-social-network}"
+URL="http://localhost:${FRONTEND_PORT:-3000}"
 
-URL="http://localhost:8080"
-echo "🌍 Opening browser at $URL"
+echo "📦 Containers:"
+docker ps -a --size \
+    --filter "label=com.docker.compose.project=$PROJECT" \
+    --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Size}}'
 
+echo "🌍 Opening $URL"
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     xdg-open "$URL" >/dev/null 2>&1 || true
 elif [[ "$OSTYPE" == "darwin"* ]]; then
@@ -21,4 +29,4 @@ elif [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* ]]; then
     start "$URL"
 fi
 
-echo "📜 Container is running. Use 'docker ps -a' to verify."
+echo "🛑 Stop with 'make stack-down' (accounts and media are kept)."

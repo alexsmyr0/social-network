@@ -26,7 +26,7 @@ FRONTEND_PORT=3400 COMPOSE_PROJECT_NAME=sn-dev make stack-up
 FRONTEND_PORT=3400 COMPOSE_PROJECT_NAME=sn-dev make stack-down
 ```
 
-Open **http://localhost:3400**, matching the backend's allowed browser origin exactly. This is a local HTTP stack; deployment/TLS configuration is outside this ticket. The frontend port changes both the host mapping and `FRONTEND_URL`. Do not browse through `127.0.0.1` while the allowed origin uses `localhost`.
+Open **http://localhost:3400**, matching the backend's allowed browser origin. This is a local HTTP stack; deployment/TLS configuration is outside this ticket. The frontend port changes both the host mapping and `FRONTEND_URL`. Loopback names are one host for this check, so `127.0.0.1` and `[::1]` on the same port also work (added 2026-10-29, pending owner approval).
 
 ## Shared checks
 

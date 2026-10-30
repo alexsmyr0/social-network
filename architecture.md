@@ -6,7 +6,7 @@ This is the current Phase 1 structure. The [Zone01 requirements](docs/social-net
 
 `SPA/src/` is the shipped Vue 3 application, built by Vite into `SPA/dist/`. Vue Router handles `/login`, `/register` and protected application routes. The frontend Go server in `cmd/frontend/` serves the built bundle and history fallback on port 3000, while proxying same-origin `/api/` and `/ws` requests to the Go backend on port 8080. The browser uses relative URLs and session cookies. `BACKEND_URL` is a server-side frontend setting. The [frontend setup](docs/social-network/frontend-setup.md) records verified commands and image behavior.
 
-`SPA/core/`, `SPA/features/`, and their existing test files are imported forum code kept as migration evidence. They are not part of the Vite entrypoint. No social-network feed, groups or chat feature is claimed complete by their presence.
+The imported forum's vanilla-JS frontend (`SPA/core/`, `SPA/features/`, `SPA/components/`, `SPA/assets/`, `SPA/main.js` and their tests) was never part of the Vite entrypoint and was removed on 2026-10-29. Its last version is at commit [`cc5161c`](https://github.com/alexsmyr0/social-network/tree/cc5161c/SPA).
 
 SN-A09 adds People, social profiles and follower/following lists. SN-A10 adds the shared authenticated notification/request panel and one session-owned `/ws` connection with exponential backoff, focus/60-second recovery, empty-signal refetch and permission invalidation. The [frontend notification record](docs/social-network/frontend-notifications.md) describes lifecycle and ownership. These frontend features use the approved profile/notification contracts; SN-A11 owns their real-service Phase 2 acceptance.
 
@@ -38,4 +38,4 @@ The frontend and backend build as separate images. SN-B07 owns the combined run 
 
 ## Inherited forum behavior
 
-The imported implementation has a Proxy-driven state store, `notification.new` delivery and a chat socket that reconnects with exponential backoff. These describe the retained forum modules under `SPA/core/` and `SPA/features/`; they are migration reference points, not the Phase 1 Vue runtime. Further detail is in the [archived architecture](docs/archive/real-time-forum/architecture.md.txt).
+The imported implementation had a Proxy-driven state store, `notification.new` delivery and a chat socket that reconnected with exponential backoff. These described the forum modules under `SPA/core/` and `SPA/features/`, which were removed on 2026-10-29 and never formed the Vue runtime. The social-network backend still pushes `notification.new`, and the Vue socket reconnects with exponential backoff. Further detail is in the [archived architecture](docs/archive/real-time-forum/architecture.md.txt).

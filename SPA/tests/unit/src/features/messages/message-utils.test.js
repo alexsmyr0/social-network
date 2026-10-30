@@ -96,8 +96,8 @@ describe('labels and images', () => {
 		expect(timeLabel('nonsense')).toBe('');
 		expect(imageProblem(null)).toBe('REQUIRED');
 		expect(imageProblem({ type: 'image/webp', size: 1 })).toBe('TYPE');
-		expect(imageProblem({ type: 'image/png', size: 5 * 1024 * 1024 + 1 })).toBe('TOO_LARGE');
-		expect(imageProblem({ type: 'image/gif', size: 5 * 1024 * 1024 })).toBeNull();
+		expect(imageProblem({ type: 'image/png', size: 10 * 1024 * 1024 + 1 })).toBe('TOO_LARGE');
+		expect(imageProblem({ type: 'image/gif', size: 10 * 1024 * 1024 })).toBeNull();
 	});
 
 	test('the emoji set is plain Unicode with an accessible name for each', () => {

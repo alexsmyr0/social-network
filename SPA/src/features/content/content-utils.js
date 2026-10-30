@@ -4,7 +4,7 @@ export const TITLE_MAX = 200;
 export const BODY_MAX = 10000;
 export const CATEGORY_MAX = 50;
 export const SELECTION_MAX = 500;
-export const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+export const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 export const IMAGE_TYPES = Object.freeze(['image/jpeg', 'image/png', 'image/gif']);
 
 // The contract allows newline and tab in bodies and no control characters in
@@ -68,7 +68,8 @@ const FIELD_MESSAGES = {
 	INVALID_SELECTION:
 		'Some selected people can’t receive this post. They may no longer follow you — review the recipients.',
 	INVALID_STATUS: 'That publication status isn’t available.',
-	INVALID_IMAGE: 'That image couldn’t be used. Choose a valid JPEG, PNG or GIF.',
+	INVALID_IMAGE:
+		'That image couldn’t be used. Choose a valid JPEG, PNG or GIF up to 8192 px per side and 40 megapixels (animated GIFs: up to 500 frames).',
 	GROUP_SCOPE: 'Group posts follow the group’s membership. They don’t have a separate audience.',
 	IMMUTABLE: 'A post can’t move between a group and your profile after it is created.',
 };
@@ -79,7 +80,7 @@ export function fieldMessage(field, code) {
 
 export function imageProblem(file) {
 	if (!IMAGE_TYPES.includes(file.type)) return 'Choose a JPEG, PNG or GIF image.';
-	if (file.size > IMAGE_MAX_BYTES) return 'Images can be up to 5 MiB.';
+	if (file.size > IMAGE_MAX_BYTES) return 'Images can be up to 10 MiB.';
 	return '';
 }
 

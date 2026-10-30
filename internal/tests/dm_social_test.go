@@ -345,7 +345,7 @@ func TestDirectMessageQueuedFrameIsSuppressedWhenRelationshipEndsBeforeWrite(t *
 	}
 }
 
-func TestDirectMessageRevocationWaitsForInFlightDeliveryAndPrivacyFlipSuppressesLive(t *testing.T) {
+func TestDirectMessageRevocationWaitsForInFlightDeliveryAndPrivacyFlipKeepsLive(t *testing.T) {
 	requireLocalTCPListener(t)
 	pack := loadDMPack(t)
 	w := newDMWorld(t, pack, mutualFollow)
@@ -390,21 +390,23 @@ func TestDirectMessageRevocationWaitsForInFlightDeliveryAndPrivacyFlipSuppresses
 			t.Fatalf("%s: %d %s", r.name, rec.Code, rec.Body)
 		}
 	}
-	// 1 still follows 2 (private); 2 no longer follows 1 and 1 is now private, so a send
-	// is stored for 2 but not pushed live.
-	if rec, _ := w.send(t, 1, 2, nonceA, "stored not live"); rec.Code != 201 {
-		t.Fatalf("send %d", rec.Code)
-	}
-	w.quiesce()
-	if len(w.probes[2].of("dm.message")) != 0 {
-		t.Fatal("a recipient who does not follow the sender got a live frame")
-	}
-	// Making the recipient public restores the live predicate for later sends.
-	fixtureExec(t, w.conn, `UPDATE users SET profile_visibility='public' WHERE id=2`)
-	if rec, _ := w.send(t, 1, 2, nonceB, "live again"); rec.Code != 201 {
+	// 1 still follows 2 (private); 2 no longer follows 1 and 1 is now private. The
+	// pair may still message, so the send reaches 2 live: privacy never withholds a
+	// permitted message.
+	if rec, _ := w.send(t, 1, 2, nonceA, "still live"); rec.Code != 201 {
 		t.Fatalf("send %d", rec.Code)
 	}
 	w.probes[2].waitFor(t, "dm.message", 1)
+	// Ending the last follow ends the pair: a new send is refused and nothing more
+	// reaches the recipient.
+	fixtureExec(t, w.conn, `DELETE FROM follows`)
+	if rec, _ := w.send(t, 1, 2, nonceB, "denied"); rec.Code != 404 {
+		t.Fatalf("send after unfollow %d", rec.Code)
+	}
+	w.quiesce()
+	if n := len(w.probes[2].of("dm.message")); n != 1 {
+		t.Fatalf("recipient saw %d frames, want 1", n)
+	}
 }
 
 func TestDirectMessageConcurrentUnfollowVersusSend(t *testing.T) {
