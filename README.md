@@ -32,6 +32,22 @@ make stack-down           # stop and remove containers; accounts and media are k
 
 Open the app at **http://localhost:3000**; `http://127.0.0.1:3000` works too. The backend accepts browser requests and WebSockets only from that origin, treating the loopback names `localhost`, `127.0.0.1` and `[::1]` as one host on the same scheme and port. Only the frontend container publishes a port. It proxies `/api` and `/ws` to the backend container over the Compose network. The [shared runtime guide](docs/social-network/shared-runtime.md) covers ports, data volumes and the test gates.
 
+## Sample data
+
+With the stack running, `make stack-seed` resets its database to demo data; `make seed-qa` does the same for a native database at `DB_PATH`. Both replace all existing accounts and content. Sign in as any of:
+
+| Account | Password | Profile |
+|---|---|---|
+| `alex@example.com` | `password123` | Public; creator of *Weekend Hikers*; member of *Book Club* |
+| `maria@example.com` | `password123` | Private; pending follow requests from Sam and the tester |
+| `sam@example.com` | `password123` | Public; member of *Weekend Hikers* |
+| `nina@example.com` | `password123` | Private; creator of *Book Club* |
+| `theo@example.com` | `password123` | Public; invited to *Weekend Hikers* |
+| `jade@example.com` | `password123` | Public; asked to join *Weekend Hikers* |
+| `tester@example.com` | `password` | Public; member of *Weekend Hikers* |
+
+The data covers all three post audiences, a members-only group post, events with Going / Not going answers, private messages, a group chat room, and a notification for every request and event.
+
 ## Structure
 
 - `SPA/src/`: Vue 3, Vue Router and Vite frontend. `SPA/tests/` holds its unit, browser and upgrade tests.

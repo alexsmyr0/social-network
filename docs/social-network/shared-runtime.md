@@ -13,6 +13,7 @@ make stack-up             # build both images; wait for health, no QA seeding
 make stack-ps
 make stack-logs           # Ctrl-C stops log following
 make stack-down           # remove containers/network; preserve accounts and media
+make stack-seed           # reset the running stack's database to the README's sample data
 ```
 
 Only the frontend publishes a host port, bound to loopback. The backend stays on the Compose network at `backend:8080`; the frontend uses `BACKEND_URL=http://backend:8080`. Backend readiness gates frontend startup using the images' healthchecks. Both images retain their own build recipes and unprivileged runtime users.

@@ -450,12 +450,16 @@ func TestQASeedResetClearsGroupStateAndAllocation(t *testing.T) {
 	if err := ApplyQASeeds(context.Background(), database); err != nil {
 		t.Fatalf("QA reset with group state: %v", err)
 	}
+	if n := count(t, database, `SELECT COUNT(*) FROM groups WHERE title='Chess'`); n != 0 {
+		t.Fatalf("groups kept %d rows through reset", n)
+	}
+	if n := count(t, database, `SELECT COUNT(*) FROM group_invitations WHERE invitee_id=3`); n != 0 {
+		t.Fatalf("invitations kept %d rows through reset", n)
+	}
+	if n := count(t, database, `SELECT COUNT(*) FROM group_join_requests WHERE requester_id=4`); n != 0 {
+		t.Fatalf("join requests kept %d rows through reset", n)
+	}
 	for _, table := range []string{"groups", "group_memberships", "group_invitations", "group_join_requests"} {
-		if n := count(t, database, `SELECT COUNT(*) FROM `+table); n != 0 {
-			t.Fatalf("%s kept %d rows through reset", table, n)
-		}
-		if n := count(t, database, `SELECT COUNT(*) FROM sqlite_sequence WHERE name=?`, table); n != 0 {
-			t.Fatalf("%s allocation survived reset", table)
-		}
+		assertSeedAllocation(t, database, table)
 	}
 }

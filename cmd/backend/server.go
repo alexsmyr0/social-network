@@ -23,10 +23,7 @@ func Start() {
 	/* ------------------------------------
 	   Resolve DB path (local & Docker)
 	-------------------------------------*/
-	dbPath := os.Getenv("DB_PATH")
-	if dbPath == "" {
-		dbPath = "./data/forum.db"
-	}
+	dbPath := databasePath()
 
 	/* ----------------------------
 	   Initialize database
@@ -78,4 +75,28 @@ func Start() {
 	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatal("SERVER ERROR:", err)
 	}
+}
+
+// databasePath is DB_PATH, or the local development database.
+func databasePath() string {
+	if path := os.Getenv("DB_PATH"); path != "" {
+		return path
+	}
+	return "./data/forum.db"
+}
+
+// SeedQA resets the configured database to the QA sample data, so a running
+// container can be filled with `server -seed-qa` (see `make stack-seed`).
+func SeedQA() {
+	env.LoadEnv(".env")
+	dbPath := databasePath()
+	database, err := db.InitDB(context.Background(), dbPath)
+	if err != nil {
+		log.Fatal("DATABASE INIT ERROR:", err)
+	}
+	defer database.Close()
+	if err := db.ApplyQASeeds(context.Background(), database); err != nil {
+		log.Fatal("QA SEED ERROR:", err)
+	}
+	log.Printf("QA seeds applied to %s", dbPath)
 }

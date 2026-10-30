@@ -304,10 +304,11 @@ func TestQASeedResetClearsGroupMessagesAndAllocation(t *testing.T) {
 	if err := ApplyQASeeds(context.Background(), database); err != nil {
 		t.Fatal("QA reset with room messages", err)
 	}
-	if count(t, database, `SELECT COUNT(*) FROM group_messages`) != 0 || count(t, database, `SELECT COUNT(*) FROM group_read_cursors`) != 0 ||
-		count(t, database, `SELECT COUNT(*) FROM sqlite_sequence WHERE name='group_messages'`) != 0 {
-		t.Fatal("QA reset kept chat state or allocation")
+	if count(t, database, `SELECT COUNT(*) FROM group_messages WHERE body='hello'`) != 0 ||
+		count(t, database, `SELECT COUNT(*) FROM group_read_cursors`) != count(t, database, `SELECT COUNT(*) FROM group_memberships`) {
+		t.Fatal("QA reset kept chat state")
 	}
+	assertSeedAllocation(t, database, "group_messages")
 }
 
 /*---------------------------------------------------------------------------

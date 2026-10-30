@@ -500,9 +500,10 @@ func TestGroupEventDownRefusesLossAndEmptyRoundTrip(t *testing.T) {
 	if err := ApplyQASeeds(context.Background(), database); err != nil {
 		t.Fatal("QA reset with events", err)
 	}
-	if count(t, database, `SELECT COUNT(*) FROM group_events`) != 0 {
+	if count(t, database, `SELECT COUNT(*) FROM group_events WHERE title='New'`) != 0 {
 		t.Fatal("QA reset retained events")
 	}
+	assertSeedAllocation(t, database, "group_events")
 }
 
 func TestGroupEventRestartDurabilityAndMissedSignalRecovery(t *testing.T) {

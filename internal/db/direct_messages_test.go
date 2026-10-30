@@ -288,7 +288,9 @@ func TestDirectMessageDownRefusesLossAndRoundTripsWhenUnchanged(t *testing.T) {
 	if err := ApplyQASeeds(context.Background(), database); err != nil {
 		t.Fatal("QA reset with cursors", err)
 	}
-	if count(t, database, `SELECT COUNT(*) FROM dm_read_cursors`) != 0 {
+	// Only the seed's own conversations remain: four cursors for two pairs.
+	if count(t, database, `SELECT COUNT(*) FROM private_messages WHERE body='new'`) != 0 ||
+		count(t, database, `SELECT COUNT(*) FROM dm_read_cursors`) != 4 {
 		t.Fatal("QA reset kept cursors")
 	}
 }
