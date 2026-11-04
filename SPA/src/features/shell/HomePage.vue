@@ -29,28 +29,5 @@ const session = inject(sessionKey);
 				</RouterLink>
 			</p>
 		</div>
-
-		<aside class="signal-board" aria-label="Product foundation">
-			<div class="signal-board__number" aria-hidden="true">01</div>
-			<p class="signal-board__kicker">Private session active</p>
-			<h2>You’re safely inside.</h2>
-			<p>
-				This account view is only rendered after the server confirms your session.
-			</p>
-			<ul class="signal-list">
-				<li><span aria-hidden="true">✓</span> Cookie-backed access</li>
-				<li><span aria-hidden="true">✓</span> Protected route boundary</li>
-				<li><span aria-hidden="true">✓</span> Sign out from every screen</li>
-			</ul>
-		</aside>
-
-		<div class="feature-line" aria-label="Planned social network areas">
-			<p>Coming into focus</p>
-			<ul>
-				<li>Discussions</li>
-				<li>Groups</li>
-				<li>Conversations</li>
-			</ul>
-		</div>
 	</section>
 </template>

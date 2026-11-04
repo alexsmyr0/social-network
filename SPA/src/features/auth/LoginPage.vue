@@ -62,7 +62,6 @@ async function submit() {
 	<section class="access-view login-view" data-screen="login">
 		<div class="access-view__panel">
 			<form class="login-form" novalidate @submit.prevent="submit">
-				<p class="access-view__step">Member access</p>
 				<h2>Sign in</h2>
 				<div v-if="formError" ref="alert" class="form-alert" role="alert" tabindex="-1">
 					<strong>We couldn’t sign you in.</strong>

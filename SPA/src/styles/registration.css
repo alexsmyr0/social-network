@@ -1,4 +1,6 @@
 .registration-view {
+	width: min(100%, 55rem);
+	margin-inline: auto;
 	margin-block: clamp(1rem, 4vw, 4rem);
 	display: grid;
 	grid-template-columns: 1fr;
@@ -6,7 +8,7 @@
 	box-shadow: var(--shadow);
 }
 .registration-view__form-wrap {
-	padding: clamp(2rem, 5vw, 5rem);
+	padding: clamp(1.5rem, 5vw, 3.5rem);
 }
 .registration-form {
 	max-width: 48rem;
@@ -62,9 +64,6 @@
 	background: #fff;
 	color: var(--ink);
 	font: inherit;
-}
-.form-field textarea {
-	resize: vertical;
 }
 .form-field input:focus,
 .form-field textarea:focus {
