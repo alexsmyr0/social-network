@@ -60,21 +60,10 @@ async function submit() {
 
 <template>
 	<section class="access-view login-view" data-screen="login">
-		<div class="access-view__story">
-			<p class="eyebrow">Welcome back</p>
-			<h1>Come back to the conversation.</h1>
-			<p>Your place stays private while we confirm who’s at the door.</p>
-			<RouterLink class="text-link text-link--light" to="/register">
-				New here? Create an account <span aria-hidden="true">↗</span>
-			</RouterLink>
-		</div>
-
 		<div class="access-view__panel">
 			<form class="login-form" novalidate @submit.prevent="submit">
 				<p class="access-view__step">Member access</p>
-				<h2>Sign in to your place.</h2>
-				<p class="login-form__intro">Use the email attached to your account. Your session stays in a secure browser cookie—never in local storage.</p>
-
+				<h2>Sign in</h2>
 				<div v-if="formError" ref="alert" class="form-alert" role="alert" tabindex="-1">
 					<strong>We couldn’t sign you in.</strong>
 					<span>{{ formError }}</span>
@@ -88,14 +77,16 @@ async function submit() {
 
 				<div class="form-field" :class="{ 'form-field--error': errors.password }">
 					<label for="login-password">Password</label>
-					<input id="login-password" v-model="form.password" name="password" type="password" autocomplete="current-password" :aria-invalid="Boolean(errors.password)" :aria-describedby="errors.password ? 'login-password-error login-password-hint' : 'login-password-hint'" />
-					<p id="login-password-hint" class="field-hint">Never saved by Commonplace in this browser.</p>
+					<input id="login-password" v-model="form.password" name="password" type="password" autocomplete="current-password" :aria-invalid="Boolean(errors.password)" :aria-describedby="errors.password ? 'login-password-error' : undefined" />
 					<p v-if="errors.password" id="login-password-error" class="field-error">{{ errors.password }}</p>
 				</div>
 
 				<button class="button button--primary login-form__submit" type="submit" :disabled="pending" :aria-busy="pending">
 					{{ pending ? 'Opening your place…' : 'Sign in' }}
 				</button>
+				<p class="form-switch">
+					New here? <RouterLink class="text-link" to="/register">Create an account</RouterLink>
+				</p>
 			</form>
 		</div>
 	</section>

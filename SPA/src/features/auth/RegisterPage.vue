@@ -45,9 +45,6 @@ const registrationAllowed = computed(() => ['idle', 'retry-available'].includes(
 const credentialsLocked = computed(() => !registrationAllowed.value);
 // Evaluated on use so a page left open past UTC midnight accepts the new date.
 const todayUtc = () => new Date().toISOString().slice(0, 10);
-// biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
-const passwordHint = computed(() => `${[...form.password].length}/8 minimum characters`);
-
 const messages = {
 	REQUIRED: 'This field is required.',
 	INVALID_EMAIL: 'Enter a valid email address.',
@@ -89,9 +86,10 @@ function isValidDate(value) {
 
 // The contract counts Unicode code points after trimming, which the HTML
 // maxlength (UTF-16 units, untrimmed) cannot express.
-function validateOptionalLengths() {
+function validateLengths() {
 	for (const [field, limit] of [
 		['nickname', 30],
+		['lastName', 100],
 		['aboutMe', 1000],
 	]) {
 		if ([...form[field].trim()].length > limit) errors[field] = messages.TOO_LONG;
@@ -100,7 +98,7 @@ function validateOptionalLengths() {
 
 function validate() {
 	clearErrors();
-	for (const field of ['email', 'password', 'firstName', 'lastName', 'dateOfBirth']) {
+	for (const field of ['email', 'password', 'firstName', 'lastName', 'nickname', 'dateOfBirth']) {
 		if (field === 'password' ? !form[field] : !form[field].trim()) {
 			errors[field] = messages.REQUIRED;
 		}
@@ -115,7 +113,7 @@ function validate() {
 	if (form.dateOfBirth && !isValidDate(form.dateOfBirth)) {
 		errors.dateOfBirth = messages.INVALID_DATE;
 	}
-	validateOptionalLengths();
+	validateLengths();
 	if (avatarProblem.value) errors.avatar = avatarProblem.value;
 	return Object.keys(errors).length === 0;
 }
@@ -296,22 +294,6 @@ onBeforeUnmount(revokePreview);
 
 <template>
 	<section class="registration-view" data-screen="register">
-		<aside class="registration-view__story">
-			<div>
-				<p class="eyebrow">Make your place</p>
-				<h1>Bring your whole self. Share only what feels right.</h1>
-				<p>Start with the essentials, then add as much—or as little—personality as you like.</p>
-			</div>
-			<ol class="registration-path" aria-label="Account creation steps">
-				<li class="registration-path__active"><span>01</span> Essentials</li>
-				<li><span>02</span> Your details</li>
-				<li><span>03</span> Enter the circle</li>
-			</ol>
-			<RouterLink class="text-link text-link--light" to="/login">
-				Already belong? Sign in <span aria-hidden="true">↗</span>
-			</RouterLink>
-		</aside>
-
 		<div class="registration-view__form-wrap">
 			<div v-if="account" class="registration-success" role="status" :data-recovered-by="recoveredBy || undefined">
 				<p class="eyebrow">{{ recoveredBy ? 'Account confirmed' : 'You’re in' }}</p>
@@ -324,11 +306,7 @@ onBeforeUnmount(revokePreview);
 
 			<form v-else class="registration-form" novalidate @submit.prevent="submit">
 				<header class="registration-form__header">
-					<div>
-						<p class="access-view__step">Create an account</p>
-						<h2>Start with the essentials.</h2>
-					</div>
-					<p><span aria-hidden="true">*</span> Required</p>
+					<h2>Create your account</h2>
 				</header>
 
 				<div v-if="formError" class="form-alert" role="alert">
@@ -360,22 +338,21 @@ onBeforeUnmount(revokePreview);
 					</template>
 				</div>
 
-				<fieldset>
-					<legend>Account details</legend>
+				<fieldset aria-label="Account details">
 					<div class="form-grid">
 						<div v-for="field in [
 							{ name: 'email', label: 'Email', type: 'email', autocomplete: 'email' },
 							{ name: 'password', label: 'Password', type: 'password', autocomplete: 'new-password' },
 							{ name: 'firstName', label: 'First name', autocomplete: 'given-name' },
 							{ name: 'lastName', label: 'Last name', autocomplete: 'family-name' },
+							{ name: 'nickname', label: 'Nickname', autocomplete: 'nickname' },
 						]" :key="field.name" class="form-field" :class="{ 'form-field--error': errors[field.name] }">
-							<label :for="`register-${field.name}`">{{ field.label }} <span aria-hidden="true">*</span></label>
+							<label :for="`register-${field.name}`">{{ field.label }}</label>
 							<input :id="`register-${field.name}`" v-model="form[field.name]" :name="field.name" :type="field.type || 'text'" :autocomplete="field.autocomplete" :aria-describedby="errors[field.name] ? `${field.name}-error` : undefined" :aria-invalid="Boolean(errors[field.name])" :readonly="credentialsLocked && ['email', 'password'].includes(field.name)" />
-							<p v-if="field.name === 'password'" class="field-hint">{{ passwordHint }} · Never saved in this browser</p>
 							<p v-if="errors[field.name]" :id="`${field.name}-error`" class="field-error">{{ errors[field.name] }}</p>
 						</div>
-						<div class="form-field form-field--wide" :class="{ 'form-field--error': errors.dateOfBirth }">
-							<label for="register-date">Date of birth <span aria-hidden="true">*</span></label>
+						<div class="form-field" :class="{ 'form-field--error': errors.dateOfBirth }">
+							<label for="register-date">Date of birth</label>
 							<input id="register-date" v-model="form.dateOfBirth" name="dateOfBirth" type="date" autocomplete="bday" min="0001-01-01" :max="todayUtc()" :aria-describedby="errors.dateOfBirth ? 'dateOfBirth-error' : undefined" :aria-invalid="Boolean(errors.dateOfBirth)" />
 							<p v-if="errors.dateOfBirth" id="dateOfBirth-error" class="field-error">{{ errors.dateOfBirth }}</p>
 						</div>
@@ -383,43 +360,39 @@ onBeforeUnmount(revokePreview);
 				</fieldset>
 
 				<fieldset class="optional-fields">
-					<legend>Your profile <span>Optional</span></legend>
-					<p class="fieldset-copy">Add some personality now, or leave every field blank.</p>
-					<div class="avatar-field" :class="{ 'form-field--error': errors.avatar }">
-						<div class="avatar-preview" aria-hidden="true">
-							<img v-if="avatarPreview" :src="avatarPreview" alt="" />
-							<span v-else>+</span>
-						</div>
-						<div>
-							<input id="register-avatar" ref="avatarInput" class="visually-hidden file-input" name="avatar" type="file" accept="image/jpeg,image/png,image/gif" :aria-describedby="errors.avatar ? 'avatar-hint avatar-error' : 'avatar-hint'" :aria-invalid="Boolean(errors.avatar)" @change="chooseAvatar" />
-							<label class="file-button" for="register-avatar">{{ form.avatar ? 'Choose another image' : 'Choose an avatar' }}</label>
-							<p id="avatar-hint" class="field-hint">JPEG, PNG or GIF · up to 10 MiB</p>
-							<button v-if="form.avatar || avatarProblem" class="text-button" type="button" @click="removeAvatar">{{ form.avatar ? 'Remove selected image' : 'Clear image selection' }}</button>
-							<p v-if="errors.avatar" id="avatar-error" class="field-error" role="alert">{{ errors.avatar }}</p>
-						</div>
-					</div>
+					<legend>Optional</legend>
 					<div class="form-grid">
-						<div class="form-field" :class="{ 'form-field--error': errors.nickname }">
-							<label for="register-nickname">Nickname</label>
-							<input id="register-nickname" v-model="form.nickname" name="nickname" :aria-describedby="errors.nickname ? 'nickname-hint nickname-error' : 'nickname-hint'" :aria-invalid="Boolean(errors.nickname)" />
-							<p id="nickname-hint" class="field-hint">A familiar name, up to 30 characters</p>
-							<p v-if="errors.nickname" id="nickname-error" class="field-error">{{ errors.nickname }}</p>
+						<div class="avatar-field" :class="{ 'form-field--error': errors.avatar }">
+							<div class="avatar-frame">
+								<div class="avatar-preview" aria-hidden="true">
+									<img v-if="avatarPreview" :src="avatarPreview" alt="" />
+									<span v-else>+</span>
+								</div>
+								<button v-if="form.avatar" class="avatar-remove" type="button" aria-label="Remove selected image" @click="removeAvatar">×</button>
+							</div>
+							<div>
+								<input id="register-avatar" ref="avatarInput" class="visually-hidden file-input" name="avatar" type="file" accept="image/jpeg,image/png,image/gif" :aria-describedby="errors.avatar ? 'avatar-error' : undefined" :aria-invalid="Boolean(errors.avatar)" @change="chooseAvatar" />
+								<label class="file-button" for="register-avatar">{{ form.avatar ? 'Choose another' : 'Choose an avatar' }}</label>
+								<button v-if="avatarProblem && !form.avatar" class="text-button" type="button" @click="removeAvatar">Clear image selection</button>
+								<p v-if="errors.avatar" id="avatar-error" class="field-error" role="alert">{{ errors.avatar }}</p>
+							</div>
 						</div>
 						<div class="form-field" :class="{ 'form-field--error': errors.aboutMe }">
-							<label for="register-about">About me</label>
-							<textarea id="register-about" v-model="form.aboutMe" name="aboutMe" rows="4" :aria-describedby="errors.aboutMe ? 'aboutMe-hint aboutMe-error' : 'aboutMe-hint'" :aria-invalid="Boolean(errors.aboutMe)"></textarea>
-							<p id="aboutMe-hint" class="field-hint">Plain text, up to 1,000 characters</p>
+							<label for="register-about">Bio</label>
+							<textarea id="register-about" v-model="form.aboutMe" name="aboutMe" rows="4" :aria-describedby="errors.aboutMe ? 'aboutMe-error' : undefined" :aria-invalid="Boolean(errors.aboutMe)"></textarea>
 							<p v-if="errors.aboutMe" id="aboutMe-error" class="field-error">{{ errors.aboutMe }}</p>
 						</div>
 					</div>
 				</fieldset>
 
 				<div class="registration-form__actions">
-					<p>By joining, you’re making room for genuine connection.</p>
 					<button class="button button--primary" type="submit" :disabled="pending || !registrationAllowed" :aria-busy="pending">
 						{{ submitLabel }}
 					</button>
 				</div>
+				<p class="form-switch">
+					Already have an account? <RouterLink class="text-link" to="/login">Sign in</RouterLink>
+				</p>
 			</form>
 		</div>
 	</section>

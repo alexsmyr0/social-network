@@ -45,6 +45,7 @@ With the stack running, `make stack-seed` resets its database to demo data; `mak
 | `theo@example.com` | `password123` | Public; invited to *Weekend Hikers* |
 | `jade@example.com` | `password123` | Public; asked to join *Weekend Hikers* |
 | `tester@example.com` | `password` | Public; member of *Weekend Hikers* |
+| `a@a.com` | `a` | Public; no follows or groups, for quick sign-in |
 
 The data covers all three post audiences, a members-only group post, events with Going / Not going answers, private messages, a group chat room, and a notification for every request and event.
 

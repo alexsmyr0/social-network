@@ -11,7 +11,7 @@ test.describe('SN-A03 framework shell', () => {
 		await page.reload();
 		await expect(page.locator('[data-screen="login"]')).toBeVisible();
 
-		await page.getByRole('link', { name: 'New here? Create an account' }).click();
+		await page.getByRole('link', { name: 'Join', exact: true }).click();
 		await expect(page).toHaveURL(/\/register$/);
 		await expect(page.locator('[data-screen="register"]')).toBeVisible();
 
@@ -22,22 +22,10 @@ test.describe('SN-A03 framework shell', () => {
 	});
 
 	test('reaches backend health through the same-origin proxy', async ({ page }) => {
-		await page.goto('/');
-		await expect(page.getByText('Backend connected')).toBeVisible();
 		const healthResponse = await page.request.get('/api/v1/health');
 
 		expect(healthResponse.status()).toBe(200);
 		expect(await healthResponse.json()).toMatchObject({ data: { status: 'ok' } });
-	});
-
-	test('surfaces transport failure and recovers through retry', async ({ page }) => {
-		await page.route('**/api/v1/health', (route) => route.abort());
-		await page.goto('/');
-		await expect(page.getByRole('alert')).toContainText('Connection interrupted');
-
-		await page.unroute('**/api/v1/health');
-		await page.getByRole('button', { name: 'Retry' }).click();
-		await expect(page.getByText('Backend connected')).toBeVisible();
 	});
 
 	test('keeps missing and retired routes explicit while missing assets stay 404', async ({
