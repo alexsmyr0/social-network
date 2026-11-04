@@ -46,7 +46,7 @@ func avatarForm(t *testing.T, email, filename, declared string, data []byte) (st
 	var body bytes.Buffer
 	form := multipart.NewWriter(&body)
 	fields := map[string]string{"email": email, "password": socialPassword,
-		"first_name": "Avatar", "last_name": "Owner", "date_of_birth": "2000-01-01"}
+		"first_name": "Avatar", "last_name": "Owner", "nickname": "Avatar Owner", "date_of_birth": "2000-01-01"}
 	for name, value := range fields {
 		if err := form.WriteField(name, value); err != nil {
 			t.Fatal(err)
@@ -216,7 +216,7 @@ func TestSocialAvatarRejectsForeignAttachmentFields(t *testing.T) {
 		form := multipart.NewWriter(&body)
 		for name, value := range map[string]string{
 			"email": field + "@example.com", "password": socialPassword,
-			"first_name": "Forge", "last_name": "Attempt", "date_of_birth": "2000-01-01",
+			"first_name": "Forge", "last_name": "Attempt", "nickname": "Forge Attempt", "date_of_birth": "2000-01-01",
 			field: "1",
 		} {
 			if err := form.WriteField(name, value); err != nil {

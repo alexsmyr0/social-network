@@ -8,7 +8,7 @@ The project owner approved this contract in chat on 2026-09-24 with “Approve p
 
 | Choice | Decision and rationale | Alternative / tradeoff |
 |---|---|---|
-| Identity | Email-only login; optional, non-unique nickname; numeric user ID is identity. Display nickname when present, otherwise first name plus last name. | Keeping username login adds a second identifier and uniqueness rules absent from the assignment. Existing internal username compatibility belongs to SN-B08. |
+| Identity | Email-only login; required, non-unique nickname; numeric user ID is identity. Display the nickname, falling back to first name plus last name for accounts created before nicknames were required. | Keeping username login adds a second identifier and uniqueness rules absent from the assignment. Existing internal username compatibility belongs to SN-B08. |
 | Registration and avatar | One registration request, with optional avatar bytes, creates the account and signs it in. Invalid avatar fails the whole submission. | A separate upload before registration needs anonymous attachment tokens and expiry; upload after registration leaves partial success for the UI to manage. Single-request registration requires coordinated failure cleanup in SN-B08/B09. |
 | Sessions and logout | Independent sessions per browser/device; logout revokes the presented session only, including its retained sockets. No application-imposed idle or absolute expiry. | Single-session login silently signs out another device. Logout-all-devices is a different feature and is outside this contract. Persistent sessions increase the lifetime of a stolen token until revoked. |
 | Browser persistence | Renewable 400-day persistent cookie, refreshed by successful `/users/me`; server session remains valid until logout/revocation. | A browser-session cookie loses browser-reopen guarantees. Browsers can expire or remove cookies; indefinite unattended browser persistence cannot be promised. The owner approved this limitation. |
@@ -32,7 +32,7 @@ The same field names and validation apply to JSON and multipart text fields. Mul
 | `password` | Yes | At least 8 Unicode code points, at most 72 UTF-8 bytes; reject NUL. Preserve exactly, including spaces; no trimming, normalization or composition requirements. |
 | `first_name`, `last_name` | Yes | Trim surrounding whitespace; 1–100 Unicode code points each. Allow international names and internal spaces; reject control characters. |
 | `date_of_birth` | Yes | Exact `YYYY-MM-DD`, a real Gregorian date from `0001-01-01` through today's UTC date. Reject timestamps, impossible dates and future dates. Preserve as a date, with no timezone conversion. No minimum-age rule is introduced. |
-| `nickname` | No | After trimming, at most 30 Unicode code points; reject control characters. Non-unique, not a login identifier or URL key. |
+| `nickname` | Yes | After trimming, 1–30 Unicode code points; reject control characters. Non-unique, not a login identifier or URL key. |
 | `about_me` | No | Trim surrounding whitespace; at most 1,000 Unicode code points. Plain text; allow newline/tab, reject other control characters. Render as text, not HTML. |
 | `avatar` | No | A multipart file only; JSON avatar values, existing upload IDs and remote URLs are not accepted. Rules below. |
 
@@ -62,9 +62,9 @@ Account representation is identical for registration, login and current-user loo
     "first_name": "Alex",
     "last_name": "Example",
     "date_of_birth": "1998-03-14",
-    "nickname": null,
+    "nickname": "Alex E",
     "about_me": null,
-    "display_name": "Alex Example",
+    "display_name": "Alex E",
     "avatar_url": null
   }
 }
@@ -78,11 +78,12 @@ Required-only registration request:
   "password": "correct horse battery",
   "first_name": "Alex",
   "last_name": "Example",
+  "nickname": "Alex E",
   "date_of_birth": "1998-03-14"
 }
 ```
 
-Full registration sends those five fields as multipart text plus `nickname = Alex E`, `about_me = I like hiking.`, and an `avatar` file part containing valid JPEG, PNG or GIF bytes. The resulting Account differs by `nickname: "Alex E"`, `about_me: "I like hiking."`, `display_name: "Alex E"`, and `avatar_url: "/api/v1/users/42/avatar"`. Removing the preview before submission means omitting the file part; an empty file is invalid, not omission. The URL belongs to the returned account and is consumed as an opaque relative URL.
+Full registration sends those fields as multipart text plus `about_me = I like hiking.` and an `avatar` file part containing valid JPEG, PNG or GIF bytes. The resulting Account differs by `about_me: "I like hiking."` and `avatar_url: "/api/v1/users/42/avatar"`. Removing the preview before submission means omitting the file part; an empty file is invalid, not omission. The URL belongs to the returned account and is consumed as an opaque relative URL.
 
 Example invalid date response (`400`):
 

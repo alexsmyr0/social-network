@@ -573,17 +573,33 @@ h2 {
 }
 
 .login-form {
-	width: min(100%, 34rem);
+	width: 100%;
+}
+
+.form-switch {
+	margin-top: 1.5rem;
+	color: var(--ink-soft);
+}
+
+.form-switch .text-link {
+	min-height: 0;
+	display: inline;
+}
+
+.login-view {
+	width: min(100%, 36rem);
+	min-height: 0;
+	margin-inline: auto;
+	grid-template-columns: 1fr;
+}
+
+.login-view .access-view__panel {
+	padding: clamp(1.5rem, 5vw, 3.5rem);
 }
 
 .login-form h2 {
 	max-width: 9ch;
-}
-
-.login-form__intro {
 	margin-bottom: 2rem;
-	color: var(--ink-soft);
-	line-height: 1.65;
 }
 
 .login-form .form-field + .form-field {
@@ -641,21 +657,6 @@ h2 {
 	overflow-wrap: anywhere;
 	border: 1px solid var(--line);
 	background: rgba(255, 253, 247, 0.7);
-}
-
-.site-footer {
-	min-height: 5.5rem;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 1.5rem;
-	border-top: 1px solid var(--line);
-	color: var(--ink-soft);
-	font-size: 0.82rem;
-}
-
-.site-footer > p {
-	margin: 0;
 }
 
 .health-status {
@@ -730,12 +731,6 @@ h2 {
 
 	.missing-view__code {
 		padding-top: 2rem;
-	}
-
-	.site-footer {
-		align-items: flex-start;
-		flex-direction: column;
-		padding-block: 1.5rem;
 	}
 }
 

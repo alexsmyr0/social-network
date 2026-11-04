@@ -25,7 +25,7 @@ const socialPassword = "correct horse battery"
 
 func registerSocialUser(t *testing.T, handler http.Handler, email string) string {
 	t.Helper()
-	body := `{"email":"` + email + `","password":"` + socialPassword + `","first_name":"Alex","last_name":"Example","date_of_birth":"1998-03-14"}`
+	body := `{"email":"` + email + `","password":"` + socialPassword + `","first_name":"Alex","last_name":"Example","nickname":"Alex Example","date_of_birth":"1998-03-14"}`
 	response := socialRequest(t, handler, http.MethodPost, "/api/v1/users/register", "application/json", []byte(body), "")
 	if response.Code != http.StatusCreated {
 		t.Fatalf("register: %d %s", response.Code, response.Body.String())
@@ -231,7 +231,7 @@ func TestSocialSessionOriginAndBodyEnforcement(t *testing.T) {
 	if wrongMethod.Header().Get("Allow") != "POST" || wrongMethod.Header().Get("Cache-Control") != "no-store" {
 		t.Fatalf("method response headers: %v", wrongMethod.Header())
 	}
-	registerBody := []byte(`{"email":"alex@example.com","password":"correct horse battery","first_name":"Alex","last_name":"Example","date_of_birth":"1998-03-14"}`)
+	registerBody := []byte(`{"email":"alex@example.com","password":"correct horse battery","first_name":"Alex","last_name":"Example","nickname":"Alex Example","date_of_birth":"1998-03-14"}`)
 	for _, tc := range []struct {
 		name, origin, referer, header, want string
 	}{
@@ -294,7 +294,7 @@ func TestSocialSessionOriginAndBodyEnforcement(t *testing.T) {
 func TestSocialSessionSecureCookieAndLookupFailure(t *testing.T) {
 	t.Setenv("FRONTEND_URL", "https://social.example")
 	handler, conn := socialAPI(t)
-	body := `{"email":"alex@example.com","password":"correct horse battery","first_name":"Alex","last_name":"Example","date_of_birth":"1998-03-14"}`
+	body := `{"email":"alex@example.com","password":"correct horse battery","first_name":"Alex","last_name":"Example","nickname":"Alex Example","date_of_birth":"1998-03-14"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/users/register", strings.NewReader(body))
 	req.Header.Set("Origin", "https://social.example")
 	req.Header.Set("X-Requested-With", "XMLHttpRequest")
@@ -451,7 +451,7 @@ func TestSocialWebSocketOriginUsesEffectivePort(t *testing.T) {
 	requireLocalTCPListener(t)
 	t.Setenv("FRONTEND_URL", "https://social.example")
 	handler, _, _ := socialAPIWithHub(t)
-	body := `{"email":"alex@example.com","password":"correct horse battery","first_name":"Alex","last_name":"Example","date_of_birth":"1998-03-14"}`
+	body := `{"email":"alex@example.com","password":"correct horse battery","first_name":"Alex","last_name":"Example","nickname":"Alex Example","date_of_birth":"1998-03-14"}`
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/users/register", strings.NewReader(body))
 	request.Header.Set("Origin", "https://social.example:443")
 	request.Header.Set("X-Requested-With", "XMLHttpRequest")

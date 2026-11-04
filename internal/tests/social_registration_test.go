@@ -55,7 +55,7 @@ func socialRequest(t *testing.T, handler http.Handler, method, path, contentType
 
 func TestSocialRegistrationAndAccountRead(t *testing.T) {
 	handler, conn := socialAPI(t)
-	base := `{"email":" Alex@Example.com ","password":"correct horse battery","first_name":" Alex ","last_name":" Example ","date_of_birth":"2000-02-29"}`
+	base := `{"email":" Alex@Example.com ","password":"correct horse battery","first_name":" Alex ","last_name":" Example ","nickname":"Alex E","date_of_birth":"2000-02-29"}`
 	registered := socialRequest(t, handler, http.MethodPost, "/api/v1/users/register", "application/json", []byte(base), "")
 	if registered.Code != http.StatusCreated {
 		t.Fatalf("register: %d %s", registered.Code, registered.Body.String())
@@ -66,7 +66,7 @@ func TestSocialRegistrationAndAccountRead(t *testing.T) {
 	if err := json.Unmarshal(registered.Body.Bytes(), &response); err != nil {
 		t.Fatal(err)
 	}
-	if response.Data["email"] != "alex@example.com" || response.Data["display_name"] != "Alex Example" || response.Data["date_of_birth"] != "2000-02-29" || response.Data["nickname"] != nil || response.Data["avatar_url"] != nil {
+	if response.Data["email"] != "alex@example.com" || response.Data["display_name"] != "Alex E" || response.Data["date_of_birth"] != "2000-02-29" || response.Data["nickname"] != "Alex E" || response.Data["last_name"] != "Example" || response.Data["avatar_url"] != nil {
 		t.Fatalf("wrong account response: %v", response.Data)
 	}
 	for _, secret := range []string{"password", "password_hash", "username", "age", "gender"} {
@@ -111,7 +111,7 @@ func TestSocialRegistrationAndAccountRead(t *testing.T) {
 
 func TestSocialRegistrationRejectsInvalidInputWithoutAccount(t *testing.T) {
 	handler, conn := socialAPI(t)
-	valid := `{"email":"valid@example.com","password":"password123","first_name":"First","last_name":"Last","date_of_birth":"2000-01-01"}`
+	valid := `{"email":"valid@example.com","password":"password123","first_name":"First","last_name":"Last","nickname":"First Last","date_of_birth":"2000-01-01"}`
 	future := time.Now().UTC().AddDate(0, 0, 1).Format("2006-01-02")
 	cases := []struct {
 		name, body, code string
@@ -125,7 +125,10 @@ func TestSocialRegistrationRejectsInvalidInputWithoutAccount(t *testing.T) {
 		{"future date", strings.Replace(valid, "2000-01-01", future, 1), "INVALID_DATE", 400},
 		{"legacy field", strings.Replace(valid, `"date_of_birth"`, `"age":25,"date_of_birth"`, 1), "BAD_REQUEST", 400},
 		{"null name", strings.Replace(valid, `"first_name":"First"`, `"first_name":null`, 1), "REQUIRED", 400},
-		{"long nickname", strings.Replace(valid, `"date_of_birth"`, fmt.Sprintf(`"nickname":"%s","date_of_birth"`, strings.Repeat("x", 31)), 1), "TOO_LONG", 400},
+		{"missing last name", strings.Replace(valid, `"last_name":"Last",`, ``, 1), "REQUIRED", 400},
+		{"missing nickname", strings.Replace(valid, `"nickname":"First Last",`, ``, 1), "REQUIRED", 400},
+		{"blank nickname", strings.Replace(valid, `"nickname":"First Last"`, `"nickname":"   "`, 1), "REQUIRED", 400},
+		{"long nickname", strings.Replace(valid, `"First Last"`, fmt.Sprintf(`"%s"`, strings.Repeat("x", 31)), 1), "TOO_LONG", 400},
 		{"json avatar", strings.Replace(valid, `"date_of_birth"`, `"avatar":"/tmp/a.png","date_of_birth"`, 1), "BAD_REQUEST", 400},
 	}
 	for _, tc := range cases {
@@ -149,7 +152,7 @@ func TestSocialMultipartRejectsInvalidAvatar(t *testing.T) {
 		form := multipart.NewWriter(&body)
 		for key, value := range map[string]string{
 			"email": "form@example.com", "password": "password123",
-			"first_name": "Form", "last_name": "Person", "date_of_birth": "2000-01-01",
+			"first_name": "Form", "last_name": "Person", "nickname": "Form Person", "date_of_birth": "2000-01-01",
 		} {
 			if err := form.WriteField(key, value); err != nil {
 				t.Fatal(err)

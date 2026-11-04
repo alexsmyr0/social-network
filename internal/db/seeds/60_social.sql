@@ -1,5 +1,5 @@
--- Social-network sample data on top of the forum seed users (1-7).
--- Everyone signs in with password123, except tester@example.com (password).
+-- Social-network sample data on top of the forum seed users (1-8).
+-- Everyone signs in with password123, except tester@example.com (password) and a@a.com (a).
 -- Maria (2) and Nina (4) are private; the others are public.
 -- Rows that other rows point at are found by natural keys, so only users,
 -- posts, comments and notifications use the fixed IDs the reset restarts.
@@ -8,6 +8,7 @@ UPDATE users SET profile_visibility = 'private' WHERE id IN (2, 4);
 UPDATE users SET nickname = 'alex', about_me = 'Trail runner and weekend hiker. Say hi! 👋' WHERE id = 1;
 UPDATE users SET about_me = 'Painter. Private profile: follow me to see my studio notes.' WHERE id = 2;
 UPDATE users SET nickname = 'samg' WHERE id = 3;
+UPDATE users SET nickname = 'a' WHERE id = 8;
 
 -- Accepted follows, then pending requests to the private profiles.
 INSERT INTO follows (follower_id, followed_id, state, created_at, accepted_at) VALUES

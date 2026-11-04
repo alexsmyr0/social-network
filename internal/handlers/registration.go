@@ -189,11 +189,14 @@ func validateRegistration(input registrationInput, now time.Time) (db.NewAccount
 		fields["date_of_birth"] = "INVALID_DATE"
 	}
 	for name, raw := range map[string]*string{"nickname": input.Nickname, "about_me": input.AboutMe} {
-		if raw == nil {
-			continue
+		value := ""
+		if raw != nil {
+			value = strings.TrimSpace(*raw)
 		}
-		value := strings.TrimSpace(*raw)
 		if value == "" {
+			if name == "nickname" {
+				fields[name] = "REQUIRED"
+			}
 			continue
 		}
 		limit := 30
