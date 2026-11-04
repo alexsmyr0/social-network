@@ -43,7 +43,7 @@ afterEach(() => {
 });
 
 describe('framework shell', () => {
-	test('renders the home route and successful proxy health state', async () => {
+	test('renders the home route', async () => {
 		const fetchRef = vi.fn(async () => ({
 			ok: true,
 			status: 200,
@@ -52,29 +52,7 @@ describe('framework shell', () => {
 		const { wrapper } = await mountAt('/', fetchRef);
 
 		expect(wrapper.get('[data-screen="home"]').isVisible()).toBe(true);
-		expect(wrapper.get('.health-status').text()).toContain('Backend connected');
 		expect(document.title).toBe('Home · Commonplace');
-	});
-
-	test('shows an honest error with a retry action when transport fails', async () => {
-		const fetchRef = vi
-			.fn()
-			.mockRejectedValueOnce(new TypeError('offline'))
-			.mockResolvedValueOnce({
-				ok: true,
-				status: 200,
-				json: async () => ({ data: { status: 'ok' } }),
-			});
-		const { wrapper } = await mountAt('/login', fetchRef, {
-			current: { status: 'unauthenticated' },
-		});
-
-		expect(wrapper.get('[role="alert"]').text()).toContain('Connection interrupted');
-		await wrapper.get('.health-status__retry').trigger('click');
-		await flushPromises();
-
-		expect(wrapper.get('.health-status').text()).toContain('Backend connected');
-		expect(fetchRef).toHaveBeenCalledTimes(2);
 	});
 
 	test('does not expose protected content when session restoration is unavailable', async () => {

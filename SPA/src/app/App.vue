@@ -1,10 +1,7 @@
 <script setup>
-import { computed, inject, nextTick, onMounted, ref } from 'vue';
+import { computed, inject, nextTick, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { checkBackendHealth } from '../api/health.js';
-// biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
-import HealthStatus from '../components/HealthStatus.vue';
 import { sessionKey } from '../features/auth/session-state.js';
 // biome-ignore lint/correctness/noUnusedImports: registered through the Vue template
 import MessageBadge from '../features/messages/MessageBadge.vue';
@@ -21,25 +18,6 @@ const protectsContent = computed(() => Boolean(route.meta.requiresAuth));
 const canShowRoute = computed(
 	() => !protectsContent.value || session.state.status === 'authenticated',
 );
-
-const health = ref({
-	state: 'loading',
-	message: 'Checking backend connection…',
-});
-
-async function refreshHealth() {
-	health.value = {
-		state: 'loading',
-		message: 'Checking backend connection…',
-	};
-
-	const result = await checkBackendHealth();
-	health.value = result.ok
-		? { state: 'online', message: result.message }
-		: { state: 'error', message: result.message };
-}
-
-onMounted(refreshHealth);
 
 // biome-ignore lint/correctness/noUnusedVariables: consumed by the Vue template
 async function signOut() {
@@ -114,14 +92,5 @@ async function retrySession() {
 				</template>
 			</section>
 		</main>
-
-		<footer class="site-footer">
-			<p>Built for smaller circles and stronger connections.</p>
-			<HealthStatus
-				:state="health.state"
-				:message="health.message"
-				@retry="refreshHealth"
-			/>
-		</footer>
 	</div>
 </template>

@@ -63,6 +63,7 @@ async function fillRequired(wrapper) {
 	await wrapper.get('[name="password"]').setValue('correct horse battery');
 	await wrapper.get('[name="firstName"]').setValue('Alex');
 	await wrapper.get('[name="lastName"]').setValue('Example');
+	await wrapper.get('[name="nickname"]').setValue('Alex E');
 	await wrapper.get('[name="dateOfBirth"]').setValue('1998-03-14');
 }
 
@@ -83,7 +84,7 @@ describe('SN-A04 registration UI', () => {
 		const wrapper = mountPage();
 		await wrapper.get('form').trigger('submit');
 
-		expect(wrapper.findAll('.field-error')).toHaveLength(5);
+		expect(wrapper.findAll('.field-error')).toHaveLength(6);
 		expect(wrapper.get('[name="email"]').attributes('aria-invalid')).toBe('true');
 		expect(document.activeElement).toBe(wrapper.get('[name="email"]').element);
 		expect(fetch).not.toHaveBeenCalled();
@@ -99,16 +100,20 @@ describe('SN-A04 registration UI', () => {
 		await flushPromises();
 
 		const omitted = JSON.parse(fetchRef.mock.calls[0][1].body);
-		expect(omitted).toMatchObject({ nickname: null, about_me: null, date_of_birth: '1998-03-14' });
+		expect(omitted).toMatchObject({
+			last_name: 'Example',
+			nickname: 'Alex E',
+			about_me: null,
+			date_of_birth: '1998-03-14',
+		});
 
 		const second = mountPage(fetchRef);
 		await fillRequired(second);
-		await second.get('[name="nickname"]').setValue('Alex E');
 		await second.get('[name="aboutMe"]').setValue('I like hiking.');
 		await second.get('form').trigger('submit');
 		await flushPromises();
 		const populated = JSON.parse(fetchRef.mock.calls[1][1].body);
-		expect(populated).toMatchObject({ nickname: 'Alex E', about_me: 'I like hiking.' });
+		expect(populated).toMatchObject({ about_me: 'I like hiking.' });
 		expect(second.text()).toContain('Welcome, Alex Example');
 	});
 
@@ -124,8 +129,8 @@ describe('SN-A04 registration UI', () => {
 		await input.trigger('change');
 
 		expect(wrapper.get('.avatar-preview img').attributes('src')).toBe('blob:avatar');
-		expect(wrapper.text()).toContain('Remove selected image');
-		await wrapper.get('.text-button').trigger('click');
+		expect(wrapper.get('.avatar-remove').attributes('aria-label')).toBe('Remove selected image');
+		await wrapper.get('.avatar-remove').trigger('click');
 		expect(wrapper.find('.avatar-preview img').exists()).toBe(false);
 		expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:avatar');
 	});
@@ -142,9 +147,7 @@ describe('SN-A04 registration UI', () => {
 
 		expect(fetchRef).not.toHaveBeenCalled();
 		expect(wrapper.get('#nickname-error').text()).toBe('This entry is too long.');
-		expect(wrapper.get('[name="nickname"]').attributes('aria-describedby')).toBe(
-			'nickname-hint nickname-error',
-		);
+		expect(wrapper.get('[name="nickname"]').attributes('aria-describedby')).toBe('nickname-error');
 		expect(document.activeElement).toBe(wrapper.get('[name="nickname"]').element);
 
 		await wrapper.get('[name="nickname"]').setValue(`  ${'🌿'.repeat(30)}  `);
@@ -318,7 +321,7 @@ describe('SN-A04 registration UI', () => {
 			const wrapper = mountPage(fetchRef);
 			await fillRequired(wrapper);
 			await selectAvatar(wrapper, new File(['jpg'], 'valid.jpg', { type: 'image/jpeg' }));
-			await wrapper.get('.text-button').trigger('click');
+			await wrapper.get('.avatar-remove').trigger('click');
 			await wrapper.get('form').trigger('submit');
 			await flushPromises();
 
@@ -364,11 +367,11 @@ describe('SN-A04 registration UI', () => {
 		test('associates the avatar hint and error with the file input', async () => {
 			const wrapper = mountPage();
 			const input = wrapper.get('[name="avatar"]');
-			expect(input.attributes('aria-describedby')).toBe('avatar-hint');
+			expect(input.attributes('aria-describedby')).toBeUndefined();
 			expect(input.attributes('aria-invalid')).toBe('false');
 
 			await selectAvatar(wrapper, new File(['txt'], 'notes.txt', { type: 'text/plain' }));
-			expect(input.attributes('aria-describedby')).toBe('avatar-hint avatar-error');
+			expect(input.attributes('aria-describedby')).toBe('avatar-error');
 			expect(input.attributes('aria-invalid')).toBe('true');
 			expect(document.getElementById('avatar-error').textContent).toContain('valid JPEG');
 			// The hidden input precedes its label so CSS can mirror keyboard focus.
